@@ -1,0 +1,229 @@
+import { execFile } from 'node:child_process'
+import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
+import { promisify } from 'node:util'
+import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test'
+import { CoreApplication } from '@kowork/core'
+import type { KoWorkApi } from '@kowork/contracts'
+
+const exec = promisify(execFile)
+
+test('runs through the real Electron, preload, main and Core process chain', async ({
+  browserName
+}, testInfo) => {
+  void browserName
+  const dataPath = await mkdtemp(join(tmpdir(), 'kowork-e2e-'))
+  const projectPath = join(dataPath, 'fixture-project')
+  await mkdir(projectPath)
+  await writeFile(join(projectPath, 'README.md'), '# Fixture\n\nInitial content.\n')
+  await exec('git', ['init'], { cwd: projectPath })
+  await exec('git', ['config', 'user.name', 'KoWork E2E'], { cwd: projectPath })
+  await exec('git', ['config', 'user.email', 'kowork-e2e@example.invalid'], { cwd: projectPath })
+  await exec('git', ['add', 'README.md'], { cwd: projectPath })
+  await exec('git', ['commit', '-m', 'Initial fixture'], { cwd: projectPath })
+  await writeFile(join(projectPath, 'README.md'), '# Fixture\n\nChanged content.\n')
+
+  const seed = new CoreApplication(dataPath, undefined, true)
+  const project = await seed.handle('projects.add', { rootPath: projectPath })
+  await seed.handle('threads.create', { projectId: project.id, title: 'E2E 会话' })
+  await seed.close()
+
+  const environment = Object.fromEntries(
+    Object.entries(process.env).flatMap(([key, value]) => (value ? [[key, value]] : []))
+  )
+  delete environment.ELECTRON_RUN_AS_NODE
+  const packagedExecutable = process.env.KOWORK_E2E_EXECUTABLE
+  const electronApp = await electron.launch({
+    ...(packagedExecutable ? { executablePath: packagedExecutable } : {}),
+    args: packagedExecutable
+      ? [`--user-data-dir=${dataPath}`]
+      : [resolve('.'), `--user-data-dir=${dataPath}`],
+    env: { ...environment, KOWORK_FAKE_AGENT: '1' }
+  })
+
+  try {
+    let page = await electronApp.firstWindow()
+    await page.waitForLoadState('domcontentloaded')
+    await expect(page.getByRole('button', { name: 'E2E 会话' })).toBeVisible()
+    await expect(page.getByPlaceholder('给 KoWork 发消息…')).toBeVisible()
+    const brandBox = await page.locator('.app-brand').boundingBox()
+    expect(brandBox).not.toBeNull()
+    expect(brandBox!.x).toBe(0)
+    expect(brandBox!.y).toBe(0)
+    const logoPosition = await page.locator('.app-brand').evaluate((element) => {
+      const logo = element.firstElementChild?.getBoundingClientRect()
+      return { left: logo?.left ?? 0, top: logo?.top ?? 0 }
+    })
+    expect(logoPosition.left).toBe(16)
+    expect(logoPosition.top).toBeGreaterThanOrEqual(44)
+    expect((await page.locator('main > header').boundingBox())?.y).toBe(0)
+    expect((await page.getByRole('tablist').boundingBox())?.y).toBe(0)
+    await expect(
+      page.evaluate(() => ({
+        hasKoWork: Object.hasOwn(window, 'kowork'),
+        hasElectron: Object.hasOwn(window, 'electron'),
+        hasRequire: typeof Reflect.get(window, 'require')
+      }))
+    ).resolves.toEqual({ hasKoWork: true, hasElectron: false, hasRequire: 'undefined' })
+
+    await page.getByPlaceholder('给 KoWork 发消息…').fill('检查 README')
+    await page.getByRole('button', { name: '发送' }).click()
+    await expect(page.getByText('我先确认一下当前项目。')).toBeVisible()
+    const firstReasoning = page
+      .locator('article')
+      .first()
+      .locator('details[data-run-content="reasoning"]')
+      .first()
+    await expect(firstReasoning).toHaveAttribute('open', '')
+    await expect(firstReasoning.getByText(/我会先确认项目中的 README/)).toBeVisible()
+    await expect(page.getByText(/已收到任务：检查 README/)).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByText('思考过程').first()).toBeVisible()
+    await expect(page.getByText('read_file', { exact: true }).first()).toBeVisible()
+    await expect(firstReasoning).not.toHaveAttribute('open', '')
+    await firstReasoning.locator('summary').click()
+    await expect(firstReasoning).toHaveAttribute('open', '')
+    await firstReasoning.locator('summary').click()
+    await expect(firstReasoning).not.toHaveAttribute('open', '')
+    const toolActivity = page.locator('details').filter({ hasText: 'read_file' }).first()
+    await expect(toolActivity).not.toHaveAttribute('open', '')
+    await expect(page.getByText('README.md 已读取，共 3 行。')).toBeHidden()
+    await toolActivity.locator('summary').click()
+    await expect(page.getByText('README.md 已读取，共 3 行。')).toBeVisible()
+    await expect(page.getByRole('heading', { name: '检查结果', level: 3 })).toBeVisible()
+    await expect(page.getByText('当前内容可正常访问')).toBeVisible()
+    const reasoningActivities = page
+      .locator('article')
+      .first()
+      .locator('details[data-run-content="reasoning"]')
+    await expect(reasoningActivities).toHaveCount(2)
+    await expect(reasoningActivities.nth(1)).not.toHaveAttribute('open', '')
+    const orderedContent = page.locator('article').first().locator('[data-run-content]')
+    await expect(orderedContent).toHaveCount(5)
+    expect(
+      await orderedContent.evaluateAll((elements) =>
+        elements.map((element) => element.getAttribute('data-run-content'))
+      )
+    ).toEqual(['text', 'reasoning', 'tool', 'reasoning', 'text'])
+    await expect(page.getByText('已完成')).toBeVisible({ timeout: 5_000 })
+    await page.screenshot({ path: testInfo.outputPath('conversation.png') })
+
+    await page.getByRole('tab', { name: '文件' }).click()
+    await page.getByRole('button', { name: 'README.md' }).click()
+    await expect(page.getByText(/Changed content/)).toBeVisible()
+
+    await page.getByRole('tab', { name: '改动' }).click()
+    await page.getByRole('button', { name: /README\.md/ }).click()
+    await expect(page.getByText(/diff --git a\/README\.md b\/README\.md/)).toBeVisible()
+    await page.screenshot({ path: testInfo.outputPath('desktop.png') })
+
+    await page.getByRole('button', { name: '返回上级' }).click()
+    await page.getByPlaceholder('给 KoWork 发消息…').fill(`后台运行校验 ${'x'.repeat(2_000)}`)
+    await page.getByRole('button', { name: '发送' }).click()
+    await expect(page.getByRole('button', { name: '取消运行' })).toBeVisible()
+
+    const reopenedWindow = electronApp.waitForEvent('window')
+    await electronApp.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.close())
+    await new Promise((resolveWait) => setTimeout(resolveWait, 300))
+    await electronApp.evaluate(({ app }) => app.emit('activate'))
+    page = await reopenedWindow
+    await page.waitForLoadState('domcontentloaded')
+    const restored = await page.evaluate(async () => {
+      const api = Reflect.get(window, 'kowork') as KoWorkApi
+      const bootstrap = await api.bootstrap()
+      const threads = await api.threads.list(bootstrap.projects[0]!.id)
+      const events = await api.events.list(threads[0]!.id)
+      return { count: events.length, types: events.map((event) => event.type) }
+    })
+    expect(restored.count).toBeGreaterThan(0)
+    expect(restored.types).toContain('run.started')
+    await expect(page.getByText(/^后台运行校验/)).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByText('已完成')).toHaveCount(2, { timeout: 10_000 })
+
+    await electronApp.evaluate(({ BrowserWindow }) =>
+      BrowserWindow.getAllWindows()[0]?.setSize(1_000, 700)
+    )
+    await expect(page.getByRole('tab', { name: '概览' })).toBeHidden()
+    await expect(page.getByPlaceholder('给 KoWork 发消息…')).toBeVisible()
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)
+    ).toBe(true)
+    await page.screenshot({ path: testInfo.outputPath('narrow.png') })
+  } finally {
+    await electronApp.close()
+  }
+})
+
+test('stores provider credentials securely and restores them after restart', async () => {
+  const testInfo = test.info()
+  const dataPath = await mkdtemp(join(tmpdir(), 'kowork-credentials-e2e-'))
+  const environment = Object.fromEntries(
+    Object.entries(process.env).flatMap(([key, value]) => (value ? [[key, value]] : []))
+  )
+  delete environment.ELECTRON_RUN_AS_NODE
+  const packagedExecutable = process.env.KOWORK_E2E_EXECUTABLE
+  const launch = (): Promise<ElectronApplication> =>
+    electron.launch({
+      ...(packagedExecutable ? { executablePath: packagedExecutable } : {}),
+      args: packagedExecutable
+        ? [`--user-data-dir=${dataPath}`]
+        : [resolve('.'), `--user-data-dir=${dataPath}`],
+      env: { ...environment, KOWORK_FAKE_AGENT: '1' }
+    })
+  const secret = 'e2e-provider-secret-value'
+  let electronApp = await launch()
+
+  try {
+    let page = await electronApp.firstWindow()
+    await page.waitForLoadState('domcontentloaded')
+    await page.getByRole('button', { name: '设置' }).first().click()
+    await page.getByRole('tab', { name: '模型供应商' }).click()
+    await page.getByRole('button', { name: '添加供应商' }).click()
+    await page.getByLabel('供应商品牌').selectOption('deepseek')
+    await page.getByLabel('调用协议').selectOption('anthropic')
+    await page.getByLabel('名称').fill('E2E DeepSeek Anthropic')
+    await page.getByLabel('API Key', { exact: true }).fill(secret)
+    await page.getByRole('button', { name: '保存' }).click()
+    await expect(page.getByText('E2E DeepSeek Anthropic').first()).toBeVisible()
+    await page.screenshot({ path: testInfo.outputPath('providers.png') })
+    await electronApp.evaluate(({ BrowserWindow }) =>
+      BrowserWindow.getAllWindows()[0]?.setSize(1_000, 700)
+    )
+    await expect(page.getByRole('button', { name: '刷新模型' })).toBeVisible()
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)
+    ).toBe(true)
+    await page.screenshot({ path: testInfo.outputPath('providers-narrow.png') })
+
+    const bootstrap = await page.evaluate(async () => {
+      const api = Reflect.get(window, 'kowork') as KoWorkApi
+      return await api.bootstrap()
+    })
+    const provider = bootstrap.providers.find((item) => item.name === 'E2E DeepSeek Anthropic')
+    expect(provider).toMatchObject({
+      kind: 'deepseek',
+      protocol: 'anthropic',
+      credentialConfigured: true,
+      available: true
+    })
+    expect(JSON.stringify(bootstrap)).not.toContain(secret)
+
+    await electronApp.close()
+    const encryptedFile = await readFile(join(dataPath, 'credentials.json'), 'utf8')
+    const sqliteFile = await readFile(join(dataPath, 'kowork.sqlite'))
+    expect(encryptedFile).not.toContain(secret)
+    expect(sqliteFile.includes(Buffer.from(secret))).toBe(false)
+
+    electronApp = await launch()
+    page = await electronApp.firstWindow()
+    await page.waitForLoadState('domcontentloaded')
+    const restored = await page.evaluate(async () => {
+      const api = Reflect.get(window, 'kowork') as KoWorkApi
+      const bootstrapAfterRestart = await api.bootstrap()
+      return bootstrapAfterRestart.providers.find((item) => item.name === 'E2E DeepSeek Anthropic')
+    })
+    expect(restored).toMatchObject({ credentialConfigured: true, available: true })
+  } finally {
+    await electronApp.close().catch(() => undefined)
+  }
+})
