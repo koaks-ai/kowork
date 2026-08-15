@@ -1,5 +1,5 @@
-appId: com.electron.app
-productName: kowork
+appId: ai.koaks.kowork
+productName: KoWork
 directories:
   buildResources: build
 files:
@@ -11,6 +11,8 @@ files:
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
 asarUnpack:
   - resources/**
+  - '**/*.node'
+  - node_modules/@koaks/node/**
 win:
   executableName: kowork
 nsis:
