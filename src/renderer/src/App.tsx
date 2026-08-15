@@ -1,34 +1,33 @@
-import Versions from './components/Versions'
-import electronLogo from './assets/electron.svg'
+import { useQuery } from '@tanstack/react-query'
+import { ConversationWorkspace } from './widgets/ConversationWorkspace'
+import { InspectorPanel } from './widgets/InspectorPanel'
+import { ProjectSidebar } from './widgets/ProjectSidebar'
+import { StatusBar } from './widgets/StatusBar'
 
 function App(): React.JSX.Element {
-  const ipcHandle = (): void => window.electron.ipcRenderer.send('ping')
-
+  const bootstrap = useQuery({ queryKey: ['bootstrap'], queryFn: () => window.kowork.bootstrap() })
+  const isMacOS = navigator.userAgent.includes('Macintosh')
+  if (bootstrap.isLoading)
+    return (
+      <div className="grid h-screen place-items-center bg-white text-sm text-neutral-500">
+        KoWork
+      </div>
+    )
+  if (bootstrap.isError || !bootstrap.data)
+    return (
+      <div className="grid h-screen place-items-center bg-white px-8 text-center text-sm text-red-700">
+        {bootstrap.error instanceof Error ? bootstrap.error.message : 'KoWork Core unavailable'}
+      </div>
+    )
   return (
-    <>
-      <img alt="logo" className="logo" src={electronLogo} />
-      <div className="creator">Powered by electron-vite</div>
-      <div className="text">
-        Build an Electron app with <span className="react">React</span>
-        &nbsp;and <span className="ts">TypeScript</span>
+    <div className="flex h-screen flex-col overflow-hidden bg-white">
+      <div className="flex min-h-0 flex-1">
+        <ProjectSidebar bootstrap={bootstrap.data} isMacOS={isMacOS} />
+        <ConversationWorkspace bootstrap={bootstrap.data} />
+        <InspectorPanel bootstrap={bootstrap.data} />
       </div>
-      <p className="tip">
-        Please try pressing <code>F12</code> to open the devTool
-      </p>
-      <div className="actions">
-        <div className="action">
-          <a href="https://electron-vite.org/" target="_blank" rel="noreferrer">
-            Documentation
-          </a>
-        </div>
-        <div className="action">
-          <a target="_blank" rel="noreferrer" onClick={ipcHandle}>
-            Send IPC
-          </a>
-        </div>
-      </div>
-      <Versions></Versions>
-    </>
+      <StatusBar bootstrap={bootstrap.data} />
+    </div>
   )
 }
 
