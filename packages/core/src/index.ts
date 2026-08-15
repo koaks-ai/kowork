@@ -1,0 +1,6 @@
+export { CoreApplication } from './application/core-application'
+export { CoreError } from './domain/errors'
+export { shouldCompress, selectRecentTurnCount } from './domain/compression-policy'
+export { requiresShellApproval } from './domain/permission-policy'
+export { isWithinPath } from './infrastructure/workspace/path-policy'
+export { startCoreProcessServer, type CoreParentPort } from './transport/core-process-server'

@@ -1,0 +1,17 @@
+{
+  "name": "@kowork/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@koaks/node": "file:../../vendor/koaks/koaks-node-0.0.1-beta3.tgz",
+    "@kowork/contracts": "workspace:*",
+    "better-sqlite3": "^13.0.3",
+    "chokidar": "^5.0.0",
+    "diff": "^9.0.0",
+    "drizzle-orm": "^0.45.2"
+  }
+}
