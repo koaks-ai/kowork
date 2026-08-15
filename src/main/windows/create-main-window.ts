@@ -1,0 +1,51 @@
+import { join } from 'node:path'
+import { BrowserWindow, shell } from 'electron'
+import { is } from '@electron-toolkit/utils'
+import icon from '../../../resources/icon.png?asset'
+
+function isAllowedExternalUrl(value: string): boolean {
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' || url.protocol === 'http:'
+  } catch {
+    return false
+  }
+}
+
+export function createMainWindow(): BrowserWindow {
+  const window = new BrowserWindow({
+    width: 1440,
+    height: 920,
+    minWidth: 980,
+    minHeight: 680,
+    show: false,
+    autoHideMenuBar: true,
+    title: 'KoWork',
+    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
+    ...(process.platform === 'linux' ? { icon } : {}),
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      contextIsolation: true,
+      sandbox: true,
+      nodeIntegration: false,
+      webSecurity: true
+    }
+  })
+
+  window.once('ready-to-show', () => window.show())
+  window.webContents.setWindowOpenHandler(({ url }) => {
+    if (isAllowedExternalUrl(url)) void shell.openExternal(url)
+    return { action: 'deny' }
+  })
+  window.webContents.on('will-navigate', (event, url) => {
+    const current = window.webContents.getURL()
+    if (url !== current) event.preventDefault()
+  })
+
+  if (is.dev && process.env.ELECTRON_RENDERER_URL) {
+    void window.loadURL(process.env.ELECTRON_RENDERER_URL)
+  } else {
+    void window.loadFile(join(__dirname, '../renderer/index.html'))
+  }
+  return window
+}
