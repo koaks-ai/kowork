@@ -1,8 +1,9 @@
-import { ElectronAPI } from '@electron-toolkit/preload'
+import type { KoWorkApi } from '@kowork/contracts'
 
 declare global {
   interface Window {
-    electron: ElectronAPI
-    api: unknown
+    kowork: KoWorkApi
   }
 }
+
+export {}
