@@ -1,16 +1,36 @@
 import { resolve } from 'path'
 import { defineConfig } from 'electron-vite'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
-  main: {},
-  preload: {},
+  main: {
+    build: {
+      externalizeDeps: {
+        exclude: ['@kowork/contracts', '@kowork/core']
+      },
+      rollupOptions: {
+        input: {
+          index: resolve('src/main/index.ts'),
+          core: resolve('src/core/index.ts')
+        },
+        output: {
+          entryFileNames: '[name].js'
+        }
+      }
+    }
+  },
+  preload: {
+    build: {
+      externalizeDeps: false
+    }
+  },
   renderer: {
     resolve: {
       alias: {
         '@renderer': resolve('src/renderer/src')
       }
     },
-    plugins: [react()]
+    plugins: [react(), tailwindcss()]
   }
 })
