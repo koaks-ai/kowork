@@ -23,6 +23,7 @@
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
+    "@koaks/node": "file:vendor/koaks/koaks-node-0.0.1-beta3.tgz",
     "electron-updater": "^6.3.9"
   },
   "devDependencies": {
