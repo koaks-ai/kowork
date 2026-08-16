@@ -14,7 +14,7 @@ export class FakeAgentRuntime implements AgentRuntimePort {
     yield { type: 'text_delta', text: '我先确认一下当前项目。' }
     yield {
       type: 'reasoning_delta',
-      text: '我会先确认项目中的 README 文件，再读取内容检查当前状态。'
+      text: '我会先确认项目中的 **README** 文件，再读取内容检查当前状态。'
     }
     await new Promise((resolve) => setTimeout(resolve, 500))
     yield {

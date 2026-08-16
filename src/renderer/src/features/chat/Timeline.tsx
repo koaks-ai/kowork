@@ -201,7 +201,8 @@ function ReasoningActivityView({
     active ? 'preview' : 'collapsed'
   )
   const [previousActive, setPreviousActive] = useState(active)
-  const preview = useRef<HTMLPreElement>(null)
+  const [overflowing, setOverflowing] = useState(false)
+  const preview = useRef<HTMLDivElement>(null)
 
   if (active !== previousActive) {
     setPreviousActive(active)
@@ -209,12 +210,18 @@ function ReasoningActivityView({
   }
 
   useLayoutEffect(() => {
-    if (mode === 'preview' && preview.current) {
-      preview.current.scrollTop = preview.current.scrollHeight
+    const element = preview.current
+    if (!element || mode !== 'preview') {
+      setOverflowing(false)
+      return
     }
+
+    element.scrollTop = element.scrollHeight
+    setOverflowing(element.scrollHeight - element.clientHeight > 1)
   }, [activity.text, mode])
 
   const open = mode !== 'collapsed'
+  const showOverflowRule = mode === 'preview' && overflowing
 
   return (
     <div data-run-content="reasoning" className="text-neutral-500">
@@ -239,15 +246,21 @@ function ReasoningActivityView({
         />
       </button>
       <AnimatedDisclosure open={open}>
-        <div className="pt-2">
-          <pre
+        <div className="relative pt-2">
+          <div
             ref={preview}
-            className={`select-text whitespace-pre-wrap break-words font-sans text-[15px] leading-6 text-neutral-500 [overflow-wrap:anywhere] ${
-              mode === 'preview' ? 'max-h-60 overflow-y-hidden' : ''
-            }`}
+            data-reasoning-body
+            className={`select-text ${mode === 'preview' ? 'max-h-60 overflow-y-hidden' : ''}`}
           >
-            {activity.text}
-          </pre>
+            <MarkdownContent content={activity.text} tone="muted" />
+          </div>
+          {showOverflowRule ? (
+            <div
+              data-reasoning-overflow-rule
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-neutral-400/25"
+            />
+          ) : null}
         </div>
       </AnimatedDisclosure>
     </div>

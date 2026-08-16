@@ -147,6 +147,23 @@ textarea,
   font-weight: 600;
 }
 
+.kowork-markdown[data-tone='muted'] {
+  filter: grayscale(1);
+}
+
+.kowork-markdown[data-tone='muted'] pre {
+  position: relative;
+}
+
+.kowork-markdown[data-tone='muted'] pre::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgb(115 115 115 / 0.22);
+  pointer-events: none;
+}
+
 /* 本动画效果取自于豆包网页版 */
 .kowork-disclosure {
   overflow-y: hidden;

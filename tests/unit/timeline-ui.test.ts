@@ -53,28 +53,37 @@ afterEach(() => {
 })
 
 describe('reasoning timeline activity', () => {
-  it('uses a ten-line plain-text preview and reveals the full text on demand', () => {
-    const initialText = '**literal markdown**\n2\n3\n4\n5\n6\n7'
+  it('renders a muted Markdown preview and reveals the full text on demand', () => {
+    const initialText = '**literal markdown**\n\n```typescript\nconst answer: number = 42\n```'
     const view = render(timeline([started, reasoning(initialText)]))
     const activity = view.container.querySelector('[data-run-content="reasoning"]')!
     const toggle = activity.querySelector('button')!
-    const text = activity.querySelector('pre')!
+    const text = activity.querySelector('[data-reasoning-body]')!
+    const markdown = text.querySelector('.kowork-markdown')
 
-    expect(text.textContent).toBe(initialText)
-    expect(text.querySelector('strong')).toBeNull()
+    expect(text.querySelector('strong')?.textContent).toBe('literal markdown')
+    expect(markdown?.getAttribute('data-tone')).toBe('muted')
+    expect(markdown?.className).toContain('text-neutral-500')
+    expect(text.querySelector('h3, h2, h1, strong')?.className).toContain('text-neutral-500')
+    expect(text.querySelector('pre code')?.classList.contains('hljs')).toBe(true)
+    expect(text.querySelector('.hljs-keyword')?.textContent).toBe('const')
     expect(text.classList).toContain('max-h-60')
     expect(text.classList).toContain('select-text')
     expect(text.className).not.toContain('pl-')
     expect(toggle.getAttribute('aria-expanded')).toBe('true')
+    expect(activity.querySelector('[data-reasoning-overflow-rule]')).toBeNull()
 
     Object.defineProperty(text, 'scrollHeight', { configurable: true, value: 400 })
+    Object.defineProperty(text, 'clientHeight', { configurable: true, value: 240 })
     const updatedText = `${initialText}\n8`
     view.rerender(timeline([started, reasoning(updatedText)]))
     expect(text.scrollTop).toBe(400)
+    expect(activity.querySelector('[data-reasoning-overflow-rule]')).not.toBeNull()
 
     fireEvent.click(toggle)
     expect(toggle.getAttribute('aria-expanded')).toBe('true')
     expect(text.classList).not.toContain('max-h-60')
+    expect(activity.querySelector('[data-reasoning-overflow-rule]')).toBeNull()
 
     view.rerender(timeline([started, reasoning(updatedText), completed]))
     expect(toggle.getAttribute('aria-expanded')).toBe('false')

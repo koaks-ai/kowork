@@ -86,13 +86,17 @@ test('runs through the real Electron, preload, main and Core process chain', asy
       .locator('[data-run-content="reasoning"]')
       .first()
     const firstReasoningToggle = firstReasoning.getByRole('button', { name: '思考过程' })
-    const firstReasoningText = firstReasoning.locator('pre')
+    const firstReasoningText = firstReasoning.locator('[data-reasoning-body]')
+    const firstReasoningMarkdown = firstReasoning.locator('.kowork-markdown')
     await expect(firstReasoningToggle).toHaveAttribute('aria-expanded', 'true')
     await expect(firstReasoningText).toHaveCSS('max-height', '240px')
     await expect(firstReasoningText).toHaveCSS('user-select', 'text')
+    await expect(firstReasoningMarkdown).toHaveAttribute('data-tone', 'muted')
+    await expect(firstReasoningMarkdown).toHaveCSS('filter', /grayscale/)
+    await expect(firstReasoning.locator('strong')).toHaveText('README')
     const reasoningAlignment = await firstReasoning.evaluate((element) => ({
       toggleLeft: element.querySelector('button')?.getBoundingClientRect().left,
-      textLeft: element.querySelector('pre')?.getBoundingClientRect().left
+      textLeft: element.querySelector('[data-reasoning-body]')?.getBoundingClientRect().left
     }))
     expect(reasoningAlignment.textLeft).toBe(reasoningAlignment.toggleLeft)
     await expect(firstReasoning.getByText(/我会先确认项目中的 README/)).toBeVisible()
