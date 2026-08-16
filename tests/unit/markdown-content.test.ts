@@ -23,4 +23,30 @@ describe('MarkdownContent', () => {
       expect(block.querySelector('code')?.className).toContain('text-[0.9em]')
     }
   })
+
+  it('highlights fenced code when its language is specified', () => {
+    const view = render(
+      createElement(MarkdownContent, {
+        content: '```typescript\nconst answer: number = 42\n```'
+      })
+    )
+    const code = view.container.querySelector('pre code')
+
+    expect(code?.classList.contains('hljs')).toBe(true)
+    expect(code?.classList.contains('language-typescript')).toBe(true)
+    expect(code?.querySelector('.hljs-keyword')?.textContent).toBe('const')
+    expect(code?.querySelector('.hljs-number')?.textContent).toBe('42')
+  })
+
+  it('does not guess a language for unlabeled fenced code', () => {
+    const view = render(
+      createElement(MarkdownContent, {
+        content: '```\nconst answer = 42\n```'
+      })
+    )
+    const code = view.container.querySelector('pre code')
+
+    expect(code?.classList.contains('hljs')).toBe(false)
+    expect(code?.querySelector('[class^="hljs-"]')).toBeNull()
+  })
 })

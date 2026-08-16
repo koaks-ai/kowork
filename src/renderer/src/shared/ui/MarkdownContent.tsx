@@ -1,4 +1,5 @@
 import ReactMarkdown, { type Components } from 'react-markdown'
+import rehypeHighlight from 'rehype-highlight'
 import remarkGfm from 'remark-gfm'
 
 interface MarkdownContentProps {
@@ -107,9 +108,14 @@ export function MarkdownContent({
 
   return (
     <div
-      className={`${compact ? 'text-[13px]' : 'text-[15px]'} min-w-0 break-words text-neutral-800 [overflow-wrap:anywhere] ${className}`}
+      className={`kowork-markdown ${compact ? 'text-[13px]' : 'text-[15px]'} min-w-0 break-words text-neutral-800 [overflow-wrap:anywhere] ${className}`}
     >
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={createComponents(compact)} skipHtml>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeHighlight]}
+        components={createComponents(compact)}
+        skipHtml
+      >
         {content}
       </ReactMarkdown>
     </div>

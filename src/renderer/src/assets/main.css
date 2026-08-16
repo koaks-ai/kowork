@@ -68,6 +68,71 @@ textarea,
   background-clip: padding-box;
 }
 
+.kowork-markdown .hljs-comment,
+.kowork-markdown .hljs-quote {
+  color: #6e7781;
+  font-style: italic;
+}
+
+.kowork-markdown .hljs-keyword,
+.kowork-markdown .hljs-selector-tag,
+.kowork-markdown .hljs-subst {
+  color: #cf222e;
+}
+
+.kowork-markdown .hljs-number,
+.kowork-markdown .hljs-literal,
+.kowork-markdown .hljs-variable,
+.kowork-markdown .hljs-template-variable,
+.kowork-markdown .hljs-attr,
+.kowork-markdown .hljs-tag {
+  color: #0550ae;
+}
+
+.kowork-markdown .hljs-string,
+.kowork-markdown .hljs-regexp,
+.kowork-markdown .hljs-doctag,
+.kowork-markdown .hljs-attribute {
+  color: #0a6847;
+}
+
+.kowork-markdown .hljs-title,
+.kowork-markdown .hljs-section,
+.kowork-markdown .hljs-name,
+.kowork-markdown .hljs-selector-id,
+.kowork-markdown .hljs-selector-class {
+  color: #8250df;
+}
+
+.kowork-markdown .hljs-type,
+.kowork-markdown .hljs-built_in,
+.kowork-markdown .hljs-symbol,
+.kowork-markdown .hljs-bullet {
+  color: #953800;
+}
+
+.kowork-markdown .hljs-meta {
+  color: #1f6feb;
+}
+
+.kowork-markdown .hljs-deletion {
+  color: #82071e;
+  background: #ffebe9;
+}
+
+.kowork-markdown .hljs-addition {
+  color: #116329;
+  background: #dafbe1;
+}
+
+.kowork-markdown .hljs-emphasis {
+  font-style: italic;
+}
+
+.kowork-markdown .hljs-strong {
+  font-weight: 600;
+}
+
 /* 本动画效果取自于豆包网页版 */
 .kowork-disclosure {
   overflow-y: hidden;
