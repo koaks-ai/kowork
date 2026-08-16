@@ -160,6 +160,32 @@ describe('reasoning timeline activity', () => {
     ).toBe(true)
   })
 
+  it('allows selecting and copying the user message with copied feedback', async () => {
+    vi.useFakeTimers()
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText }
+    })
+    const view = render(timeline([started, completed]))
+    const message = view.container.querySelector('[data-user-message]')!
+
+    expect(message.classList).toContain('select-text')
+    const copyButton = view.getByRole('button', { name: '复制消息' })
+    await act(async () => {
+      fireEvent.click(copyButton)
+      await Promise.resolve()
+    })
+
+    expect(writeText).toHaveBeenCalledWith('test')
+    expect(copyButton.getAttribute('aria-label')).toBe('已复制')
+    expect(copyButton.querySelector('.lucide-check')).not.toBeNull()
+
+    act(() => vi.advanceTimersByTime(5_000))
+    expect(copyButton.getAttribute('aria-label')).toBe('复制消息')
+    expect(copyButton.querySelector('.lucide-copy')).not.toBeNull()
+  })
+
   it('copies all model text when no final response was produced', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'clipboard', {

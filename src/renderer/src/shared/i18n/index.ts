@@ -20,6 +20,7 @@ const zhCN = {
   running: '运行中',
   waiting: '等待审批',
   completed: '已完成',
+  copyMessage: '复制消息',
   copyFinalResponse: '复制最终回复',
   copied: '已复制',
   copyFailed: '复制失败',

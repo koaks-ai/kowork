@@ -109,8 +109,10 @@ function StreamingMarkdown({
   )
 }
 
-function RunActions({ copyText }: { copyText?: string }): React.JSX.Element {
-  const { t } = useTranslation()
+function useClipboardCopy(text?: string): {
+  copyState: 'idle' | 'copied' | 'failed'
+  copy(): Promise<void>
+} {
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle')
   const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -121,10 +123,10 @@ function RunActions({ copyText }: { copyText?: string }): React.JSX.Element {
     []
   )
 
-  const copyFinalText = async (): Promise<void> => {
-    if (!copyText) return
+  const copy = async (): Promise<void> => {
+    if (!text) return
     try {
-      await navigator.clipboard.writeText(copyText)
+      await navigator.clipboard.writeText(text)
       setCopyState('copied')
     } catch {
       setCopyState('failed')
@@ -132,6 +134,35 @@ function RunActions({ copyText }: { copyText?: string }): React.JSX.Element {
     if (resetTimer.current) clearTimeout(resetTimer.current)
     resetTimer.current = setTimeout(() => setCopyState('idle'), 5_000)
   }
+
+  return { copyState, copy }
+}
+
+function UserMessageCopyAction({ text }: { text: string }): React.JSX.Element {
+  const { t } = useTranslation()
+  const { copyState, copy } = useClipboardCopy(text)
+  const label =
+    copyState === 'copied'
+      ? t('copied')
+      : copyState === 'failed'
+        ? t('copyFailed')
+        : t('copyMessage')
+
+  return (
+    <IconButton
+      label={label}
+      data-user-message-action="copy"
+      className="!size-7"
+      onClick={() => void copy()}
+    >
+      {copyState === 'copied' ? <Check size={15} /> : <Copy size={15} />}
+    </IconButton>
+  )
+}
+
+function RunActions({ copyText }: { copyText?: string }): React.JSX.Element {
+  const { t } = useTranslation()
+  const { copyState, copy } = useClipboardCopy(copyText)
 
   const copyLabel =
     copyState === 'copied'
@@ -146,7 +177,7 @@ function RunActions({ copyText }: { copyText?: string }): React.JSX.Element {
         label={copyLabel}
         data-run-action="copy"
         disabled={!copyText}
-        onClick={() => void copyFinalText()}
+        onClick={() => void copy()}
       >
         {copyState === 'copied' ? <Check size={16} /> : <Copy size={16} />}
       </IconButton>
@@ -379,17 +410,26 @@ export function Timeline({ events }: { events: RunEventDto[] }): React.JSX.Eleme
         return (
           <article key={item.runId} className="space-y-6">
             {item.input && (
-              <div className="flex flex-col items-end">
-                <div className="max-w-[80%] rounded-lg bg-[#f3f3f3] px-3.5 py-2.5 text-neutral-900 sm:max-w-[72%]">
-                  <MarkdownContent content={item.input} variant="compact" />
+              <div className="group/user-message flex flex-col items-end">
+                <div
+                  data-user-message
+                  className="max-w-[80%] select-text rounded-2xl bg-[#f3f3f3] px-3 py-1.5 text-neutral-900 sm:max-w-[72%]"
+                >
+                  <MarkdownContent content={item.input} />
                 </div>
-                <time className="mt-1.5 pr-1 text-[10px] tabular-nums text-neutral-400">
-                  {new Date(item.startedAt).toLocaleTimeString('zh-CN', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: false
-                  })}
-                </time>
+                <div
+                  data-user-message-meta
+                  className="pointer-events-none mt-1 flex h-7 items-center gap-0.5 pr-0.5 opacity-0 transition-opacity duration-150 group-focus-within/user-message:pointer-events-auto group-focus-within/user-message:opacity-100 group-hover/user-message:pointer-events-auto group-hover/user-message:opacity-100 motion-reduce:transition-none"
+                >
+                  <time className="mr-1 text-[10px] tabular-nums text-neutral-400">
+                    {new Date(item.startedAt).toLocaleTimeString('zh-CN', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: false
+                    })}
+                  </time>
+                  <UserMessageCopyAction text={item.input} />
+                </div>
               </div>
             )}
 

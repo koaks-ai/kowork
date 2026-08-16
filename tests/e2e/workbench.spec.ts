@@ -75,6 +75,11 @@ test('runs through the real Electron, preload, main and Core process chain', asy
     await page.getByPlaceholder('给 KoWork 发消息…').fill('检查 README')
     await page.getByRole('button', { name: '发送' }).click()
     await expect(page.getByText('我先确认一下当前项目。')).toBeVisible()
+    const userMessage = page.locator('[data-user-message]').first()
+    await expect(userMessage).toHaveCSS('border-radius', '16px')
+    await expect(userMessage).toHaveCSS('padding', '6px 12px')
+    await expect(userMessage.locator('.kowork-markdown')).toHaveCSS('font-size', '15px')
+    await expect(userMessage.locator('p')).toHaveCSS('line-height', '28px')
     const firstReasoning = page
       .locator('article')
       .first()
