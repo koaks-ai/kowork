@@ -181,8 +181,8 @@ export function ConversationWorkspace({
 
   const hasConversation = eventsQuery.data?.some((event) => event.type === 'run.started') ?? false
   return (
-    <main className="flex min-w-0 flex-1 flex-col bg-white">
-      <header className="app-drag flex h-14 shrink-0 items-center justify-between border-b border-neutral-200 bg-white px-4">
+    <main className="relative flex min-w-0 flex-1 flex-col bg-white">
+      <header className="app-drag kowork-dot-blur absolute inset-x-0 top-0 z-20 flex h-14 items-center justify-between border-b border-neutral-200 px-4">
         <div className="flex min-w-0 items-center gap-2 text-sm">
           {editingTitle ? (
             <InlineRenameInput
@@ -223,7 +223,7 @@ export function ConversationWorkspace({
         <div
           ref={scrollContainer}
           data-chat-scroll
-          className="h-full overflow-y-scroll"
+          className="flex h-full flex-col overflow-y-scroll"
           onScroll={(event) => {
             const container = event.currentTarget
             const distanceFromBottom =
@@ -231,12 +231,15 @@ export function ConversationWorkspace({
             followingLatest.current = distanceFromBottom <= AUTO_SCROLL_THRESHOLD_PX
           }}
         >
-          <BlurReveal contentKey={threadId} className="min-h-full">
-            <div style={{ paddingBottom: composerHeight }}>
+          <BlurReveal contentKey={threadId} className="flex min-h-full flex-1 flex-col">
+            <div
+              className="flex flex-1 flex-col pt-14"
+              style={{ paddingBottom: composerHeight }}
+            >
               {hasConversation ? (
                 <Timeline events={eventsQuery.data ?? []} />
               ) : (
-                <div className="mx-auto flex min-h-full w-full max-w-2xl flex-col items-center justify-center px-6 py-12">
+                <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center px-6 py-12">
                   <div className="mb-5 grid size-12 place-items-center rounded-lg bg-blue-600 text-white">
                     <Bot size={24} />
                   </div>
