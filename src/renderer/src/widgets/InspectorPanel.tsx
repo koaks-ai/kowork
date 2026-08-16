@@ -6,6 +6,10 @@ import type { AppBootstrapDto } from '@kowork/contracts'
 import { useWorkbenchStore } from '../shared/store/workbench'
 import { IconButton } from '../shared/ui/IconButton'
 
+function formatTokens(tokens: number): string {
+  return `${(tokens / 1_000).toFixed(2).replace(/\.00$/, '')}K`
+}
+
 export function InspectorPanel({ bootstrap }: { bootstrap: AppBootstrapDto }): React.JSX.Element {
   const { t } = useTranslation()
   const store = useWorkbenchStore()
@@ -71,14 +75,14 @@ export function InspectorPanel({ bootstrap }: { bootstrap: AppBootstrapDto }): R
           ))}
         </Tabs.List>
         <Tabs.Content value="overview" className="min-h-0 flex-1 overflow-y-auto p-4">
-          <section className="border-b border-neutral-200 pb-5">
+          <section className="rounded-lg border border-neutral-200 p-4">
             <h2 className="text-sm font-semibold text-neutral-900">{t('contextWindow')}</h2>
             <div className="mt-4 flex items-center justify-between text-xs">
               <span className="rounded bg-emerald-50 px-2 py-1 font-medium text-emerald-700">
                 {t('contextHealthy')}
               </span>
               <strong>
-                {latestPrompt.toLocaleString()} / {limit.toLocaleString()}
+                {formatTokens(latestPrompt)} / {formatTokens(limit)}
               </strong>
             </div>
             <div className="mt-3 h-2 overflow-hidden rounded bg-neutral-200">
@@ -91,7 +95,7 @@ export function InspectorPanel({ bootstrap }: { bootstrap: AppBootstrapDto }): R
               {percentage.toFixed(1)}%
             </div>
           </section>
-          <section className="py-5">
+          <section className="mt-4 rounded-lg border border-neutral-200 p-4">
             <h2 className="text-sm font-semibold text-neutral-900">{t('sessionMetrics')}</h2>
             <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-5 text-xs">
               <div>
@@ -101,7 +105,7 @@ export function InspectorPanel({ bootstrap }: { bootstrap: AppBootstrapDto }): R
               <div>
                 <dt className="text-neutral-500">{t('tokenUsage')}</dt>
                 <dd className="mt-1 text-lg font-semibold text-neutral-900">
-                  {totalTokens.toLocaleString()}
+                  {formatTokens(totalTokens)}
                 </dd>
               </div>
               <div>
