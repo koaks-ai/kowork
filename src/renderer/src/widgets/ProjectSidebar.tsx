@@ -6,7 +6,6 @@ import {
   FolderPlus,
   MessageSquarePlus,
   Plus,
-  Settings as SettingsIcon,
   Trash2
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -228,9 +227,6 @@ export function ProjectSidebar({ bootstrap, isMacOS }: ProjectSidebarProps): Rea
           profiles={bootstrap.modelProfiles}
           settings={bootstrap.settings}
         />
-        <IconButton label={t('settings')} disabled>
-          <SettingsIcon size={16} />
-        </IconButton>
       </div>
     </aside>
   )
