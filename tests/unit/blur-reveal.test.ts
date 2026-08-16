@@ -33,4 +33,16 @@ describe('BlurReveal', () => {
     view.rerender(createElement(BlurReveal, { contentKey: 'b' }, createElement(Child)))
     expect(mounts).toBe(2)
   })
+
+  it('defaults to the open state', () => {
+    const view = render(createElement(BlurReveal, null, 'pane'))
+    const root = view.container.querySelector('[data-blur-reveal]')
+    expect(root?.getAttribute('data-state')).toBe('open')
+  })
+
+  it('reflects the closed state for exit animations', () => {
+    const view = render(createElement(BlurReveal, { state: 'closed' }, 'pane'))
+    const root = view.container.querySelector('[data-blur-reveal]')
+    expect(root?.getAttribute('data-state')).toBe('closed')
+  })
 })

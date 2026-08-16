@@ -282,6 +282,12 @@ textarea,
     kowork-blur-reveal-blur-in 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+.kowork-blur-reveal[data-state='closed'] {
+  animation:
+    kowork-blur-reveal-fade-out 160ms cubic-bezier(0.4, 0, 1, 1) both,
+    kowork-blur-reveal-blur-out 220ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
 @keyframes kowork-settings-overlay-in {
   from {
     opacity: 0;
@@ -366,6 +372,26 @@ textarea,
   }
 }
 
+@keyframes kowork-blur-reveal-fade-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes kowork-blur-reveal-blur-out {
+  from {
+    filter: blur(0);
+  }
+
+  to {
+    filter: blur(4px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .kowork-disclosure {
     transition: none;
@@ -381,7 +407,8 @@ textarea,
 
   .kowork-settings-overlay,
   .kowork-settings-dialog,
-  .kowork-blur-reveal {
+  .kowork-blur-reveal,
+  .kowork-blur-reveal[data-state='closed'] {
     animation: none;
   }
 }
