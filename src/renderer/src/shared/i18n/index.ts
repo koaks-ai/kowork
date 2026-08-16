@@ -117,7 +117,6 @@ const zhCN = {
   toolInput: '输入',
   toolOutput: '输出',
   toolRunning: '执行中',
-  toolFailed: '执行失败',
   emptyToolOutput: '工具未返回文本输出',
   commandOutput: '命令输出',
   noFiles: '目录为空',

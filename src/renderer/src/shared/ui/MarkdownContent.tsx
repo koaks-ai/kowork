@@ -67,13 +67,13 @@ function createComponents(compact: boolean): Components {
     ),
     code: ({ className, children }) => (
       <code
-        className={`${className ?? ''} rounded bg-neutral-100 px-1 py-0.5 font-mono text-[0.9em] text-neutral-800`}
+        className={`${className ?? ''} rounded bg-neutral-100 px-1 py-0.5 font-mono font-normal text-[0.9em] text-neutral-800`}
       >
         {children}
       </code>
     ),
     pre: ({ children }) => (
-      <pre className="my-3 max-w-full overflow-x-auto rounded-md border border-neutral-200 bg-[#f7f7f6] p-3 font-mono text-[0.9em] leading-5 text-neutral-700 [&_code]:bg-transparent [&_code]:p-0 [&_code]:text-[1em]">
+      <pre className="my-3 max-w-full overflow-x-auto rounded-md border border-neutral-200 bg-[#f7f7f6] p-3 font-mono font-normal text-[0.9em] leading-5 text-neutral-700 [&_code]:bg-transparent [&_code]:p-0 [&_code]:text-[1em]">
         {children}
       </pre>
     ),
@@ -108,7 +108,7 @@ export function MarkdownContent({
 
   return (
     <div
-      className={`kowork-markdown ${compact ? 'text-[13px]' : 'text-[15px]'} min-w-0 break-words text-neutral-800 [overflow-wrap:anywhere] ${className}`}
+      className={`kowork-markdown ${compact ? 'text-[13px]' : 'text-[15px]'} min-w-0 break-words font-[450] text-neutral-800 [overflow-wrap:anywhere] ${className}`}
     >
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}

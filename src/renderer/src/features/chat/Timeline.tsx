@@ -227,7 +227,7 @@ function ReasoningActivityView({
             return 'collapsed'
           })
         }
-        className="flex items-center gap-2 text-xs font-medium transition-colors hover:text-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-2"
+        className="flex items-center gap-2 text-sm font-[450] leading-6 transition-colors hover:text-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-2"
       >
         <Brain size={14} className="shrink-0" />
         <span>{label}</span>
@@ -305,14 +305,20 @@ function ToolActivityView({ activity }: { activity: ToolActivity }): React.JSX.E
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
-        className="group/trigger flex w-full items-center gap-2 overflow-hidden text-left text-xs text-neutral-600 transition-colors hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-2"
+        className="group/trigger flex w-full items-center gap-2 overflow-hidden text-left text-sm leading-6 text-neutral-600 transition-colors hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-2"
       >
         <TerminalSquare
           size={14}
           className="shrink-0 transition-colors group-hover/trigger:text-blue-600"
         />
         <span className="flex min-w-0 items-center overflow-hidden whitespace-nowrap">
-          <span className="shrink-0 font-mono font-medium text-neutral-800 transition-colors group-hover/trigger:text-blue-700">
+          <span
+            className={`shrink-0 font-mono font-medium transition-colors ${
+              activity.isError
+                ? 'text-red-600 group-hover/trigger:text-red-700'
+                : 'text-neutral-500 group-hover/trigger:text-neutral-800'
+            }`}
+          >
             {activity.name || t('unknownTool')}
           </span>
           {activity.argumentsJson && (
@@ -321,11 +327,7 @@ function ToolActivityView({ activity }: { activity: ToolActivity }): React.JSX.E
             </span>
           )}
           <span className="ml-1.5 inline-flex shrink-0 items-center gap-1 align-middle">
-            {activity.isError ? (
-              <span className="text-red-600">{t('toolFailed')}</span>
-            ) : !hasResult ? (
-              <span className="text-neutral-400">{t('toolRunning')}</span>
-            ) : null}
+            {!hasResult ? <span className="text-neutral-400">{t('toolRunning')}</span> : null}
             <ChevronDown
               size={13}
               className={`shrink-0 transition-[color,transform] duration-300 ease-out motion-reduce:transition-none group-hover/trigger:text-blue-600 ${
@@ -443,7 +445,7 @@ export function Timeline({ events }: { events: RunEventDto[] }): React.JSX.Eleme
               </div>
 
               {item.activities.length > 0 ? (
-                <div className="space-y-5">
+                <div className="kowork-run-activities">
                   {item.activities.map((activity) => {
                     if (activity.kind === 'text') {
                       return (
