@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render } from '@testing-library/react'
+import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
-import { createElement } from 'react'
+import { createElement, StrictMode } from 'react'
 import type { RunEventDto } from '@kowork/contracts'
 import { Timeline } from '../../src/renderer/src/features/chat/Timeline'
 import '../../src/renderer/src/shared/i18n'
@@ -74,5 +74,24 @@ describe('reasoning timeline activity', () => {
     fireEvent.click(toggle)
     expect(toggle.getAttribute('aria-expanded')).toBe('true')
     expect(text.classList).not.toContain('max-h-60')
+  })
+
+  it('reveals streamed Markdown before the run completes in strict mode', async () => {
+    const streamed: RunEventDto = {
+      sequence: 2,
+      id: 'streamed-text',
+      projectId: 'project',
+      threadId: 'thread',
+      runId: 'run',
+      type: 'run.text',
+      payload: { text: '正在流式输出正文' },
+      createdAt: 2
+    }
+    const view = render(
+      createElement(StrictMode, null, createElement(Timeline, { events: [started, streamed] }))
+    )
+
+    await waitFor(() => expect(view.queryByText('正在流式输出正文')).not.toBeNull())
+    expect(view.container.querySelector('[data-streaming="true"]')).not.toBeNull()
   })
 })

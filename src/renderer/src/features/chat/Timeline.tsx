@@ -2,12 +2,12 @@ import {
   Activity,
   Brain,
   CheckCircle2,
-  ChevronRight,
+  ChevronDown,
   CircleAlert,
   Clock3,
   TerminalSquare
 } from 'lucide-react'
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { RunEventDto } from '@kowork/contracts'
 import { MarkdownContent } from '../../shared/ui/MarkdownContent'
@@ -20,14 +20,132 @@ function CollapsibleContent({
   open: boolean
   children: React.ReactNode
 }): React.JSX.Element {
+  const content = useRef<HTMLDivElement>(null)
+  const [contentHeight, setContentHeight] = useState(0)
+  const [revealed, setRevealed] = useState(false)
+
+  useLayoutEffect(() => {
+    const element = content.current
+    if (!element) return
+
+    const measure = (): void => setContentHeight(element.scrollHeight)
+    measure()
+
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(measure)
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setRevealed(open))
+    return () => cancelAnimationFrame(frame)
+  }, [open])
+
+  const visible = open && revealed
+
   return (
     <div
       aria-hidden={!open}
-      className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none ${
-        open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
-      }`}
+      data-state={open ? 'open' : 'closed'}
+      className={`kowork-disclosure ${visible ? 'is-open' : ''}`}
+      style={{ height: visible ? contentHeight : 0 }}
     >
-      <div className="min-h-0 overflow-hidden">{children}</div>
+      <div ref={content} className="kowork-disclosure-content">
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  )
+}
+
+function nextStreamingFrame(current: string, target: string): string {
+  if (!target.startsWith(current)) return target
+  const remaining = target.length - current.length
+  if (remaining <= 0) return current
+
+  let end = current.length + Math.max(1, Math.ceil(remaining * 0.22))
+  const previousCodeUnit = target.charCodeAt(end - 1)
+  const nextCodeUnit = target.charCodeAt(end)
+  if (
+    end < target.length &&
+    previousCodeUnit >= 0xd800 &&
+    previousCodeUnit <= 0xdbff &&
+    nextCodeUnit >= 0xdc00 &&
+    nextCodeUnit <= 0xdfff
+  ) {
+    end += 1
+  }
+  return target.slice(0, end)
+}
+
+function StreamingMarkdown({
+  content,
+  active
+}: {
+  content: string
+  active: boolean
+}): React.JSX.Element {
+  const reducedMotion = prefersReducedMotion()
+  const [displayed, setDisplayed] = useState(() => (active && !reducedMotion ? '' : content))
+  const displayedRef = useRef(displayed)
+  const targetRef = useRef(content)
+  const activeRef = useRef(active)
+  const frameRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    targetRef.current = content
+    activeRef.current = active
+
+    if (!active || reducedMotion || !content.startsWith(displayedRef.current)) {
+      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current)
+      frameRef.current = requestAnimationFrame(() => {
+        frameRef.current = null
+        displayedRef.current = targetRef.current
+        setDisplayed(targetRef.current)
+      })
+      return
+    }
+
+    const reveal = (): void => {
+      const next = nextStreamingFrame(displayedRef.current, targetRef.current)
+      if (next !== displayedRef.current) {
+        displayedRef.current = next
+        setDisplayed(next)
+      }
+      if (activeRef.current && next !== targetRef.current) {
+        frameRef.current = requestAnimationFrame(reveal)
+      } else {
+        frameRef.current = null
+      }
+    }
+
+    if (frameRef.current === null && displayedRef.current !== content) {
+      frameRef.current = requestAnimationFrame(reveal)
+    }
+  }, [active, content, reducedMotion])
+
+  useEffect(
+    () => () => {
+      if (frameRef.current !== null) {
+        cancelAnimationFrame(frameRef.current)
+        frameRef.current = null
+      }
+    },
+    []
+  )
+
+  return (
+    <div
+      className={active ? 'kowork-stream-enter' : undefined}
+      data-streaming={active || undefined}
+    >
+      <MarkdownContent content={displayed} />
     </div>
   )
 }
@@ -75,10 +193,10 @@ function ReasoningActivityView({
       >
         <Brain size={14} className="shrink-0" />
         <span>{label}</span>
-        <ChevronRight
+        <ChevronDown
           size={13}
-          className={`transition-transform duration-200 motion-reduce:transition-none ${
-            open ? 'rotate-90' : ''
+          className={`transition-transform duration-300 ease-out motion-reduce:transition-none ${
+            open ? 'rotate-0' : '-rotate-90'
           }`}
         />
       </button>
@@ -170,10 +288,10 @@ function ToolActivityView({ activity }: { activity: ToolActivity }): React.JSX.E
             ) : !hasResult ? (
               <span className="text-neutral-400">{t('toolRunning')}</span>
             ) : null}
-            <ChevronRight
+            <ChevronDown
               size={13}
-              className={`shrink-0 transition-[color,transform] duration-200 motion-reduce:transition-none group-hover/trigger:text-blue-600 ${
-                open ? 'rotate-90' : ''
+              className={`shrink-0 transition-[color,transform] duration-300 ease-out motion-reduce:transition-none group-hover/trigger:text-blue-600 ${
+                open ? 'rotate-0' : '-rotate-90'
               }`}
             />
           </span>
@@ -246,6 +364,10 @@ export function Timeline({ events }: { events: RunEventDto[] }): React.JSX.Eleme
           lastActivity?.kind === 'reasoning'
             ? lastActivity.id
             : undefined
+        const activeTextId =
+          !item.status && item.lastEventType === 'run.text' && lastActivity?.kind === 'text'
+            ? lastActivity.id
+            : undefined
 
         return (
           <article key={item.runId} className="space-y-6">
@@ -279,7 +401,10 @@ export function Timeline({ events }: { events: RunEventDto[] }): React.JSX.Eleme
                     if (activity.kind === 'text') {
                       return (
                         <div key={activity.id} data-run-content="text" className="select-text">
-                          <MarkdownContent content={activity.text} />
+                          <StreamingMarkdown
+                            content={activity.text}
+                            active={activity.id === activeTextId}
+                          />
                         </div>
                       )
                     }

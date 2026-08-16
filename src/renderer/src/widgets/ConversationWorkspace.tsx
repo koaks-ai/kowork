@@ -119,6 +119,28 @@ export function ConversationWorkspace({
     return () => cancelAnimationFrame(frame)
   }, [composerHeight, eventsQuery.data, threadId])
 
+  useLayoutEffect(() => {
+    const container = scrollContainer.current
+    const content = container?.firstElementChild
+    if (!container || !content || typeof ResizeObserver === 'undefined') return
+
+    let frame: number | undefined
+    const observer = new ResizeObserver(() => {
+      if (!followingLatest.current) return
+      if (frame !== undefined) cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => {
+        frame = undefined
+        if (followingLatest.current) container.scrollTop = container.scrollHeight
+      })
+    })
+    observer.observe(content)
+
+    return () => {
+      observer.disconnect()
+      if (frame !== undefined) cancelAnimationFrame(frame)
+    }
+  }, [threadId])
+
   if (!project || !thread) {
     return (
       <main className="flex min-w-0 flex-1 items-center justify-center bg-white text-sm text-neutral-500">
