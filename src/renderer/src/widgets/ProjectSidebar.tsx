@@ -1,6 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueries, useQueryClient } from '@tanstack/react-query'
 import {
   Archive,
+  ChevronRight,
   Folder,
   FolderPlus,
   MessageSquarePlus,
@@ -8,11 +9,12 @@ import {
   Settings as SettingsIcon,
   Trash2
 } from 'lucide-react'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { AppBootstrapDto, ProjectDto, ThreadDto } from '@kowork/contracts'
 import { SettingsDialog } from '../features/settings/SettingsDialog'
 import { useWorkbenchStore } from '../shared/store/workbench'
+import { AnimatedDisclosure } from '../shared/ui/AnimatedDisclosure'
 import { BlurSwapText } from '../shared/ui/BlurSwapText'
 import { IconButton } from '../shared/ui/IconButton'
 
@@ -21,24 +23,99 @@ interface ProjectSidebarProps {
   isMacOS: boolean
 }
 
+const EMPTY_THREADS: ThreadDto[] = []
+
+interface ProjectThreadListProps {
+  threads: ThreadDto[]
+  selectedThreadId?: string
+  onSelect(threadId: string): void
+  onArchive(threadId: string): void
+  onCreate(): void
+}
+
+function ProjectThreadList({
+  threads,
+  selectedThreadId,
+  onSelect,
+  onArchive,
+  onCreate
+}: ProjectThreadListProps): React.JSX.Element {
+  const { t } = useTranslation()
+  const selectedIndex = threads.findIndex((thread) => thread.id === selectedThreadId)
+  const [highlightedIndex, setHighlightedIndex] = useState(Math.max(selectedIndex, 0))
+  const [previousSelectedIndex, setPreviousSelectedIndex] = useState(selectedIndex)
+
+  if (selectedIndex !== previousSelectedIndex) {
+    setPreviousSelectedIndex(selectedIndex)
+    if (selectedIndex >= 0) setHighlightedIndex(selectedIndex)
+  }
+
+  return (
+    <>
+      <div className="relative">
+        <span
+          aria-hidden="true"
+          data-thread-selection-highlight
+          className={`pointer-events-none absolute inset-x-0 top-0.5 h-[30px] rounded-lg bg-neutral-200/70 transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${selectedIndex >= 0 ? 'opacity-100' : 'opacity-0'}`}
+          style={{ transform: `translateY(${highlightedIndex * 34}px)` }}
+        />
+        {threads.map((thread) => (
+          <div
+            key={thread.id}
+            className={`group relative z-10 flex h-[34px] items-center rounded-lg ${thread.id === selectedThreadId ? 'text-neutral-900' : 'text-neutral-700 hover:bg-neutral-50'}`}
+          >
+            <button
+              className="min-w-0 flex h-full flex-1 items-center truncate px-2 text-left text-sm"
+              onClick={() => onSelect(thread.id)}
+            >
+              <BlurSwapText value={thread.title} fallback={t('untitledThread')} />
+            </button>
+            <button
+              className="mr-1 hidden p-1 text-neutral-400 hover:text-red-600 group-hover:block"
+              aria-label={t('archive')}
+              onClick={() => onArchive(thread.id)}
+            >
+              <Trash2 size={13} />
+            </button>
+          </div>
+        ))}
+      </div>
+      <button
+        className="mt-1 flex items-center gap-1.5 px-2 py-1.5 text-xs text-neutral-500 hover:text-neutral-900"
+        onClick={onCreate}
+      >
+        <Plus size={13} />
+        {t('newThread')}
+      </button>
+    </>
+  )
+}
+
 export function ProjectSidebar({ bootstrap, isMacOS }: ProjectSidebarProps): React.JSX.Element {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const { projectId, threadId, setProject, setThread } = useWorkbenchStore()
   const projects = bootstrap.projects
-  const threadsQuery = useQuery({
-    queryKey: ['threads', projectId],
-    queryFn: () => window.kowork.threads.list(projectId!),
-    enabled: Boolean(projectId)
+  const [expandedProjectIds, setExpandedProjectIds] = useState<Set<string>>(() => {
+    const initialProjectId = projectId ?? projects[0]?.id
+    return initialProjectId ? new Set([initialProjectId]) : new Set()
   })
-  const threads = useMemo(() => threadsQuery.data ?? [], [threadsQuery.data])
+  const threadQueries = useQueries({
+    queries: projects.map((project) => ({
+      queryKey: ['threads', project.id],
+      queryFn: () => window.kowork.threads.list(project.id),
+      enabled: expandedProjectIds.has(project.id)
+    }))
+  })
+  const activeProjectIndex = projects.findIndex((project) => project.id === projectId)
+  const activeThreads = threadQueries[activeProjectIndex]?.data ?? EMPTY_THREADS
 
   useEffect(() => {
     if (!projectId && projects[0]) setProject(projects[0].id)
   }, [projectId, projects, setProject])
   useEffect(() => {
-    if (projectId && !threadId && threads[0]) setThread(threads[0].id)
-  }, [projectId, threadId, threads, setThread])
+    if (projectId && !threadId && activeThreads[0]) setThread(activeThreads[0].id)
+  }, [activeThreads, projectId, setThread, threadId])
 
   const addProject = useMutation({
     mutationFn: () => window.kowork.projects.add(),
@@ -49,6 +126,7 @@ export function ProjectSidebar({ bootstrap, isMacOS }: ProjectSidebarProps): Rea
         ...current.filter((item) => item.id !== project.id)
       ])
       void queryClient.invalidateQueries({ queryKey: ['bootstrap'] })
+      setExpandedProjectIds((current) => new Set(current).add(project.id))
       setProject(project.id)
     }
   })
@@ -59,6 +137,8 @@ export function ProjectSidebar({ bootstrap, isMacOS }: ProjectSidebarProps): Rea
         thread,
         ...current
       ])
+      setExpandedProjectIds((current) => new Set(current).add(thread.projectId))
+      setProject(thread.projectId)
       setThread(thread.id)
     }
   })
@@ -104,48 +184,48 @@ export function ProjectSidebar({ bootstrap, isMacOS }: ProjectSidebarProps): Rea
             <FolderPlus size={22} /> {t('noProject')}
           </button>
         ) : (
-          projects.map((project) => {
+          projects.map((project, index) => {
             const selected = project.id === projectId
+            const expanded = expandedProjectIds.has(project.id)
+            const projectThreads = threadQueries[index]?.data ?? EMPTY_THREADS
+            const disclosureId = `project-threads-${project.id}`
             return (
               <div key={project.id} className="mb-1">
                 <button
-                  className={`group flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-sm ${selected ? 'bg-neutral-100 font-medium text-neutral-900' : 'text-neutral-600 hover:bg-neutral-50'}`}
-                  onClick={() => setProject(project.id)}
+                  type="button"
+                  aria-controls={disclosureId}
+                  aria-expanded={expanded}
+                  className={`group flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-sm font-medium ${selected ? 'bg-neutral-100 text-neutral-900' : 'text-neutral-700 hover:bg-neutral-50'}`}
+                  onClick={() => {
+                    setExpandedProjectIds((current) => {
+                      const next = new Set(current)
+                      if (next.has(project.id)) next.delete(project.id)
+                      else next.add(project.id)
+                      return next
+                    })
+                  }}
                 >
                   <Folder size={15} className={selected ? 'text-blue-600' : 'text-neutral-400'} />
                   <span className="min-w-0 flex-1 truncate">{project.name}</span>
+                  <ChevronRight
+                    size={14}
+                    className={`shrink-0 text-neutral-400 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${expanded ? 'rotate-90' : ''}`}
+                  />
                 </button>
-                {selected && (
-                  <div className="ml-4 mt-1 border-l border-neutral-200 pl-2">
-                    {threads.map((thread) => (
-                      <div
-                        key={thread.id}
-                        className={`group flex items-center rounded-md ${thread.id === threadId ? 'bg-blue-50 text-blue-900' : 'text-neutral-600 hover:bg-neutral-50'}`}
-                      >
-                        <button
-                          className="min-w-0 flex-1 truncate px-2 py-1.5 text-left text-sm"
-                          onClick={() => setThread(thread.id)}
-                        >
-                          <BlurSwapText value={thread.title} fallback={t('untitledThread')} />
-                        </button>
-                        <button
-                          className="mr-1 hidden p-1 text-neutral-400 hover:text-red-600 group-hover:block"
-                          aria-label={t('archive')}
-                          onClick={() => archiveThread.mutate(thread.id)}
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    ))}
-                    <button
-                      className="mt-1 flex items-center gap-1.5 px-2 py-1.5 text-xs text-neutral-500 hover:text-neutral-900"
-                      onClick={() => createThread.mutate(project.id)}
-                    >
-                      <Plus size={13} />
-                      {t('newThread')}
-                    </button>
+                <AnimatedDisclosure open={expanded} id={disclosureId}>
+                  <div className="ml-4 border-l border-neutral-200 pb-1 pl-1.5 pt-1">
+                    <ProjectThreadList
+                      threads={projectThreads}
+                      selectedThreadId={threadId}
+                      onSelect={(targetThreadId) => {
+                        if (!selected) setProject(project.id)
+                        setThread(targetThreadId)
+                      }}
+                      onArchive={(targetThreadId) => archiveThread.mutate(targetThreadId)}
+                      onCreate={() => createThread.mutate(project.id)}
+                    />
                   </div>
-                )}
+                </AnimatedDisclosure>
               </div>
             )
           })

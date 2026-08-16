@@ -12,54 +12,10 @@ import {
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { RunEventDto } from '@kowork/contracts'
+import { AnimatedDisclosure } from '../../shared/ui/AnimatedDisclosure'
 import { MarkdownContent } from '../../shared/ui/MarkdownContent'
 import { IconButton } from '../../shared/ui/IconButton'
 import { collectTimeline, type ReasoningActivity, type ToolActivity } from './timeline-model'
-
-function CollapsibleContent({
-  open,
-  children
-}: {
-  open: boolean
-  children: React.ReactNode
-}): React.JSX.Element {
-  const content = useRef<HTMLDivElement>(null)
-  const [contentHeight, setContentHeight] = useState(0)
-  const [revealed, setRevealed] = useState(false)
-
-  useLayoutEffect(() => {
-    const element = content.current
-    if (!element) return
-
-    const measure = (): void => setContentHeight(element.scrollHeight)
-    measure()
-
-    if (typeof ResizeObserver === 'undefined') return
-    const observer = new ResizeObserver(measure)
-    observer.observe(element)
-    return () => observer.disconnect()
-  }, [])
-
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => setRevealed(open))
-    return () => cancelAnimationFrame(frame)
-  }, [open])
-
-  const visible = open && revealed
-
-  return (
-    <div
-      aria-hidden={!open}
-      data-state={open ? 'open' : 'closed'}
-      className={`kowork-disclosure ${visible ? 'is-open' : ''}`}
-      style={{ height: visible ? contentHeight : 0 }}
-    >
-      <div ref={content} className="kowork-disclosure-content">
-        {children}
-      </div>
-    </div>
-  )
-}
 
 function prefersReducedMotion(): boolean {
   return (
@@ -251,7 +207,7 @@ function ReasoningActivityView({
           }`}
         />
       </button>
-      <CollapsibleContent open={open}>
+      <AnimatedDisclosure open={open}>
         <div className="pt-2">
           <pre
             ref={preview}
@@ -262,7 +218,7 @@ function ReasoningActivityView({
             {activity.text}
           </pre>
         </div>
-      </CollapsibleContent>
+      </AnimatedDisclosure>
     </div>
   )
 }
@@ -348,7 +304,7 @@ function ToolActivityView({ activity }: { activity: ToolActivity }): React.JSX.E
           </span>
         </span>
       </button>
-      <CollapsibleContent open={open}>
+      <AnimatedDisclosure open={open}>
         <div className="mt-2 overflow-hidden rounded-md border border-neutral-200 bg-white">
           {activity.argumentsJson && (
             <div className="border-b border-neutral-200 px-3 py-2.5">
@@ -380,7 +336,7 @@ function ToolActivityView({ activity }: { activity: ToolActivity }): React.JSX.E
             )}
           </div>
         </div>
-      </CollapsibleContent>
+      </AnimatedDisclosure>
     </div>
   )
 }
