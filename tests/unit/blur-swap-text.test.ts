@@ -21,11 +21,11 @@ describe('BlurSwapText', () => {
     expect(text.getAttribute('data-phase')).toBe('out')
     expect(text.textContent).toBe('未命名会话')
 
-    await act(() => vi.advanceTimersByTimeAsync(180))
+    await act(() => vi.advanceTimersByTimeAsync(120))
     expect(text.getAttribute('data-phase')).toBe('in')
     expect(text.textContent).toBe('修复登录流程')
 
-    await act(() => vi.advanceTimersByTimeAsync(360))
+    await act(() => vi.advanceTimersByTimeAsync(320))
     expect(text.getAttribute('data-phase')).toBe('idle')
   })
 
@@ -38,7 +38,7 @@ describe('BlurSwapText', () => {
     expect(text.getAttribute('data-phase')).toBe('out')
 
     view.rerender(createElement(BlurSwapText, { value: 'latest' }))
-    await act(() => vi.advanceTimersByTimeAsync(180))
+    await act(() => vi.advanceTimersByTimeAsync(120))
     expect(text.textContent).toBe('latest')
     expect(text.getAttribute('data-phase')).toBe('in')
   })

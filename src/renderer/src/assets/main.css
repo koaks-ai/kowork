@@ -215,11 +215,11 @@ textarea,
 }
 
 .kowork-blur-swap-text[data-phase='out'] {
-  animation: kowork-blur-swap-out 180ms cubic-bezier(0.4, 0, 1, 1) both;
+  animation: kowork-blur-swap-out 120ms cubic-bezier(0.4, 0, 1, 1) both;
 }
 
 .kowork-blur-swap-text[data-phase='in'] {
-  animation: kowork-blur-swap-in 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: kowork-blur-swap-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @keyframes kowork-blur-swap-out {
@@ -278,8 +278,8 @@ textarea,
 
 .kowork-blur-reveal {
   animation:
-    kowork-blur-reveal-fade-in 180ms cubic-bezier(0.22, 1, 0.36, 1) both,
-    kowork-blur-reveal-blur-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    kowork-blur-reveal-fade-in 200ms cubic-bezier(0.22, 1, 0.36, 1) both,
+    kowork-blur-reveal-blur-in 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @keyframes kowork-settings-overlay-in {

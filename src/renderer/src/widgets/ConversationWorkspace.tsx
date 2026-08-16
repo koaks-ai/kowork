@@ -12,6 +12,7 @@ import { Composer } from '../features/chat/Composer'
 import { Timeline } from '../features/chat/Timeline'
 import { useWorkbenchStore } from '../shared/store/workbench'
 import { BlurSwapText } from '../shared/ui/BlurSwapText'
+import { BlurReveal } from '../shared/ui/BlurReveal'
 import { IconButton } from '../shared/ui/IconButton'
 
 const suggestions = [
@@ -201,30 +202,32 @@ export function ConversationWorkspace({
             followingLatest.current = distanceFromBottom <= AUTO_SCROLL_THRESHOLD_PX
           }}
         >
-          <div className="min-h-full" style={{ paddingBottom: composerHeight }}>
-            {hasConversation ? (
-              <Timeline events={eventsQuery.data ?? []} />
-            ) : (
-              <div className="mx-auto flex min-h-full w-full max-w-2xl flex-col items-center justify-center px-6 py-12">
-                <div className="mb-5 grid size-12 place-items-center rounded-lg bg-blue-600 text-white">
-                  <Bot size={24} />
+          <BlurReveal contentKey={threadId} className="min-h-full">
+            <div style={{ paddingBottom: composerHeight }}>
+              {hasConversation ? (
+                <Timeline events={eventsQuery.data ?? []} />
+              ) : (
+                <div className="mx-auto flex min-h-full w-full max-w-2xl flex-col items-center justify-center px-6 py-12">
+                  <div className="mb-5 grid size-12 place-items-center rounded-lg bg-blue-600 text-white">
+                    <Bot size={24} />
+                  </div>
+                  <h1 className="text-2xl font-semibold text-neutral-900">{t('codingAgent')}</h1>
+                  <p className="mt-2 text-sm text-neutral-500">{t('emptyConversation')}</p>
+                  <div className="mt-8 grid w-full grid-cols-2 gap-3">
+                    {suggestions.map((key) => (
+                      <button
+                        key={key}
+                        className="rounded-lg border border-neutral-200 bg-white p-4 text-left text-sm text-neutral-700 hover:border-blue-400 hover:text-blue-700"
+                        onClick={() => window.kowork.runs.enqueue(thread.id, t(key))}
+                      >
+                        {t(key)}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <h1 className="text-2xl font-semibold text-neutral-900">{t('codingAgent')}</h1>
-                <p className="mt-2 text-sm text-neutral-500">{t('emptyConversation')}</p>
-                <div className="mt-8 grid w-full grid-cols-2 gap-3">
-                  {suggestions.map((key) => (
-                    <button
-                      key={key}
-                      className="rounded-lg border border-neutral-200 bg-white p-4 text-left text-sm text-neutral-700 hover:border-blue-400 hover:text-blue-700"
-                      onClick={() => window.kowork.runs.enqueue(thread.id, t(key))}
-                    >
-                      {t(key)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          </BlurReveal>
         </div>
         <Composer
           thread={thread}
