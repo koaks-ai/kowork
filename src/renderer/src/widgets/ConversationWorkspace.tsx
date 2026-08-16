@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Bot, ChevronRight, Pencil, Play } from 'lucide-react'
+import { Bot, Pencil, Play } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -178,8 +178,6 @@ export function ConversationWorkspace({
           <IconButton label={t('threadTitle')}>
             <Pencil size={13} />
           </IconButton>
-          <ChevronRight size={13} className="text-neutral-300" />
-          <span className="truncate text-xs text-neutral-400">{project.name}</span>
         </div>
         {thread.queuePaused && (
           <button
