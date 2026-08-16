@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Bot, ChevronRight, Pencil, Play } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { AppBootstrapDto, RunEventDto, ThreadDto } from '@kowork/contracts'
 import { Composer } from '../features/chat/Composer'
@@ -14,6 +14,8 @@ const suggestions = [
   'suggestionLoop',
   'suggestionBug'
 ] as const
+
+const AUTO_SCROLL_THRESHOLD_PX = 80
 
 function mergeEvents(...groups: RunEventDto[][]): RunEventDto[] {
   const byId = new Map<string, RunEventDto>()
@@ -30,6 +32,9 @@ export function ConversationWorkspace({
   const queryClient = useQueryClient()
   const [composerHeight, setComposerHeight] = useState(0)
   const { projectId, threadId } = useWorkbenchStore()
+  const scrollContainer = useRef<HTMLDivElement>(null)
+  const followingLatest = useRef(true)
+
   const threadsQuery = useQuery({
     queryKey: ['threads', projectId],
     queryFn: () => window.kowork.threads.list(projectId!),
@@ -100,6 +105,20 @@ export function ConversationWorkspace({
     [queryClient]
   )
 
+  useLayoutEffect(() => {
+    followingLatest.current = true
+  }, [threadId])
+
+  useLayoutEffect(() => {
+    const container = scrollContainer.current
+    if (!container || !followingLatest.current) return
+
+    const frame = requestAnimationFrame(() => {
+      if (followingLatest.current) container.scrollTop = container.scrollHeight
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [composerHeight, eventsQuery.data, threadId])
+
   if (!project || !thread) {
     return (
       <main className="flex min-w-0 flex-1 items-center justify-center bg-white text-sm text-neutral-500">
@@ -131,7 +150,17 @@ export function ConversationWorkspace({
         )}
       </header>
       <div className="relative min-h-0 flex-1 overflow-hidden">
-        <div data-chat-scroll className="h-full overflow-y-scroll">
+        <div
+          ref={scrollContainer}
+          data-chat-scroll
+          className="h-full overflow-y-scroll"
+          onScroll={(event) => {
+            const container = event.currentTarget
+            const distanceFromBottom =
+              container.scrollHeight - container.scrollTop - container.clientHeight
+            followingLatest.current = distanceFromBottom <= AUTO_SCROLL_THRESHOLD_PX
+          }}
+        >
           <div className="min-h-full" style={{ paddingBottom: composerHeight }}>
             {hasConversation ? (
               <Timeline events={eventsQuery.data ?? []} />
