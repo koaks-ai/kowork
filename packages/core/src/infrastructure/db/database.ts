@@ -844,7 +844,7 @@ export class AppDatabase {
   }
 
   commitConversationTurn(
-    input: Omit<typeof schema.conversationTurns.$inferInsert, 'ordinal' | 'createdAt'>
+    input: Omit<typeof schema.conversationTurns.$inferInsert, 'id' | 'ordinal' | 'createdAt'>
   ): void {
     const ordinal =
       (this.db
@@ -854,8 +854,7 @@ export class AppDatabase {
         .get()?.value ?? 0) + 1
     this.db
       .insert(schema.conversationTurns)
-      .values({ ...input, ordinal, createdAt: Date.now() })
-      .onConflictDoNothing()
+      .values({ id: createId('turn'), ...input, ordinal, createdAt: Date.now() })
       .run()
   }
 

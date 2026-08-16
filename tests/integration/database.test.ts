@@ -3,8 +3,36 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import BetterSqlite3 from 'better-sqlite3'
 import { describe, expect, it } from 'vitest'
+import type { ConversationTurn } from '@koaks/node'
 import { AppDatabase } from '../../packages/core/src/infrastructure/db/database'
 import { migrations } from '../../packages/core/src/infrastructure/db/migrations'
+import { PersistentThreadMemory } from '../../packages/core/src/infrastructure/koaks/persistent-memory'
+
+function completedTurn(id: string, userText: string, assistantText: string): ConversationTurn {
+  return {
+    id,
+    status: { type: 'completed' },
+    items: [
+      {
+        type: 'message',
+        role: 'user',
+        content: [{ type: 'text', text: userText }]
+      },
+      {
+        type: 'message',
+        role: 'assistant',
+        content: [{ type: 'text', text: assistantText }]
+      }
+    ],
+    usage: {
+      promptTokens: 1,
+      completionTokens: 1,
+      totalTokens: 2,
+      cachedInputTokens: 0,
+      reasoningOutputTokens: 0
+    }
+  }
+}
 
 describe('SQLite persistence', () => {
   it('persists FIFO requests and recovers active runs as interrupted', async () => {
@@ -72,5 +100,46 @@ describe('SQLite persistence', () => {
     })
     expect(database.getProvider('provider-deepseek').credentialConfigured).toBe(false)
     database.close()
+  })
+
+  it('keeps conversation history when Koaks turn ids restart with the application', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'kowork-memory-restart-'))
+    const path = join(root, 'kowork.sqlite')
+    const projectRoot = join(root, 'project')
+    await mkdir(projectRoot)
+
+    const firstDatabase = new AppDatabase(path)
+    const project = firstDatabase.addProject(projectRoot, 'project')
+    const thread = firstDatabase.createThread(project.id, 'Thread', 'ollama-qwen3')
+    new PersistentThreadMemory(thread.id, firstDatabase).commit(
+      completedTurn('0', 'My name is Lin.', 'I will remember that.')
+    )
+    firstDatabase.close()
+
+    const reopenedDatabase = new AppDatabase(path)
+    const memory = new PersistentThreadMemory(thread.id, reopenedDatabase)
+    expect(memory.load().transcript).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'message',
+          role: 'user',
+          content: [{ type: 'text', text: 'My name is Lin.' }]
+        })
+      ])
+    )
+
+    memory.commit(completedTurn('0', 'What is my name?', 'Your name is Lin.'))
+
+    expect(reopenedDatabase.getConversationTurns(thread.id)).toHaveLength(2)
+    expect(memory.load().transcript).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'message',
+          role: 'assistant',
+          content: [{ type: 'text', text: 'Your name is Lin.' }]
+        })
+      ])
+    )
+    reopenedDatabase.close()
   })
 })

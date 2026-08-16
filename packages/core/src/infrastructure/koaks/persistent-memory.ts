@@ -38,7 +38,6 @@ export class PersistentThreadMemory implements ThreadMemory {
 
   commit(turn: ConversationTurn): void {
     this.database.commitConversationTurn({
-      id: turn.id,
       threadId: this.threadId,
       statusJson: JSON.stringify(turn.status),
       itemsJson: JSON.stringify(turn.items),
