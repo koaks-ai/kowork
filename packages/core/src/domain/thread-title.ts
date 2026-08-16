@@ -1,8 +1,8 @@
 export const UNTITLED_THREAD_TITLE = ''
+export const MAX_GENERATED_THREAD_TITLE_LENGTH = 10
 
 const LEGACY_UNTITLED_THREAD_TITLE = '新的会话'
 const FALLBACK_THREAD_TITLE = '新的会话'
-const MAX_THREAD_TITLE_LENGTH = 48
 
 function cleanTitle(value: string): string {
   return value
@@ -17,8 +17,8 @@ function cleanTitle(value: string): string {
 
 function truncateTitle(value: string): string {
   const characters = Array.from(value)
-  if (characters.length <= MAX_THREAD_TITLE_LENGTH) return value
-  return `${characters.slice(0, MAX_THREAD_TITLE_LENGTH - 3).join('')}...`
+  if (characters.length <= MAX_GENERATED_THREAD_TITLE_LENGTH) return value
+  return `${characters.slice(0, MAX_GENERATED_THREAD_TITLE_LENGTH - 1).join('')}…`
 }
 
 export function isUntitledThreadTitle(title: string): boolean {

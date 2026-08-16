@@ -14,7 +14,7 @@ import type {
 function createFallbackThreadTitle(message: string): string {
   const value = message.replace(/\s+/gu, ' ').trim()
   const characters = Array.from(value || '新的会话')
-  return characters.length <= 48 ? characters.join('') : `${characters.slice(0, 45).join('')}...`
+  return characters.length <= 10 ? characters.join('') : `${characters.slice(0, 9).join('')}…`
 }
 
 const now = Date.now()

@@ -20,7 +20,11 @@ import type {
 } from '@kowork/contracts'
 import { CoreError } from '../../domain/errors'
 import { selectRecentTurnCount, shouldCompress } from '../../domain/compression-policy'
-import { createFallbackThreadTitle, normalizeGeneratedThreadTitle } from '../../domain/thread-title'
+import {
+  createFallbackThreadTitle,
+  MAX_GENERATED_THREAD_TITLE_LENGTH,
+  normalizeGeneratedThreadTitle
+} from '../../domain/thread-title'
 import type { ApprovalService } from '../../application/approval-service'
 import type { CoreEventBus } from '../../application/event-bus'
 import type { AppDatabase } from '../db/database'
@@ -395,8 +399,7 @@ export class KoaksAgentRuntime implements AgentRuntimePort {
       const agent = await runtime.createAgent({
         id: `title-${profile.id}-${profile.updatedAt}-${provider.updatedAt}`,
         name: 'KoWork Conversation Title Generator',
-        instructions:
-          'Create a short, specific conversation title from the first user message. Preserve the message language. Describe the user intent, not the assistant action. Return only the requested structured output without commentary.',
+        instructions: `Create a short, specific conversation title from the first user message. The title must be no more than ${MAX_GENERATED_THREAD_TITLE_LENGTH} characters, including spaces and punctuation. Preserve the message language. Describe the user intent, not the assistant action. Return only the title text without JSON, quotes, Markdown, or commentary.`,
         model: await providerFor(profile, provider, this.credentials),
         memory: { type: 'none' },
         termination: { maxSteps: 2 },
@@ -421,21 +424,12 @@ export class KoaksAgentRuntime implements AgentRuntimePort {
     const fallback = createFallbackThreadTitle(input.message)
     const agent = await this.getTitleGenerator(input.profile)
     const source = Array.from(input.message).slice(0, 8_000).join('')
-    const result = await agent.runStructured<{ title: string }>(
-      `Generate a conversation title for this first user message:\n${JSON.stringify(source)}`,
-      {
-        name: 'conversation_title',
-        schema: {
-          type: 'object',
-          properties: { title: { type: 'string', minLength: 1, maxLength: 48 } },
-          required: ['title'],
-          additionalProperties: false
-        }
-      },
+    const result = await agent.run(
+      `Generate the title from this first user message:\n${JSON.stringify(source)}`,
       { signal: input.signal }
     )
     if (result.status !== 'completed') return fallback
-    return normalizeGeneratedThreadTitle(result.output.title, input.message)
+    return normalizeGeneratedThreadTitle(result.text, input.message)
   }
 
   async compressIfNeeded(input: {
