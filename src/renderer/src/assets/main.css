@@ -246,6 +246,126 @@ textarea,
   }
 }
 
+.kowork-settings-overlay {
+  background: rgba(9, 9, 11, 0.22);
+  backdrop-filter: blur(8px) saturate(1.1);
+  -webkit-backdrop-filter: blur(8px) saturate(1.1);
+}
+
+.kowork-settings-overlay[data-state='open'] {
+  animation: kowork-settings-overlay-in 180ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.kowork-settings-overlay[data-state='closed'] {
+  animation: kowork-settings-overlay-out 140ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+.kowork-settings-dialog {
+  pointer-events: none;
+}
+
+.kowork-settings-dialog[data-state='open'] {
+  animation:
+    kowork-settings-dialog-fade-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both,
+    kowork-settings-dialog-blur-in 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.kowork-settings-dialog[data-state='closed'] {
+  animation:
+    kowork-settings-dialog-fade-out 160ms cubic-bezier(0.4, 0, 1, 1) both,
+    kowork-settings-dialog-blur-out 220ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+.kowork-blur-reveal {
+  animation:
+    kowork-blur-reveal-fade-in 180ms cubic-bezier(0.22, 1, 0.36, 1) both,
+    kowork-blur-reveal-blur-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes kowork-settings-overlay-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes kowork-settings-overlay-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes kowork-settings-dialog-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes kowork-settings-dialog-blur-in {
+  from {
+    filter: blur(5px);
+  }
+
+  to {
+    filter: blur(0);
+  }
+}
+
+@keyframes kowork-settings-dialog-fade-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(0.99);
+  }
+}
+
+@keyframes kowork-settings-dialog-blur-out {
+  from {
+    filter: blur(0);
+  }
+
+  to {
+    filter: blur(4px);
+  }
+}
+
+@keyframes kowork-blur-reveal-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes kowork-blur-reveal-blur-in {
+  from {
+    filter: blur(4px);
+  }
+
+  to {
+    filter: blur(0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .kowork-disclosure {
     transition: none;
@@ -256,6 +376,12 @@ textarea,
   }
 
   .kowork-blur-swap-text {
+    animation: none;
+  }
+
+  .kowork-settings-overlay,
+  .kowork-settings-dialog,
+  .kowork-blur-reveal {
     animation: none;
   }
 }
