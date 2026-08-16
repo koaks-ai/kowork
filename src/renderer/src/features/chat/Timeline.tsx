@@ -192,7 +192,7 @@ export function Timeline({ events }: { events: RunEventDto[] }): React.JSX.Eleme
                       <details key={activity.id} data-run-content="tool" className="group min-w-0">
                         <summary className="flex list-none items-start gap-2 text-xs text-neutral-600 hover:text-neutral-900 [&::-webkit-details-marker]:hidden">
                           <TerminalSquare size={14} className="mt-0.5 shrink-0" />
-                          <span className="min-w-0 flex-1">
+                          <span className="min-w-0">
                             <span className="font-mono font-medium text-neutral-800">
                               {activity.name || t('unknownTool')}
                             </span>
@@ -201,26 +201,18 @@ export function Timeline({ events }: { events: RunEventDto[] }): React.JSX.Eleme
                                 {summarizeArguments(activity.argumentsJson)}
                               </span>
                             )}
+                            <span className="ml-1.5 inline-flex items-center gap-1 align-middle">
+                              {activity.isError ? (
+                                <span className="text-red-600">{t('toolFailed')}</span>
+                              ) : !hasResult ? (
+                                <span className="text-neutral-400">{t('toolRunning')}</span>
+                              ) : null}
+                              <ChevronRight
+                                size={13}
+                                className="shrink-0 transition-transform group-open:rotate-90"
+                              />
+                            </span>
                           </span>
-                          <span
-                            className={`shrink-0 ${
-                              activity.isError
-                                ? 'text-red-600'
-                                : hasResult
-                                  ? 'text-emerald-700'
-                                  : 'text-neutral-400'
-                            }`}
-                          >
-                            {activity.isError
-                              ? t('toolFailed')
-                              : hasResult
-                                ? t('toolCompleted')
-                                : t('toolRunning')}
-                          </span>
-                          <ChevronRight
-                            size={13}
-                            className="mt-0.5 shrink-0 transition-transform group-open:rotate-90"
-                          />
                         </summary>
                         <div className="mt-2 overflow-hidden rounded-md border border-neutral-200 bg-white">
                           {activity.argumentsJson && (
