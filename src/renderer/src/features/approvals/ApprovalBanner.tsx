@@ -17,7 +17,7 @@ export function ApprovalBanner({ threadId }: { threadId: string }): React.JSX.El
   })
   if (!approval) return null
   return (
-    <div className="mx-auto mb-3 flex w-full max-w-3xl items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+    <div className="pointer-events-auto mb-3 flex w-full items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
       <ShieldAlert size={19} className="mt-0.5 shrink-0" />
       <div className="min-w-0 flex-1">
         <div className="font-medium">{approval.title}</div>

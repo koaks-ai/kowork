@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Bot, ChevronRight, Pencil, Play } from 'lucide-react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { AppBootstrapDto, RunEventDto, ThreadDto } from '@kowork/contracts'
 import { Composer } from '../features/chat/Composer'
@@ -28,6 +28,7 @@ export function ConversationWorkspace({
 }): React.JSX.Element {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
+  const [composerHeight, setComposerHeight] = useState(0)
   const { projectId, threadId } = useWorkbenchStore()
   const threadsQuery = useQuery({
     queryKey: ['threads', projectId],
@@ -129,36 +130,41 @@ export function ConversationWorkspace({
           </button>
         )}
       </header>
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        {hasConversation ? (
-          <Timeline events={eventsQuery.data ?? []} />
-        ) : (
-          <div className="mx-auto flex min-h-full w-full max-w-2xl flex-col items-center justify-center px-6 py-12">
-            <div className="mb-5 grid size-12 place-items-center rounded-lg bg-blue-600 text-white">
-              <Bot size={24} />
-            </div>
-            <h1 className="text-2xl font-semibold text-neutral-900">{t('codingAgent')}</h1>
-            <p className="mt-2 text-sm text-neutral-500">{t('emptyConversation')}</p>
-            <div className="mt-8 grid w-full grid-cols-2 gap-3">
-              {suggestions.map((key) => (
-                <button
-                  key={key}
-                  className="rounded-lg border border-neutral-200 bg-white p-4 text-left text-sm text-neutral-700 hover:border-blue-400 hover:text-blue-700"
-                  onClick={() => window.kowork.runs.enqueue(thread.id, t(key))}
-                >
-                  {t(key)}
-                </button>
-              ))}
-            </div>
+      <div className="relative min-h-0 flex-1 overflow-hidden">
+        <div data-chat-scroll className="h-full overflow-y-scroll">
+          <div className="min-h-full" style={{ paddingBottom: composerHeight }}>
+            {hasConversation ? (
+              <Timeline events={eventsQuery.data ?? []} />
+            ) : (
+              <div className="mx-auto flex min-h-full w-full max-w-2xl flex-col items-center justify-center px-6 py-12">
+                <div className="mb-5 grid size-12 place-items-center rounded-lg bg-blue-600 text-white">
+                  <Bot size={24} />
+                </div>
+                <h1 className="text-2xl font-semibold text-neutral-900">{t('codingAgent')}</h1>
+                <p className="mt-2 text-sm text-neutral-500">{t('emptyConversation')}</p>
+                <div className="mt-8 grid w-full grid-cols-2 gap-3">
+                  {suggestions.map((key) => (
+                    <button
+                      key={key}
+                      className="rounded-lg border border-neutral-200 bg-white p-4 text-left text-sm text-neutral-700 hover:border-blue-400 hover:text-blue-700"
+                      onClick={() => window.kowork.runs.enqueue(thread.id, t(key))}
+                    >
+                      {t(key)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        </div>
+        <Composer
+          thread={thread}
+          profiles={bootstrap.modelProfiles}
+          activeRun={activeRun}
+          queuedCount={(queueQuery.data ?? []).filter((item) => item.status === 'queued').length}
+          onHeightChange={setComposerHeight}
+        />
       </div>
-      <Composer
-        thread={thread}
-        profiles={bootstrap.modelProfiles}
-        activeRun={activeRun}
-        queuedCount={(queueQuery.data ?? []).filter((item) => item.status === 'queued').length}
-      />
     </main>
   )
 }

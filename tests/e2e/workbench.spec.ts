@@ -106,6 +106,34 @@ test('runs through the real Electron, preload, main and Core process chain', asy
       )
     ).toEqual(['text', 'reasoning', 'tool', 'reasoning', 'text'])
     await expect(page.getByText('已完成')).toBeVisible({ timeout: 5_000 })
+    const chatContentBox = await page.locator('[data-chat-content]').evaluate((element) => {
+      const bounds = element.getBoundingClientRect()
+      const style = getComputedStyle(element)
+      const paddingLeft = Number.parseFloat(style.paddingLeft)
+      const paddingRight = Number.parseFloat(style.paddingRight)
+      return {
+        x: bounds.x + paddingLeft,
+        width: bounds.width - paddingLeft - paddingRight
+      }
+    })
+    const composerBox = await page.locator('[data-chat-composer]').boundingBox()
+    const chatScrollBox = await page.locator('[data-chat-scroll]').boundingBox()
+    expect(composerBox).not.toBeNull()
+    expect(chatScrollBox).not.toBeNull()
+    expect(Math.abs(chatContentBox.x - composerBox!.x)).toBeLessThanOrEqual(1)
+    expect(
+      Math.abs(chatContentBox.x + chatContentBox.width - (composerBox!.x + composerBox!.width))
+    ).toBeLessThanOrEqual(1)
+    expect(chatScrollBox!.y + chatScrollBox!.height).toBeGreaterThan(
+      composerBox!.y + composerBox!.height
+    )
+    const composerOverlayBox = await page.locator('[data-chat-composer-overlay]').boundingBox()
+    expect(composerOverlayBox).not.toBeNull()
+    expect(Math.abs(composerOverlayBox!.y - composerBox!.y)).toBeLessThanOrEqual(1)
+    await expect(page.locator('[data-chat-composer-overlay]')).toHaveCSS(
+      'background-color',
+      'rgb(255, 255, 255)'
+    )
     await page.screenshot({ path: testInfo.outputPath('conversation.png') })
 
     await page.getByRole('tab', { name: '文件' }).click()

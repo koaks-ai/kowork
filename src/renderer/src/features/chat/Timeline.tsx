@@ -94,7 +94,10 @@ export function Timeline({ events }: { events: RunEventDto[] }): React.JSX.Eleme
   const items = collectTimeline(events)
 
   return (
-    <div className="mx-auto w-full max-w-[860px] space-y-10 px-5 py-8 sm:px-8 sm:py-10">
+    <div
+      data-chat-content
+      className="mx-auto w-full max-w-[860px] space-y-10 px-5 py-8 sm:px-8 sm:py-10"
+    >
       {items.map((item) => {
         const reasoningCount = item.activities.filter(
           (activity) => activity.kind === 'reasoning'
