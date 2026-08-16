@@ -7,7 +7,7 @@ import {
   Clock3,
   TerminalSquare
 } from 'lucide-react'
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { RunEventDto } from '@kowork/contracts'
 import { MarkdownContent } from '../../shared/ui/MarkdownContent'
@@ -41,20 +41,36 @@ function ReasoningActivityView({
   active: boolean
   label: string
 }): React.JSX.Element {
-  const [open, setOpen] = useState(active)
+  const [mode, setMode] = useState<'collapsed' | 'preview' | 'expanded'>(
+    active ? 'preview' : 'collapsed'
+  )
   const [previousActive, setPreviousActive] = useState(active)
+  const preview = useRef<HTMLPreElement>(null)
 
   if (active !== previousActive) {
     setPreviousActive(active)
-    setOpen(active)
+    setMode(active ? 'preview' : 'collapsed')
   }
+
+  useLayoutEffect(() => {
+    if (mode === 'preview' && preview.current) {
+      preview.current.scrollTop = preview.current.scrollHeight
+    }
+  }, [activity.text, mode])
+
+  const open = mode !== 'collapsed'
 
   return (
     <div data-run-content="reasoning" className="text-neutral-500">
       <button
         type="button"
         aria-expanded={open}
-        onClick={() => setOpen((current) => !current)}
+        onClick={() =>
+          setMode((current) => {
+            if (current === 'collapsed' || current === 'preview') return 'expanded'
+            return 'collapsed'
+          })
+        }
         className="flex items-center gap-2 text-xs font-medium transition-colors hover:text-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-2"
       >
         <Brain size={14} className="shrink-0" />
@@ -67,11 +83,16 @@ function ReasoningActivityView({
         />
       </button>
       <CollapsibleContent open={open}>
-        <MarkdownContent
-          content={activity.text}
-          variant="compact"
-          className="pt-2 pl-[22px] text-neutral-500"
-        />
+        <div className="pt-2">
+          <pre
+            ref={preview}
+            className={`select-text whitespace-pre-wrap break-words font-sans text-[15px] leading-6 text-neutral-500 [overflow-wrap:anywhere] ${
+              mode === 'preview' ? 'max-h-60 overflow-y-hidden' : ''
+            }`}
+          >
+            {activity.text}
+          </pre>
+        </div>
       </CollapsibleContent>
     </div>
   )

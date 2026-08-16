@@ -76,7 +76,15 @@ test('runs through the real Electron, preload, main and Core process chain', asy
       .locator('[data-run-content="reasoning"]')
       .first()
     const firstReasoningToggle = firstReasoning.getByRole('button', { name: '思考过程' })
+    const firstReasoningText = firstReasoning.locator('pre')
     await expect(firstReasoningToggle).toHaveAttribute('aria-expanded', 'true')
+    await expect(firstReasoningText).toHaveCSS('max-height', '240px')
+    await expect(firstReasoningText).toHaveCSS('user-select', 'text')
+    const reasoningAlignment = await firstReasoning.evaluate((element) => ({
+      toggleLeft: element.querySelector('button')?.getBoundingClientRect().left,
+      textLeft: element.querySelector('pre')?.getBoundingClientRect().left
+    }))
+    expect(reasoningAlignment.textLeft).toBe(reasoningAlignment.toggleLeft)
     await expect(firstReasoning.getByText(/我会先确认项目中的 README/)).toBeVisible()
     await expect(page.getByText(/已收到任务：检查 README/)).toBeVisible({ timeout: 5_000 })
     await expect(page.getByText('思考过程').first()).toBeVisible()
@@ -84,6 +92,7 @@ test('runs through the real Electron, preload, main and Core process chain', asy
     await expect(firstReasoningToggle).toHaveAttribute('aria-expanded', 'false')
     await firstReasoningToggle.click()
     await expect(firstReasoningToggle).toHaveAttribute('aria-expanded', 'true')
+    await expect(firstReasoningText).toHaveCSS('max-height', 'none')
     await firstReasoningToggle.click()
     await expect(firstReasoningToggle).toHaveAttribute('aria-expanded', 'false')
     const toolActivity = page
