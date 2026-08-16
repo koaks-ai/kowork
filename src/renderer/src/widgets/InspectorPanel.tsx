@@ -17,6 +17,8 @@ import { useWorkbenchStore } from '../shared/store/workbench'
 
 type InspectorTab = 'overview' | 'changes'
 
+const INSPECTOR_TABS: InspectorTab[] = ['overview', 'changes']
+
 function formatTokens(tokens: number): string {
   return `${(tokens / 1_000).toFixed(2).replace(/\.00$/, '')}K`
 }
@@ -82,18 +84,36 @@ export function InspectorPanel({ bootstrap }: { bootstrap: AppBootstrapDto }): R
   return (
     <aside className="flex h-full w-full flex-col border-l border-neutral-200 bg-white">
       <header className="app-drag flex h-14 shrink-0 items-center gap-1.5 border-b border-neutral-200 px-2.5">
-        <div role="tablist" className="flex min-w-0 flex-1 items-center gap-1.5">
-          {tabs.map((tab) => {
+        <div role="tablist" className="flex min-w-0 flex-1 items-center">
+          {INSPECTOR_TABS.map((tab) => {
             const active = tab === activeTab
+            const visible = tab === 'overview' || tabs.includes(tab)
             const Icon = tab === 'overview' ? BarChart3 : GitCompareArrows
             return (
               <div
                 key={tab}
-                className={`no-drag flex h-8 min-w-0 flex-1 max-w-[168px] items-center rounded-xl transition-colors ${
+                aria-hidden={!visible}
+                className={`no-drag flex h-8 min-w-0 max-w-[168px] flex-none items-center overflow-hidden rounded-xl transition-[width,margin,opacity,transform,background-color,color] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
                   active
-                    ? 'bg-neutral-100 text-neutral-900'
+                    ? 'bg-neutral-200/60 text-neutral-900'
                     : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-800'
+                } ${
+                  tab === 'changes'
+                    ? visible
+                      ? 'ml-1.5 translate-x-0 opacity-100'
+                      : 'pointer-events-none ml-0 translate-x-2 opacity-0'
+                    : ''
                 }`}
+                style={{
+                  width:
+                    tab === 'overview'
+                      ? tabs.includes('changes')
+                        ? 'calc((100% - 0.375rem) / 2)'
+                        : '168px'
+                      : visible
+                        ? 'calc((100% - 0.375rem) / 2)'
+                        : '0px'
+                }}
               >
                 <button
                   type="button"
@@ -101,6 +121,7 @@ export function InspectorPanel({ bootstrap }: { bootstrap: AppBootstrapDto }): R
                   id={`inspector-tab-${tab}`}
                   aria-controls={`inspector-panel-${tab}`}
                   aria-selected={active}
+                  tabIndex={visible ? 0 : -1}
                   className="flex h-full min-w-0 flex-1 items-center gap-2 px-3 text-left text-sm font-medium"
                   onClick={() => setActiveTab(tab)}
                 >
@@ -111,6 +132,7 @@ export function InspectorPanel({ bootstrap }: { bootstrap: AppBootstrapDto }): R
                   <button
                     type="button"
                     aria-label={t('close')}
+                    tabIndex={visible ? 0 : -1}
                     className="mr-1 grid size-7 shrink-0 place-items-center rounded-md text-neutral-400 hover:bg-neutral-200 hover:text-neutral-700"
                     onClick={closeChangesTab}
                   >
