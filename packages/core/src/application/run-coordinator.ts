@@ -3,6 +3,7 @@ import { CoreError, toCoreError } from '../domain/errors'
 import type { AppDatabase } from '../infrastructure/db/database'
 import type { AgentRuntimePort, AgentUsage } from '../infrastructure/koaks/runtime-port'
 import type { CoreEventBus } from './event-bus'
+import { createFallbackThreadTitle, isUntitledThreadTitle } from '../domain/thread-title'
 
 interface ActiveRun {
   run: RunDto
@@ -20,6 +21,7 @@ const zeroUsage: AgentUsage = {
 
 export class RunCoordinator {
   private readonly activeByThread = new Map<string, ActiveRun>()
+  private readonly titleTasks = new Set<Promise<void>>()
   private accepting = true
 
   constructor(
@@ -86,6 +88,7 @@ export class RunCoordinator {
         }
       })
       const profile = this.database.getProfile(request.modelProfileId)
+      this.startTitleGeneration(thread, request, profile, controller.signal)
       await this.runtime.compressIfNeeded({
         project,
         thread,
@@ -208,6 +211,39 @@ export class RunCoordinator {
     }
   }
 
+  private startTitleGeneration(
+    thread: ThreadDto,
+    request: QueuedRequestDto,
+    profile: Parameters<AgentRuntimePort['generateTitle']>[0]['profile'],
+    signal: AbortSignal
+  ): void {
+    if (request.position !== 0 || !isUntitledThreadTitle(thread.title)) return
+
+    const task = (async () => {
+      let title = createFallbackThreadTitle(request.input)
+      try {
+        title = await this.runtime.generateTitle({ message: request.input, profile, signal })
+      } catch {
+        // A title is optional metadata; the first chat run must continue on model failure.
+      }
+
+      const current = this.database.getThread(thread.id)
+      if (!isUntitledThreadTitle(current.title)) return
+      const updated = this.database.updateThread(thread.id, { title })
+      this.events.publish({
+        projectId: thread.projectId,
+        threadId: thread.id,
+        type: 'thread.updated',
+        payload: { thread: updated, source: 'first_message' }
+      })
+    })()
+    this.titleTasks.add(task)
+    void task.then(
+      () => this.titleTasks.delete(task),
+      () => this.titleTasks.delete(task)
+    )
+  }
+
   cancel(runId: string): RunDto {
     const run = this.database.getRun(runId)
     const active = this.activeByThread.get(run.threadId)
@@ -251,6 +287,7 @@ export class RunCoordinator {
     await Promise.all(
       [...this.activeByThread.values()].map((active) => active.promise.catch(() => undefined))
     )
+    await Promise.all([...this.titleTasks].map((task) => task.catch(() => undefined)))
     await this.runtime.close()
   }
 }

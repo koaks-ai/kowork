@@ -115,12 +115,62 @@ textarea,
   }
 }
 
+.kowork-blur-swap {
+  display: block;
+  min-width: 0;
+}
+
+.kowork-blur-swap-text {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  will-change: opacity, filter;
+}
+
+.kowork-blur-swap-text[data-phase='out'] {
+  animation: kowork-blur-swap-out 180ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+.kowork-blur-swap-text[data-phase='in'] {
+  animation: kowork-blur-swap-in 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes kowork-blur-swap-out {
+  from {
+    opacity: 1;
+    filter: blur(0);
+  }
+
+  to {
+    opacity: 0;
+    filter: blur(4px);
+  }
+}
+
+@keyframes kowork-blur-swap-in {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+  }
+
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .kowork-disclosure {
     transition: none;
   }
 
   .kowork-stream-enter {
+    animation: none;
+  }
+
+  .kowork-blur-swap-text {
     animation: none;
   }
 }

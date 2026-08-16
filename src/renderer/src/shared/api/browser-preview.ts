@@ -11,6 +11,12 @@ import type {
   ThreadDto
 } from '@kowork/contracts'
 
+function createFallbackThreadTitle(message: string): string {
+  const value = message.replace(/\s+/gu, ' ').trim()
+  const characters = Array.from(value || '新的会话')
+  return characters.length <= 48 ? characters.join('') : `${characters.slice(0, 45).join('')}...`
+}
+
 const now = Date.now()
 const project: ProjectDto = {
   id: 'preview-project',
@@ -78,7 +84,7 @@ let threads: ThreadDto[] = [
   {
     id: 'preview-thread',
     projectId: project.id,
-    title: '新的会话',
+    title: '',
     modelProfileId: profiles[0].id,
     permissionMode: 'auto',
     contextWindowTokens: null,
@@ -97,12 +103,17 @@ let settings: AppSettingsDto = {
 }
 const listeners = new Set<(event: RunEventDto) => void>()
 
-function emit(type: RunEventDto['type'], payload: Record<string, unknown>, runId?: string): void {
+function emit(
+  type: RunEventDto['type'],
+  payload: Record<string, unknown>,
+  runId?: string,
+  threadId = threads[0]?.id ?? null
+): void {
   const event: RunEventDto = {
     sequence: ++sequence,
     id: crypto.randomUUID(),
     projectId: project.id,
-    threadId: threads[0]?.id ?? null,
+    threadId,
     runId: runId ?? null,
     type,
     payload,
@@ -136,7 +147,7 @@ export function installBrowserPreviewApi(): void {
         const thread: ThreadDto = {
           ...threads[0],
           id: crypto.randomUUID(),
-          title: title ?? '新的会话',
+          title: title ?? '',
           createdAt: Date.now(),
           updatedAt: Date.now()
         }
@@ -154,6 +165,16 @@ export function installBrowserPreviewApi(): void {
     },
     runs: {
       enqueue: async (threadId, input) => {
+        const target = threads.find((thread) => thread.id === threadId)
+        if (target && !target.title && !runs.some((run) => run.threadId === threadId)) {
+          const updated = {
+            ...target,
+            title: createFallbackThreadTitle(input),
+            updatedAt: Date.now()
+          }
+          threads = threads.map((thread) => (thread.id === threadId ? updated : thread))
+          emit('thread.updated', { thread: updated, source: 'first_message' }, undefined, threadId)
+        }
         const request: QueuedRequestDto = {
           id: crypto.randomUUID(),
           threadId,

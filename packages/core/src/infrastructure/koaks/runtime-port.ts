@@ -28,6 +28,11 @@ export type AgentStreamEvent =
   | { type: 'failed'; usage: AgentUsage; error: { message: string; type: string } }
 
 export interface AgentRuntimePort {
+  generateTitle(input: {
+    message: string
+    profile: ModelProfileDto
+    signal: AbortSignal
+  }): Promise<string>
   compressIfNeeded(input: {
     project: ProjectDto
     thread: ThreadDto

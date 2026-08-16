@@ -170,6 +170,7 @@ export const runEventTypeSchema = z.enum([
   'queue.resumed',
   'approval.requested',
   'approval.resolved',
+  'thread.updated',
   'memory.compressed',
   'core.recovered'
 ])

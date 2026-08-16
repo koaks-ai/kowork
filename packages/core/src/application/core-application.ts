@@ -14,6 +14,7 @@ import { CoreEventBus, type EventListener } from './event-bus'
 import { ProjectService } from './project-service'
 import { RunCoordinator } from './run-coordinator'
 import { ProviderService } from './provider-service'
+import { UNTITLED_THREAD_TITLE } from '../domain/thread-title'
 import {
   emptyCredentialProvider,
   type CredentialProvider
@@ -109,7 +110,7 @@ export class CoreApplication {
           ) ?? profiles.find((profile) => profile.available)
         return this.database.createThread(
           value.projectId,
-          value.title?.trim() || '新的会话',
+          value.title?.trim() || UNTITLED_THREAD_TITLE,
           available?.id ?? 'deepseek-chat',
           settings.defaultPermissionMode
         )

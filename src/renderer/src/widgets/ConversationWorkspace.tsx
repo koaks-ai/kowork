@@ -2,10 +2,16 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Bot, ChevronRight, Pencil, Play } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { AppBootstrapDto, RunEventDto, ThreadDto } from '@kowork/contracts'
+import {
+  threadSchema,
+  type AppBootstrapDto,
+  type RunEventDto,
+  type ThreadDto
+} from '@kowork/contracts'
 import { Composer } from '../features/chat/Composer'
 import { Timeline } from '../features/chat/Timeline'
 import { useWorkbenchStore } from '../shared/store/workbench'
+import { BlurSwapText } from '../shared/ui/BlurSwapText'
 import { IconButton } from '../shared/ui/IconButton'
 
 const suggestions = [
@@ -79,6 +85,16 @@ export function ConversationWorkspace({
     () =>
       window.kowork.events.subscribe((event) => {
         if (event.threadId) {
+          if (event.type === 'thread.updated') {
+            const parsed = threadSchema.safeParse(event.payload.thread)
+            if (parsed.success) {
+              queryClient.setQueryData<ThreadDto[]>(
+                ['threads', parsed.data.projectId],
+                (current = []) =>
+                  current.map((item) => (item.id === parsed.data.id ? parsed.data : item))
+              )
+            }
+          }
           const key = ['events', event.threadId] as const
           if (queryClient.getQueryState(key)) {
             queryClient.setQueryData<RunEventDto[]>(key, (current = []) =>
@@ -154,7 +170,11 @@ export function ConversationWorkspace({
     <main className="flex min-w-0 flex-1 flex-col bg-white">
       <header className="app-drag flex h-14 shrink-0 items-center justify-between border-b border-neutral-200 bg-white px-4">
         <div className="flex min-w-0 items-center gap-2 text-sm">
-          <span className="truncate font-medium text-neutral-900">{thread.title}</span>
+          <BlurSwapText
+            value={thread.title}
+            fallback={t('untitledThread')}
+            className="min-w-0 truncate font-medium text-neutral-900"
+          />
           <IconButton label={t('threadTitle')}>
             <Pencil size={13} />
           </IconButton>

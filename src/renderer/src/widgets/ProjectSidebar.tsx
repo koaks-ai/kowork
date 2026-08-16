@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next'
 import type { AppBootstrapDto, ProjectDto, ThreadDto } from '@kowork/contracts'
 import { SettingsDialog } from '../features/settings/SettingsDialog'
 import { useWorkbenchStore } from '../shared/store/workbench'
+import { BlurSwapText } from '../shared/ui/BlurSwapText'
 import { IconButton } from '../shared/ui/IconButton'
 
 interface ProjectSidebarProps {
@@ -125,7 +126,7 @@ export function ProjectSidebar({ bootstrap, isMacOS }: ProjectSidebarProps): Rea
                           className="min-w-0 flex-1 truncate px-2 py-1.5 text-left text-sm"
                           onClick={() => setThread(thread.id)}
                         >
-                          {thread.title}
+                          <BlurSwapText value={thread.title} fallback={t('untitledThread')} />
                         </button>
                         <button
                           className="mr-1 hidden p-1 text-neutral-400 hover:text-red-600 group-hover:block"

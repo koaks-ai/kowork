@@ -15,6 +15,7 @@ describe('Core application', () => {
       let body = ''
       for await (const chunk of request) body += chunk
       const payload = JSON.parse(body) as { messages: Array<{ role: string }> }
+      const titleRequest = body.includes('conversation_title')
       const afterTool = payload.messages.at(-1)?.role === 'tool'
       response.writeHead(200, { 'content-type': 'text/event-stream' })
       response.write(
@@ -23,27 +24,32 @@ describe('Core application', () => {
           choices: [
             {
               index: 0,
-              delta: afterTool
-                ? { content: 'beta4 handle response' }
-                : {
-                    tool_calls: [
-                      {
-                        index: 0,
-                        id: 'beta4-tool-call',
-                        type: 'function',
-                        function: {
-                          name: 'run_command',
-                          arguments: JSON.stringify({
-                            command: 'printf beta4-progress',
-                            cwd: projectPath
-                          })
+              delta: titleRequest
+                ? { content: JSON.stringify({ title: 'Beta4 handle migration' }) }
+                : afterTool
+                  ? { content: 'beta4 handle response' }
+                  : {
+                      tool_calls: [
+                        {
+                          index: 0,
+                          id: 'beta4-tool-call',
+                          type: 'function',
+                          function: {
+                            name: 'run_command',
+                            arguments: JSON.stringify({
+                              command: 'printf beta4-progress',
+                              cwd: projectPath
+                            })
+                          }
                         }
-                      }
-                    ]
-                  }
+                      ]
+                    }
             }
           ],
-          usage: afterTool ? { prompt_tokens: 3, completion_tokens: 4, total_tokens: 7 } : undefined
+          usage:
+            titleRequest || afterTool
+              ? { prompt_tokens: 3, completion_tokens: 4, total_tokens: 7 }
+              : undefined
         })}\n\n`
       )
       response.end('data: [DONE]\n\n')
@@ -71,7 +77,7 @@ describe('Core application', () => {
         contextWindowTokens: 32_000
       })
       const project = await core.handle('projects.add', { rootPath: projectPath })
-      const created = await core.handle('threads.create', { projectId: project.id, title: 'Beta4' })
+      const created = await core.handle('threads.create', { projectId: project.id })
       const thread = await core.handle('threads.update', {
         threadId: created.id,
         modelProfileId: model.id,
@@ -95,6 +101,9 @@ describe('Core application', () => {
       await expect
         .poll(() => events.some((event) => event.type === 'run.completed'), { timeout: 10_000 })
         .toBe(true)
+      await expect
+        .poll(async () => (await core.handle('threads.list', { projectId: project.id }))[0]?.title)
+        .toBe('Beta4 handle migration')
 
       const text = events
         .filter((event) => event.type === 'run.text')
@@ -208,6 +217,39 @@ describe('Core application', () => {
     const persisted = await core.handle('events.list', { threadId: thread.id })
     expect(persisted.some((event) => event.type === 'run.text')).toBe(true)
     expect((await core.handle('runs.list', { threadId: thread.id }))[0]?.status).toBe('completed')
+    await core.close()
+  })
+
+  it('names an untitled session from its first message without overwriting a rename', async () => {
+    const dataPath = await mkdtemp(join(tmpdir(), 'kowork-thread-title-'))
+    const projectPath = join(dataPath, 'project')
+    await mkdir(projectPath)
+    const core = new CoreApplication(dataPath, undefined, true)
+    const events: RunEventDto[] = []
+    core.subscribe((event) => events.push(event))
+    const project = await core.handle('projects.add', { rootPath: projectPath })
+    const thread = await core.handle('threads.create', { projectId: project.id })
+    expect(thread.title).toBe('')
+
+    await core.handle('runs.enqueue', {
+      threadId: thread.id,
+      input: '  修复登录页面的布局问题  '
+    })
+    await expect
+      .poll(async () => (await core.handle('threads.list', { projectId: project.id }))[0]?.title)
+      .toBe('修复登录页面的布局问题')
+    expect(events.some((event) => event.type === 'thread.updated')).toBe(true)
+
+    await core.handle('threads.update', { threadId: thread.id, title: '手动命名的会话' })
+    await expect
+      .poll(() => events.filter((event) => event.type === 'run.completed').length, {
+        timeout: 5_000
+      })
+      .toBe(1)
+    await core.handle('runs.enqueue', { threadId: thread.id, input: '第二条消息' })
+    await expect
+      .poll(async () => (await core.handle('threads.list', { projectId: project.id }))[0]?.title)
+      .toBe('手动命名的会话')
     await core.close()
   })
 

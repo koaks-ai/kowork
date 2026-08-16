@@ -1,6 +1,11 @@
 import type { AgentRuntimePort, AgentStreamEvent } from './runtime-port'
+import { createFallbackThreadTitle } from '../../domain/thread-title'
 
 export class FakeAgentRuntime implements AgentRuntimePort {
+  generateTitle(input: Parameters<AgentRuntimePort['generateTitle']>[0]): Promise<string> {
+    return Promise.resolve(createFallbackThreadTitle(input.message))
+  }
+
   compressIfNeeded(): Promise<void> {
     return Promise.resolve()
   }

@@ -4,6 +4,7 @@ import { initReactI18next } from 'react-i18next'
 const zhCN = {
   brand: 'KoWork',
   newThread: '新建会话',
+  untitledThread: '未命名会话',
   addProject: '添加项目',
   projects: '项目',
   noProject: '添加一个项目开始工作',

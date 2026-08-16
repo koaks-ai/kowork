@@ -20,6 +20,7 @@ import type {
 } from '@kowork/contracts'
 import { CoreError } from '../../domain/errors'
 import { selectRecentTurnCount, shouldCompress } from '../../domain/compression-policy'
+import { createFallbackThreadTitle, normalizeGeneratedThreadTitle } from '../../domain/thread-title'
 import type { ApprovalService } from '../../application/approval-service'
 import type { CoreEventBus } from '../../application/event-bus'
 import type { AppDatabase } from '../db/database'
@@ -120,8 +121,11 @@ function replaceArguments(
 
 export class KoaksAgentRuntime implements AgentRuntimePort {
   private runtime?: KoaksRuntime
+  private runtimePromise?: Promise<KoaksRuntime>
   private readonly agents = new Map<string, KoaksAgent>()
   private readonly summarizers = new Map<string, KoaksAgent>()
+  private readonly titleGenerators = new Map<string, KoaksAgent>()
+  private readonly titleGeneratorCreations = new Map<string, Promise<KoaksAgent>>()
 
   constructor(
     private readonly database: AppDatabase,
@@ -134,15 +138,24 @@ export class KoaksAgentRuntime implements AgentRuntimePort {
   ) {}
 
   private async getRuntime(): Promise<KoaksRuntime> {
-    if (!this.runtime) {
-      const { createRuntime } = await import('@koaks/node')
-      this.runtime = createRuntime({
-        maxConcurrency: 64,
-        highWaterMark: 128,
-        runEventBufferCapacity: 2_048
+    if (this.runtime) return this.runtime
+    if (!this.runtimePromise) {
+      this.runtimePromise = import('@koaks/node').then(({ createRuntime }) => {
+        const runtime = createRuntime({
+          maxConcurrency: 64,
+          highWaterMark: 128,
+          runEventBufferCapacity: 2_048
+        })
+        this.runtime = runtime
+        return runtime
       })
     }
-    return this.runtime
+    try {
+      return await this.runtimePromise
+    } catch (error) {
+      this.runtimePromise = undefined
+      throw error
+    }
   }
 
   private toolsFor(project: ProjectDto): ToolDefinition<Record<string, unknown>>[] {
@@ -369,6 +382,62 @@ export class KoaksAgentRuntime implements AgentRuntimePort {
     return agent
   }
 
+  private async getTitleGenerator(profile: ModelProfileDto): Promise<KoaksAgent> {
+    const provider = this.database.getProvider(profile.providerId)
+    const key = `${profile.id}:${profile.updatedAt}:${provider.updatedAt}`
+    const existing = this.titleGenerators.get(key)
+    if (existing) return existing
+    const creating = this.titleGeneratorCreations.get(key)
+    if (creating) return await creating
+
+    const creation = (async () => {
+      const runtime = await this.getRuntime()
+      const agent = await runtime.createAgent({
+        id: `title-${profile.id}-${profile.updatedAt}-${provider.updatedAt}`,
+        name: 'KoWork Conversation Title Generator',
+        instructions:
+          'Create a short, specific conversation title from the first user message. Preserve the message language. Describe the user intent, not the assistant action. Return only the requested structured output without commentary.',
+        model: await providerFor(profile, provider, this.credentials),
+        memory: { type: 'none' },
+        termination: { maxSteps: 2 },
+        runBudget: { maxTotalSteps: 2 }
+      })
+      this.titleGenerators.set(key, agent)
+      return agent
+    })()
+    this.titleGeneratorCreations.set(key, creation)
+    try {
+      return await creation
+    } finally {
+      this.titleGeneratorCreations.delete(key)
+    }
+  }
+
+  async generateTitle(input: {
+    message: string
+    profile: ModelProfileDto
+    signal: AbortSignal
+  }): Promise<string> {
+    const fallback = createFallbackThreadTitle(input.message)
+    const agent = await this.getTitleGenerator(input.profile)
+    const source = Array.from(input.message).slice(0, 8_000).join('')
+    const result = await agent.runStructured<{ title: string }>(
+      `Generate a conversation title for this first user message:\n${JSON.stringify(source)}`,
+      {
+        name: 'conversation_title',
+        schema: {
+          type: 'object',
+          properties: { title: { type: 'string', minLength: 1, maxLength: 48 } },
+          required: ['title'],
+          additionalProperties: false
+        }
+      },
+      { signal: input.signal }
+    )
+    if (result.status !== 'completed') return fallback
+    return normalizeGeneratedThreadTitle(result.output.title, input.message)
+  }
+
   async compressIfNeeded(input: {
     project: ProjectDto
     thread: ThreadDto
@@ -486,14 +555,18 @@ export class KoaksAgentRuntime implements AgentRuntimePort {
   }
 
   async close(): Promise<void> {
+    const runtime = this.runtime ?? (await this.runtimePromise?.catch(() => undefined))
     await Promise.all(
-      [...this.agents.values(), ...this.summarizers.values()].map((agent) =>
-        agent.close().catch(() => undefined)
+      [...this.agents.values(), ...this.summarizers.values(), ...this.titleGenerators.values()].map(
+        (agent) => agent.close().catch(() => undefined)
       )
     )
     this.agents.clear()
     this.summarizers.clear()
-    await this.runtime?.close()
+    this.titleGenerators.clear()
+    this.titleGeneratorCreations.clear()
+    await runtime?.close()
     this.runtime = undefined
+    this.runtimePromise = undefined
   }
 }
