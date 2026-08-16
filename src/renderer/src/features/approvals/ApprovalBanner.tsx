@@ -26,7 +26,6 @@ export function ApprovalBanner({ threadId }: { threadId: string }): React.JSX.El
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['approvals', threadId] })
   })
   if (!approval) return null
-  const [primaryDetail = approval.detail, ...contextLines] = approval.detail.split('\n')
   const promptId = `approval-${approval.id}-prompt`
 
   return (
@@ -46,19 +45,10 @@ export function ApprovalBanner({ threadId }: { threadId: string }): React.JSX.El
         </div>
       </div>
 
-      <div className="mx-3.5 mt-3 overflow-hidden rounded-md border border-neutral-200 bg-neutral-50">
-        <pre className="max-h-24 overflow-auto whitespace-pre-wrap break-words px-3 py-2.5 font-mono text-xs leading-5 text-neutral-800 [overflow-wrap:anywhere]">
-          {primaryDetail}
+      <div className="mx-3.5 mt-3 rounded-md border border-neutral-200 bg-neutral-50">
+        <pre className="line-clamp-2 whitespace-pre-wrap break-words px-3 py-2.5 font-mono text-xs leading-5 text-neutral-800 [overflow-wrap:anywhere]">
+          {approval.detail}
         </pre>
-        {contextLines.length > 0 && (
-          <div className="border-t border-neutral-200 px-3 py-2 text-[11px] leading-4 text-neutral-500">
-            {contextLines.map((line, index) => (
-              <div key={`${index}:${line}`} className="break-all">
-                {line}
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
       {respond.isError && (

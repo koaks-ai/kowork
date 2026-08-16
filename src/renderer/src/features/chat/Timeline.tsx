@@ -114,7 +114,7 @@ function summarizeArguments(argumentsJson: string): string {
   } else {
     summary = JSON.stringify(parsed)
   }
-  return summary.length > 88 ? `${summary.slice(0, 85)}...` : summary
+  return summary
 }
 
 function ToolActivityView({ activity }: { activity: ToolActivity }): React.JSX.Element {
@@ -128,22 +128,22 @@ function ToolActivityView({ activity }: { activity: ToolActivity }): React.JSX.E
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
-        className="group/trigger flex w-full items-start gap-2 text-left text-xs text-neutral-600 transition-colors hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-2"
+        className="group/trigger flex w-full items-center gap-2 overflow-hidden text-left text-xs text-neutral-600 transition-colors hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-2"
       >
         <TerminalSquare
           size={14}
-          className="mt-0.5 shrink-0 transition-colors group-hover/trigger:text-blue-600"
+          className="shrink-0 transition-colors group-hover/trigger:text-blue-600"
         />
-        <span className="min-w-0">
-          <span className="font-mono font-medium text-neutral-800 transition-colors group-hover/trigger:text-blue-700">
+        <span className="flex min-w-0 items-center overflow-hidden whitespace-nowrap">
+          <span className="shrink-0 font-mono font-medium text-neutral-800 transition-colors group-hover/trigger:text-blue-700">
             {activity.name || t('unknownTool')}
           </span>
           {activity.argumentsJson && (
-            <span className="ml-2 break-all text-neutral-400 transition-colors group-hover/trigger:text-neutral-600">
+            <span className="ml-2 min-w-0 truncate text-neutral-400 transition-colors group-hover/trigger:text-neutral-600">
               {summarizeArguments(activity.argumentsJson)}
             </span>
           )}
-          <span className="ml-1.5 inline-flex items-center gap-1 align-middle">
+          <span className="ml-1.5 inline-flex shrink-0 items-center gap-1 align-middle">
             {activity.isError ? (
               <span className="text-red-600">{t('toolFailed')}</span>
             ) : !hasResult ? (
