@@ -7,6 +7,7 @@ import {
   fileEntrySchema,
   gitChangeSchema,
   gitDiffSchema,
+  gitSummarySchema,
   modelProfileSchema,
   modelRefreshResultSchema,
   permissionModeSchema,
@@ -138,6 +139,7 @@ export const rpcSchemas = {
     output: fileContentSchema
   },
   'git.status': { input: z.object({ projectId: z.string() }), output: z.array(gitChangeSchema) },
+  'git.summary': { input: z.object({ projectId: z.string() }), output: gitSummarySchema },
   'git.diff': {
     input: z.object({ projectId: z.string(), relativePath: z.string().optional() }),
     output: gitDiffSchema

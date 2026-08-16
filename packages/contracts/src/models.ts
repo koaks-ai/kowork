@@ -227,6 +227,13 @@ export const gitChangeSchema = z.object({
 })
 export type GitChangeDto = z.infer<typeof gitChangeSchema>
 
+export const gitSummarySchema = z.object({
+  branch: z.string().nullable(),
+  additions: z.number().int().nonnegative(),
+  deletions: z.number().int().nonnegative()
+})
+export type GitSummaryDto = z.infer<typeof gitSummarySchema>
+
 export const gitDiffSchema = z.object({
   path: z.string().nullable(),
   diff: z.string()

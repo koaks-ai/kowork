@@ -193,6 +193,10 @@ export class CoreApplication {
         return await this.git.status(
           this.database.getProject((input as RpcInput<'git.status'>).projectId)
         )
+      case 'git.summary':
+        return await this.git.summary(
+          this.database.getProject((input as RpcInput<'git.summary'>).projectId)
+        )
       case 'git.diff': {
         const value = input as RpcInput<'git.diff'>
         return await this.git.diff(this.database.getProject(value.projectId), value.relativePath)

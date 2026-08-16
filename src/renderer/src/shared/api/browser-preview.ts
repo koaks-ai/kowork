@@ -393,6 +393,7 @@ export function installBrowserPreviewApi(): void {
       status: async () => [
         { path: 'src/renderer/src/App.tsx', indexStatus: ' ', worktreeStatus: 'M' }
       ],
+      summary: async () => ({ branch: 'main', additions: 24, deletions: 7 }),
       diff: async (_projectId, relativePath) => ({
         path: relativePath ?? null,
         diff: 'diff --git a/App.tsx b/App.tsx\n+ KoWork workspace'

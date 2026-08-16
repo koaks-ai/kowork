@@ -1,6 +1,16 @@
 import * as Tabs from '@radix-ui/react-tabs'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, BarChart3, FileCode2, FileText, Folder, GitCompareArrows } from 'lucide-react'
+import {
+  ArrowLeft,
+  BarChart3,
+  FileCode2,
+  FileDiff,
+  FileText,
+  Folder,
+  GitBranch,
+  GitCompareArrows,
+  Laptop
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { AppBootstrapDto } from '@kowork/contracts'
 import { useWorkbenchStore } from '../shared/store/workbench'
@@ -39,6 +49,12 @@ export function InspectorPanel({ bootstrap }: { bootstrap: AppBootstrapDto }): R
     queryFn: () => window.kowork.git.status(store.projectId!),
     enabled: Boolean(store.projectId)
   })
+  const gitSummaryQuery = useQuery({
+    queryKey: ['git-summary', store.projectId],
+    queryFn: () => window.kowork.git.summary(store.projectId!),
+    enabled: Boolean(store.projectId && store.inspectorTab === 'overview'),
+    refetchInterval: 3_000
+  })
   const diffQuery = useQuery({
     queryKey: ['diff', store.projectId, store.selectedChange],
     queryFn: () => window.kowork.git.diff(store.projectId!, store.selectedChange),
@@ -75,7 +91,34 @@ export function InspectorPanel({ bootstrap }: { bootstrap: AppBootstrapDto }): R
           ))}
         </Tabs.List>
         <Tabs.Content value="overview" className="min-h-0 flex-1 overflow-y-auto p-4">
-          <section className="rounded-lg border border-neutral-200 p-4">
+          <section data-status-information className="rounded-lg border border-neutral-200 p-4">
+            <h2 className="text-sm font-semibold text-neutral-900">{t('statusInformation')}</h2>
+            <ul className="mt-4 space-y-3.5 text-sm text-neutral-800">
+              <li className="flex min-h-5 items-center justify-between gap-3">
+                <span className="flex min-w-0 items-center gap-2.5">
+                  <FileDiff size={16} className="shrink-0 text-neutral-500" />
+                  {t('codeChanges')}
+                </span>
+                <span className="flex shrink-0 items-center gap-2 font-medium tabular-nums">
+                  <span className="text-emerald-600">
+                    +{(gitSummaryQuery.data?.additions ?? 0).toLocaleString()}
+                  </span>
+                  <span className="text-red-500">
+                    -{(gitSummaryQuery.data?.deletions ?? 0).toLocaleString()}
+                  </span>
+                </span>
+              </li>
+              <li className="flex min-h-5 items-center gap-2.5">
+                <Laptop size={16} className="shrink-0 text-neutral-500" />
+                <span>{t('local')}</span>
+              </li>
+              <li className="flex min-h-5 items-center gap-2.5">
+                <GitBranch size={16} className="shrink-0 text-neutral-500" />
+                <span className="min-w-0 truncate">{gitSummaryQuery.data?.branch ?? '-'}</span>
+              </li>
+            </ul>
+          </section>
+          <section className="mt-4 rounded-lg border border-neutral-200 p-4">
             <h2 className="text-sm font-semibold text-neutral-900">{t('contextWindow')}</h2>
             <div className="mt-4 flex items-center justify-between text-xs">
               <span className="rounded bg-emerald-50 px-2 py-1 font-medium text-emerald-700">

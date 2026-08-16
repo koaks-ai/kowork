@@ -6,6 +6,7 @@ import type {
   FileEntryDto,
   GitChangeDto,
   GitDiffDto,
+  GitSummaryDto,
   ModelProfileDto,
   ModelRefreshResultDto,
   ProjectDto,
@@ -78,6 +79,7 @@ export interface KoWorkApi {
   }
   git: {
     status(projectId: string): Promise<GitChangeDto[]>
+    summary(projectId: string): Promise<GitSummaryDto>
     diff(projectId: string, relativePath?: string): Promise<GitDiffDto>
   }
 }

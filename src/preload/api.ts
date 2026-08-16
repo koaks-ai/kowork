@@ -69,6 +69,7 @@ export const koWorkApi: KoWorkApi = {
   },
   git: {
     status: (projectId) => invoke('git.status', { projectId }),
+    summary: (projectId) => invoke('git.summary', { projectId }),
     diff: (projectId, relativePath) =>
       invoke('git.diff', { projectId, ...(relativePath ? { relativePath } : {}) })
   }
