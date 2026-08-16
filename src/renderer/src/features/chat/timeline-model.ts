@@ -44,35 +44,8 @@ export interface RunTimelineItem {
   lastEventType?: RunEventDto['type']
 }
 
-function parseArguments(argumentsJson: string): unknown {
-  try {
-    return JSON.parse(argumentsJson)
-  } catch {
-    return argumentsJson
-  }
-}
-
-function matchesStreamedTool(
-  activity: RunActivity,
-  toolName: string,
-  command: string
-): activity is ToolActivity {
-  if (activity.kind !== 'tool' || activity.name !== toolName || activity.isError !== undefined) {
-    return false
-  }
-  if (!command) return true
-  const parsed = parseArguments(activity.argumentsJson)
-  return (
-    parsed !== null &&
-    typeof parsed === 'object' &&
-    !Array.isArray(parsed) &&
-    String((parsed as Record<string, unknown>).command ?? '') === command
-  )
-}
-
 export function collectTimeline(events: RunEventDto[]): RunTimelineItem[] {
   const map = new Map<string, RunTimelineItem>()
-  const streamedTools = new Map<string, ToolActivity>()
   let currentRun: RunTimelineItem | undefined
 
   for (const event of [...events].sort((left, right) => left.sequence - right.sequence)) {
@@ -139,26 +112,12 @@ export function collectTimeline(events: RunEventDto[]): RunTimelineItem[] {
     }
     if (event.type === 'run.tool-output') {
       const callId = typeof event.payload.callId === 'string' ? event.payload.callId : undefined
-      const executionId =
-        typeof event.payload.executionId === 'string' ? event.payload.executionId : undefined
       let tool = callId
         ? item.activities.find(
             (activity): activity is ToolActivity =>
               activity.kind === 'tool' && activity.callId === callId
           )
-        : executionId
-          ? streamedTools.get(executionId)
-          : undefined
-
-      if (!tool && !callId) {
-        const toolName =
-          typeof event.payload.toolName === 'string' ? event.payload.toolName : 'run_command'
-        const command = typeof event.payload.command === 'string' ? event.payload.command : ''
-        tool = item.activities
-          .toReversed()
-          .find((activity) => matchesStreamedTool(activity, toolName, command))
-        if (tool && executionId) streamedTools.set(executionId, tool)
-      }
+        : undefined
 
       if (!tool && callId) {
         tool = {
@@ -174,7 +133,11 @@ export function collectTimeline(events: RunEventDto[]): RunTimelineItem[] {
 
       if (tool) {
         const text = String(event.payload.text ?? '')
-        if (callId) {
+        const streamed = typeof event.payload.stream === 'string'
+        if (streamed) {
+          tool.output += text
+          tool.hasStreamedOutput = true
+        } else {
           if (!tool.hasStreamedOutput) {
             tool.output = text
           } else if (text.startsWith(tool.output)) {
@@ -184,9 +147,6 @@ export function collectTimeline(events: RunEventDto[]): RunTimelineItem[] {
             if (status && !tool.output.endsWith(status)) tool.output += status
           }
           tool.isError = Boolean(event.payload.isError)
-        } else {
-          tool.output += text
-          tool.hasStreamedOutput = true
         }
       }
     }

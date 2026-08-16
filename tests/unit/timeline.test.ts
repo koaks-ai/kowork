@@ -27,23 +27,17 @@ describe('chat timeline', () => {
         call: { id: 'call-1', name: 'run_command', argumentsJson: '{"command":"pwd"}' }
       }),
       event(3, 'run.tool-output', {
-        executionId: 'tool-execution-1',
-        toolName: 'run_command',
-        command: 'pwd',
+        callId: 'call-1',
         stream: 'stdout',
         text: '/workspace'
       }),
       event(4, 'run.tool-output', {
-        executionId: 'tool-execution-1',
-        toolName: 'run_command',
-        command: 'pwd',
+        callId: 'call-1',
         stream: 'stdout',
         text: '\n'
       }),
       event(5, 'run.tool-output', {
-        executionId: 'tool-execution-1',
-        toolName: 'run_command',
-        command: 'pwd',
+        callId: 'call-1',
         stream: 'status',
         text: '\n[exit code: 0]'
       }),
