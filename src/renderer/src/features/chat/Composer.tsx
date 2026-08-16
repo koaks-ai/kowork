@@ -14,6 +14,8 @@ interface ComposerProps {
   onHeightChange?(height: number): void
 }
 
+const permissionModes: PermissionMode[] = ['ask', 'auto', 'yolo']
+
 export function Composer({
   thread,
   profiles,
@@ -57,6 +59,7 @@ export function Composer({
     auto: t('permissionAuto'),
     yolo: t('permissionYolo')
   }
+  const selectedModeIndex = permissionModes.indexOf(thread.permissionMode)
 
   useLayoutEffect(() => {
     const element = container.current
@@ -129,11 +132,21 @@ export function Composer({
                   </DropdownMenu.Content>
                 </DropdownMenu.Portal>
               </DropdownMenu.Root>
-              <div className="flex rounded-md border border-neutral-200 bg-neutral-50 p-0.5">
-                {(['ask', 'auto', 'yolo'] as PermissionMode[]).map((mode) => (
+              <div className="relative grid grid-cols-3 rounded-md border border-neutral-200 bg-neutral-50 p-[3px]">
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-[3px] grid grid-cols-3"
+                >
+                  <span
+                    className="col-start-1 row-start-1 rounded-[4px] bg-blue-50 shadow-sm ring-1 ring-blue-100 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)]"
+                    style={{ transform: `translateX(${selectedModeIndex * 100}%)` }}
+                  />
+                </div>
+                {permissionModes.map((mode) => (
                   <button
                     key={mode}
-                    className={`flex h-6 items-center gap-1 rounded px-2 text-[11px] ${thread.permissionMode === mode ? 'bg-blue-50 font-medium text-blue-700 ring-1 ring-blue-100' : 'text-neutral-500 hover:text-neutral-800'}`}
+                    aria-pressed={thread.permissionMode === mode}
+                    className={`relative z-10 flex h-6 min-w-[52px] items-center justify-center gap-1 rounded-[4px] px-2 text-[11px] transition-colors duration-200 ${thread.permissionMode === mode ? 'font-medium text-blue-700' : 'text-neutral-500 hover:bg-neutral-100/70 hover:text-neutral-800'}`}
                     onClick={() => updateThread.mutate({ permissionMode: mode })}
                   >
                     {modeIcons[mode]}
