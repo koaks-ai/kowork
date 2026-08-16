@@ -66,19 +66,19 @@ function createComponents(compact: boolean): Components {
     ),
     code: ({ className, children }) => (
       <code
-        className={`${className ?? ''} rounded bg-neutral-100 px-1 py-0.5 font-mono text-[0.9em] text-neutral-800`}
+        className={`${className ?? ''} rounded bg-neutral-100 px-1 py-0.5 font-mono ${className ? '' : 'text-[0.9em]'} text-neutral-800`}
       >
         {children}
       </code>
     ),
     pre: ({ children }) => (
-      <pre className="my-3 max-w-full overflow-x-auto rounded-md border border-neutral-200 bg-[#f7f7f6] p-3 font-mono text-xs leading-5 text-neutral-700 [&_code]:bg-transparent [&_code]:p-0">
+      <pre className="my-3 max-w-full overflow-x-auto rounded-md border border-neutral-200 bg-[#f7f7f6] p-3 font-mono text-[0.9em] leading-5 text-neutral-700 [&_code]:bg-transparent [&_code]:p-0">
         {children}
       </pre>
     ),
     table: ({ children }) => (
       <div className="my-4 max-w-full overflow-x-auto rounded-md border border-neutral-200">
-        <table className="w-full min-w-max border-collapse text-left text-xs">{children}</table>
+        <table className="w-full min-w-max border-collapse text-left">{children}</table>
       </div>
     ),
     thead: ({ children }) => <thead className="bg-neutral-100 text-neutral-700">{children}</thead>,
