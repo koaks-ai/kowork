@@ -137,7 +137,7 @@ export class KoaksAgentRuntime implements AgentRuntimePort {
     if (!this.runtime) {
       const { createRuntime } = await import('@koaks/node')
       this.runtime = createRuntime({
-        maxConcurrency: 4,
+        maxConcurrency: 64,
         highWaterMark: 128,
         runEventBufferCapacity: 2_048
       })
@@ -340,8 +340,8 @@ export class KoaksAgentRuntime implements AgentRuntimePort {
           beforeTool: (context, execution) => this.authorizeTool(project, context, execution)
         }
       ],
-      termination: { maxSteps: 80 },
-      runBudget: { maxTotalSteps: 120 },
+      termination: { maxSteps: 1024 },
+      runBudget: { maxTotalSteps: 4096 },
       errorPolicy: { type: 'retry_retriable', maxRetries: 2, delayMs: 800 }
     }
     const agent = await runtime.createAgent(config)
@@ -363,7 +363,7 @@ export class KoaksAgentRuntime implements AgentRuntimePort {
         'Create a compact, factual coding-session summary. Preserve user goals, architectural decisions, file changes, command outcomes, unresolved errors, and exact identifiers. Do not add advice.',
       model: await providerFor(profile, provider, this.credentials),
       memory: { type: 'none' },
-      termination: { maxSteps: 2 }
+      termination: { maxSteps: 4 }
     })
     this.summarizers.set(key, agent)
     return agent
