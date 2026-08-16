@@ -16,7 +16,7 @@ describe('Core application', () => {
       let body = ''
       for await (const chunk of request) body += chunk
       const payload = JSON.parse(body) as { messages: Array<{ role: string }> }
-      const titleRequest = body.includes('Create a short, specific conversation title')
+      const titleRequest = body.includes('Create a concise, specific conversation title')
       if (titleRequest) titleRequestBody = body
       const afterTool = payload.messages.at(-1)?.role === 'tool'
       response.writeHead(200, { 'content-type': 'text/event-stream' })
@@ -106,7 +106,8 @@ describe('Core application', () => {
       await expect
         .poll(async () => (await core.handle('threads.list', { projectId: project.id }))[0]?.title)
         .toBe('Beta4 API')
-      expect(titleRequestBody).toContain('no more than 10 characters')
+      expect(titleRequestBody).toContain('at most 15 characters')
+      expect(titleRequestBody).toContain('at most 7 words')
       expect(titleRequestBody).not.toContain('response_format')
 
       const text = events
@@ -245,7 +246,7 @@ describe('Core application', () => {
     })
     await expect
       .poll(async () => (await core.handle('threads.list', { projectId: project.id }))[0]?.title)
-      .toBe('修复登录页面的布局…')
+      .toBe('修复登录页面的布局问题')
     expect(events.some((event) => event.type === 'thread.updated')).toBe(true)
 
     await core.handle('threads.update', { threadId: thread.id, title: '手动命名的会话' })

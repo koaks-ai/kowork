@@ -23,6 +23,7 @@ import { selectRecentTurnCount, shouldCompress } from '../../domain/compression-
 import {
   createFallbackThreadTitle,
   MAX_GENERATED_THREAD_TITLE_LENGTH,
+  MAX_GENERATED_THREAD_TITLE_WORDS,
   normalizeGeneratedThreadTitle
 } from '../../domain/thread-title'
 import type { ApprovalService } from '../../application/approval-service'
@@ -404,7 +405,20 @@ export class KoaksAgentRuntime implements AgentRuntimePort {
       const agent = await runtime.createAgent({
         id: `title-${profile.id}-${profile.updatedAt}-${provider.updatedAt}`,
         name: 'KoWork Conversation Title Generator',
-        instructions: `Create a short, specific conversation title from the first user message. The title must be no more than ${MAX_GENERATED_THREAD_TITLE_LENGTH} characters, including spaces and punctuation. Preserve the message language. Describe the user intent, not the assistant action. Return only the title text without JSON, quotes, Markdown, or commentary.`,
+        instructions: [
+          'Create a concise, specific conversation title from the first user message.',
+          '',
+          'Length limits (count spaces and punctuation):',
+          `- Chinese / CJK text: at most ${MAX_GENERATED_THREAD_TITLE_LENGTH} characters.`,
+          `- English / Latin text: at most ${MAX_GENERATED_THREAD_TITLE_WORDS} words.`,
+          '',
+          'Rules:',
+          '- Keep the language of the original message.',
+          '- Use a noun phrase that captures the user\'s core intent or task, e.g. "修复登录页面布局", "Refactor auth token refresh".',
+          '- Do not write a full sentence, and do not describe what the assistant will do.',
+          '- Drop filler words and trailing punctuation.',
+          '- Output only the title text: no quotes, no Markdown, no JSON, no commentary.'
+        ].join('\n'),
         model: await providerFor(profile, provider, this.credentials),
         memory: { type: 'none' },
         termination: { maxSteps: 2 },

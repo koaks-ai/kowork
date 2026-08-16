@@ -7,15 +7,30 @@ import {
 
 describe('thread titles', () => {
   it('derives a compact fallback from the first message', () => {
-    expect(createFallbackThreadTitle('  修复登录页面的布局问题  ')).toBe('修复登录页面的布局…')
-    expect(createFallbackThreadTitle('a'.repeat(60))).toBe(`${'a'.repeat(9)}…`)
+    expect(createFallbackThreadTitle('  修复登录页面的布局问题  ')).toBe('修复登录页面的布局问题')
+    expect(createFallbackThreadTitle('a'.repeat(60))).toBe(`${'a'.repeat(39)}…`)
+  })
+
+  it('truncates CJK fallbacks to the character limit', () => {
+    expect(createFallbackThreadTitle('分析项目中的依赖更新策略与版本兼容性问题')).toBe(
+      '分析项目中的依赖更新策略与版…'
+    )
+  })
+
+  it('truncates Latin fallbacks by word count', () => {
+    expect(createFallbackThreadTitle('Fix login form validation on the signup page now')).toBe(
+      'Fix login form validation on the signup…'
+    )
+    expect(createFallbackThreadTitle('Refactor auth token refresh flow')).toBe(
+      'Refactor auth token refresh flow'
+    )
   })
 
   it('cleans generated titles and falls back when the model returns nothing', () => {
     expect(normalizeGeneratedThreadTitle('  "修复登录流程"。 ', 'unused')).toBe('修复登录流程')
     expect(normalizeGeneratedThreadTitle('   ', '检查项目架构')).toBe('检查项目架构')
     expect(normalizeGeneratedThreadTitle('分析项目中的依赖更新策略', 'unused')).toBe(
-      '分析项目中的依赖更…'
+      '分析项目中的依赖更新策略'
     )
   })
 
