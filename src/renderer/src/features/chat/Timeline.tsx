@@ -7,11 +7,30 @@ import {
   Clock3,
   TerminalSquare
 } from 'lucide-react'
-import { useEffect, useRef } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { RunEventDto } from '@kowork/contracts'
 import { MarkdownContent } from '../../shared/ui/MarkdownContent'
-import { collectTimeline, type ReasoningActivity } from './timeline-model'
+import { collectTimeline, type ReasoningActivity, type ToolActivity } from './timeline-model'
+
+function CollapsibleContent({
+  open,
+  children
+}: {
+  open: boolean
+  children: React.ReactNode
+}): React.JSX.Element {
+  return (
+    <div
+      aria-hidden={!open}
+      className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none ${
+        open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+      }`}
+    >
+      <div className="min-h-0 overflow-hidden">{children}</div>
+    </div>
+  )
+}
 
 function ReasoningActivityView({
   activity,
@@ -22,30 +41,39 @@ function ReasoningActivityView({
   active: boolean
   label: string
 }): React.JSX.Element {
-  const details = useRef<HTMLDetailsElement>(null)
-  const wasActive = useRef(active)
+  const [open, setOpen] = useState(active)
+  const [previousActive, setPreviousActive] = useState(active)
 
-  useEffect(() => {
-    if (details.current) {
-      if (active) details.current.open = true
-      else if (wasActive.current) details.current.open = false
-    }
-    wasActive.current = active
-  }, [active])
+  if (active !== previousActive) {
+    setPreviousActive(active)
+    setOpen(active)
+  }
 
   return (
-    <details ref={details} data-run-content="reasoning" className="group text-neutral-500">
-      <summary className="flex list-none items-center gap-2 text-xs font-medium hover:text-neutral-800 [&::-webkit-details-marker]:hidden">
+    <div data-run-content="reasoning" className="text-neutral-500">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        className="flex items-center gap-2 text-xs font-medium transition-colors hover:text-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-2"
+      >
         <Brain size={14} className="shrink-0" />
         <span>{label}</span>
-        <ChevronRight size={13} className="transition-transform group-open:rotate-90" />
-      </summary>
-      <MarkdownContent
-        content={activity.text}
-        variant="compact"
-        className="mt-2 pl-[22px] text-neutral-500"
-      />
-    </details>
+        <ChevronRight
+          size={13}
+          className={`transition-transform duration-200 motion-reduce:transition-none ${
+            open ? 'rotate-90' : ''
+          }`}
+        />
+      </button>
+      <CollapsibleContent open={open}>
+        <MarkdownContent
+          content={activity.text}
+          variant="compact"
+          className="pt-2 pl-[22px] text-neutral-500"
+        />
+      </CollapsibleContent>
+    </div>
   )
 }
 
@@ -87,6 +115,84 @@ function summarizeArguments(argumentsJson: string): string {
     summary = JSON.stringify(parsed)
   }
   return summary.length > 88 ? `${summary.slice(0, 85)}...` : summary
+}
+
+function ToolActivityView({ activity }: { activity: ToolActivity }): React.JSX.Element {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+  const hasResult = activity.isError !== undefined
+
+  return (
+    <div data-run-content="tool" className="min-w-0">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        className="group/trigger flex w-full items-start gap-2 text-left text-xs text-neutral-600 transition-colors hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-2"
+      >
+        <TerminalSquare
+          size={14}
+          className="mt-0.5 shrink-0 transition-colors group-hover/trigger:text-blue-600"
+        />
+        <span className="min-w-0">
+          <span className="font-mono font-medium text-neutral-800 transition-colors group-hover/trigger:text-blue-700">
+            {activity.name || t('unknownTool')}
+          </span>
+          {activity.argumentsJson && (
+            <span className="ml-2 break-all text-neutral-400 transition-colors group-hover/trigger:text-neutral-600">
+              {summarizeArguments(activity.argumentsJson)}
+            </span>
+          )}
+          <span className="ml-1.5 inline-flex items-center gap-1 align-middle">
+            {activity.isError ? (
+              <span className="text-red-600">{t('toolFailed')}</span>
+            ) : !hasResult ? (
+              <span className="text-neutral-400">{t('toolRunning')}</span>
+            ) : null}
+            <ChevronRight
+              size={13}
+              className={`shrink-0 transition-[color,transform] duration-200 motion-reduce:transition-none group-hover/trigger:text-blue-600 ${
+                open ? 'rotate-90' : ''
+              }`}
+            />
+          </span>
+        </span>
+      </button>
+      <CollapsibleContent open={open}>
+        <div className="mt-2 overflow-hidden rounded-md border border-neutral-200 bg-white">
+          {activity.argumentsJson && (
+            <div className="border-b border-neutral-200 px-3 py-2.5">
+              <div className="mb-1.5 text-[10px] font-semibold uppercase text-neutral-400">
+                {t('toolInput')}
+              </div>
+              <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-5 text-neutral-600 [overflow-wrap:anywhere]">
+                {formatArguments(activity.argumentsJson)}
+              </pre>
+            </div>
+          )}
+          <div className="px-3 py-2.5">
+            <div className="mb-1.5 text-[10px] font-semibold uppercase text-neutral-400">
+              {t('toolOutput')}
+            </div>
+            {hasResult ? (
+              <pre
+                className={`max-h-64 overflow-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-5 [overflow-wrap:anywhere] ${
+                  activity.isError ? 'text-red-700' : 'text-neutral-600'
+                }`}
+              >
+                {activity.output || t('emptyToolOutput')}
+              </pre>
+            ) : (
+              <div className="flex items-center gap-2 text-xs text-neutral-400">
+                <Clock3 size={12} className="animate-pulse" />
+                {t('toolRunning')}
+              </div>
+            )}
+          </div>
+        </div>
+      </CollapsibleContent>
+    </div>
+  )
 }
 
 export function Timeline({ events }: { events: RunEventDto[] }): React.JSX.Element {
@@ -187,66 +293,7 @@ export function Timeline({ events }: { events: RunEventDto[] }): React.JSX.Eleme
                       )
                     }
 
-                    const hasResult = activity.isError !== undefined
-                    return (
-                      <details key={activity.id} data-run-content="tool" className="group min-w-0">
-                        <summary className="flex list-none items-start gap-2 text-xs text-neutral-600 hover:text-neutral-900 [&::-webkit-details-marker]:hidden">
-                          <TerminalSquare size={14} className="mt-0.5 shrink-0" />
-                          <span className="min-w-0">
-                            <span className="font-mono font-medium text-neutral-800">
-                              {activity.name || t('unknownTool')}
-                            </span>
-                            {activity.argumentsJson && (
-                              <span className="ml-2 break-all text-neutral-400">
-                                {summarizeArguments(activity.argumentsJson)}
-                              </span>
-                            )}
-                            <span className="ml-1.5 inline-flex items-center gap-1 align-middle">
-                              {activity.isError ? (
-                                <span className="text-red-600">{t('toolFailed')}</span>
-                              ) : !hasResult ? (
-                                <span className="text-neutral-400">{t('toolRunning')}</span>
-                              ) : null}
-                              <ChevronRight
-                                size={13}
-                                className="shrink-0 transition-transform group-open:rotate-90"
-                              />
-                            </span>
-                          </span>
-                        </summary>
-                        <div className="mt-2 overflow-hidden rounded-md border border-neutral-200 bg-white">
-                          {activity.argumentsJson && (
-                            <div className="border-b border-neutral-200 px-3 py-2.5">
-                              <div className="mb-1.5 text-[10px] font-semibold uppercase text-neutral-400">
-                                {t('toolInput')}
-                              </div>
-                              <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-5 text-neutral-600 [overflow-wrap:anywhere]">
-                                {formatArguments(activity.argumentsJson)}
-                              </pre>
-                            </div>
-                          )}
-                          <div className="px-3 py-2.5">
-                            <div className="mb-1.5 text-[10px] font-semibold uppercase text-neutral-400">
-                              {t('toolOutput')}
-                            </div>
-                            {hasResult ? (
-                              <pre
-                                className={`max-h-64 overflow-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-5 [overflow-wrap:anywhere] ${
-                                  activity.isError ? 'text-red-700' : 'text-neutral-600'
-                                }`}
-                              >
-                                {activity.output || t('emptyToolOutput')}
-                              </pre>
-                            ) : (
-                              <div className="flex items-center gap-2 text-xs text-neutral-400">
-                                <Clock3 size={12} className="animate-pulse" />
-                                {t('toolRunning')}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </details>
-                    )
+                    return <ToolActivityView key={activity.id} activity={activity} />
                   })}
                 </div>
               ) : !item.status ? (
