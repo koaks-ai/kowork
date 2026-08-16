@@ -30,15 +30,13 @@ interface ProjectThreadListProps {
   selectedThreadId?: string
   onSelect(threadId: string): void
   onArchive(threadId: string): void
-  onCreate(): void
 }
 
 function ProjectThreadList({
   threads,
   selectedThreadId,
   onSelect,
-  onArchive,
-  onCreate
+  onArchive
 }: ProjectThreadListProps): React.JSX.Element {
   const { t } = useTranslation()
   const selectedIndex = threads.findIndex((thread) => thread.id === selectedThreadId)
@@ -51,43 +49,34 @@ function ProjectThreadList({
   }
 
   return (
-    <>
-      <div className="relative">
-        <span
-          aria-hidden="true"
-          data-thread-selection-highlight
-          className={`pointer-events-none absolute inset-x-0 top-0.5 h-[30px] rounded-lg bg-neutral-200/70 transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${selectedIndex >= 0 ? 'opacity-100' : 'opacity-0'}`}
-          style={{ transform: `translateY(${highlightedIndex * 34}px)` }}
-        />
-        {threads.map((thread) => (
-          <div
-            key={thread.id}
-            className={`group relative z-10 flex h-[34px] items-center rounded-lg ${thread.id === selectedThreadId ? 'text-neutral-900' : 'text-neutral-700 hover:bg-neutral-50'}`}
+    <div className="relative">
+      <span
+        aria-hidden="true"
+        data-thread-selection-highlight
+        className={`pointer-events-none absolute inset-x-0 top-0.5 h-[30px] rounded-lg bg-neutral-200/70 transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${selectedIndex >= 0 ? 'opacity-100' : 'opacity-0'}`}
+        style={{ transform: `translateY(${highlightedIndex * 34}px)` }}
+      />
+      {threads.map((thread) => (
+        <div
+          key={thread.id}
+          className={`group relative z-10 flex h-[34px] items-center rounded-lg ${thread.id === selectedThreadId ? 'text-neutral-900' : 'text-neutral-700 hover:bg-neutral-50'}`}
+        >
+          <button
+            className="min-w-0 flex h-full flex-1 items-center truncate px-2 text-left text-sm"
+            onClick={() => onSelect(thread.id)}
           >
-            <button
-              className="min-w-0 flex h-full flex-1 items-center truncate px-2 text-left text-sm"
-              onClick={() => onSelect(thread.id)}
-            >
-              <BlurSwapText value={thread.title} fallback={t('untitledThread')} />
-            </button>
-            <button
-              className="mr-1 hidden p-1 text-neutral-400 hover:text-red-600 group-hover:block"
-              aria-label={t('archive')}
-              onClick={() => onArchive(thread.id)}
-            >
-              <Trash2 size={13} />
-            </button>
-          </div>
-        ))}
-      </div>
-      <button
-        className="mt-1 flex items-center gap-1.5 px-2 py-1.5 text-xs text-neutral-500 hover:text-neutral-900"
-        onClick={onCreate}
-      >
-        <Plus size={13} />
-        {t('newThread')}
-      </button>
-    </>
+            <BlurSwapText value={thread.title} fallback={t('untitledThread')} />
+          </button>
+          <button
+            className="mr-1 hidden p-1 text-neutral-400 hover:text-red-600 group-hover:block"
+            aria-label={t('archive')}
+            onClick={() => onArchive(thread.id)}
+          >
+            <Trash2 size={13} />
+          </button>
+        </div>
+      ))}
+    </div>
   )
 }
 
@@ -222,7 +211,6 @@ export function ProjectSidebar({ bootstrap, isMacOS }: ProjectSidebarProps): Rea
                         setThread(targetThreadId)
                       }}
                       onArchive={(targetThreadId) => archiveThread.mutate(targetThreadId)}
-                      onCreate={() => createThread.mutate(project.id)}
                     />
                   </div>
                 </AnimatedDisclosure>
