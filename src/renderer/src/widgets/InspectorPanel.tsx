@@ -1,20 +1,21 @@
-import * as Tabs from '@radix-ui/react-tabs'
 import { useQuery } from '@tanstack/react-query'
 import {
   ArrowLeft,
   BarChart3,
-  FileCode2,
+  ChevronRight,
   FileDiff,
-  FileText,
-  Folder,
   GitBranch,
   GitCompareArrows,
-  Laptop
+  Laptop,
+  Plus,
+  X
 } from 'lucide-react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { AppBootstrapDto } from '@kowork/contracts'
 import { useWorkbenchStore } from '../shared/store/workbench'
-import { IconButton } from '../shared/ui/IconButton'
+
+type InspectorTab = 'overview' | 'changes'
 
 function formatTokens(tokens: number): string {
   return `${(tokens / 1_000).toFixed(2).replace(/\.00$/, '')}K`
@@ -23,6 +24,16 @@ function formatTokens(tokens: number): string {
 export function InspectorPanel({ bootstrap }: { bootstrap: AppBootstrapDto }): React.JSX.Element {
   const { t } = useTranslation()
   const store = useWorkbenchStore()
+  const [tabs, setTabs] = useState<InspectorTab[]>(['overview'])
+  const [activeTab, setActiveTab] = useState<InspectorTab>('overview')
+  const [changeSelection, setChangeSelection] = useState<{
+    projectId: string
+    path: string
+  }>()
+  const selectedChange =
+    changeSelection && changeSelection.projectId === store.projectId
+      ? changeSelection.path
+      : undefined
   const threadsQuery = useQuery({
     queryKey: ['threads', store.projectId],
     queryFn: () => window.kowork.threads.list(store.projectId!),
@@ -34,31 +45,21 @@ export function InspectorPanel({ bootstrap }: { bootstrap: AppBootstrapDto }): R
     queryFn: () => window.kowork.runs.list(store.threadId!),
     enabled: Boolean(store.threadId)
   })
-  const filesQuery = useQuery({
-    queryKey: ['files', store.projectId, store.fileDirectory],
-    queryFn: () => window.kowork.files.list(store.projectId!, store.fileDirectory),
-    enabled: Boolean(store.projectId)
-  })
-  const fileQuery = useQuery({
-    queryKey: ['file', store.projectId, store.selectedFile],
-    queryFn: () => window.kowork.files.read(store.projectId!, store.selectedFile!),
-    enabled: Boolean(store.projectId && store.selectedFile)
+  const gitSummaryQuery = useQuery({
+    queryKey: ['git-summary', store.projectId],
+    queryFn: () => window.kowork.git.summary(store.projectId!),
+    enabled: Boolean(store.projectId),
+    refetchInterval: 3_000
   })
   const changesQuery = useQuery({
     queryKey: ['changes', store.projectId],
     queryFn: () => window.kowork.git.status(store.projectId!),
-    enabled: Boolean(store.projectId)
-  })
-  const gitSummaryQuery = useQuery({
-    queryKey: ['git-summary', store.projectId],
-    queryFn: () => window.kowork.git.summary(store.projectId!),
-    enabled: Boolean(store.projectId && store.inspectorTab === 'overview'),
-    refetchInterval: 3_000
+    enabled: Boolean(store.projectId && tabs.includes('changes'))
   })
   const diffQuery = useQuery({
-    queryKey: ['diff', store.projectId, store.selectedChange],
-    queryFn: () => window.kowork.git.diff(store.projectId!, store.selectedChange),
-    enabled: Boolean(store.projectId && store.selectedChange)
+    queryKey: ['diff', store.projectId, selectedChange],
+    queryFn: () => window.kowork.git.diff(store.projectId!, selectedChange!),
+    enabled: Boolean(store.projectId && selectedChange)
   })
   const runs = runsQuery.data ?? []
   const totalTokens = runs.reduce((sum, run) => sum + run.totalTokens, 0)
@@ -67,46 +68,99 @@ export function InspectorPanel({ bootstrap }: { bootstrap: AppBootstrapDto }): R
   const limit = thread?.contextWindowTokens ?? profile?.contextWindowTokens ?? 1
   const percentage = Math.min((latestPrompt / limit) * 100, 100)
 
+  const openChangesTab = (): void => {
+    setTabs((current) => (current.includes('changes') ? current : [...current, 'changes']))
+    setActiveTab('changes')
+  }
+
+  const closeChangesTab = (): void => {
+    setTabs((current) => current.filter((tab) => tab !== 'changes'))
+    setActiveTab('overview')
+    setChangeSelection(undefined)
+  }
+
   return (
     <aside className="flex h-full w-full flex-col border-l border-neutral-200 bg-white">
-      <Tabs.Root
-        value={store.inspectorTab}
-        onValueChange={(value) => store.setInspectorTab(value as 'overview' | 'files' | 'changes')}
-        className="flex min-h-0 flex-1 flex-col"
-      >
-        <Tabs.List className="app-drag flex h-14 shrink-0 items-end gap-5 border-b border-neutral-200 px-4">
-          {[
-            { value: 'overview', Icon: BarChart3, label: t('overview') },
-            { value: 'files', Icon: FileText, label: t('files') },
-            { value: 'changes', Icon: GitCompareArrows, label: t('changes') }
-          ].map(({ value, Icon, label }) => (
-            <Tabs.Trigger
-              key={value}
-              value={value}
-              className="no-drag flex h-full items-center gap-1.5 border-b-2 border-transparent text-xs font-medium text-neutral-500 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700"
-            >
-              <Icon size={15} />
-              {label}
-            </Tabs.Trigger>
-          ))}
-        </Tabs.List>
-        <Tabs.Content value="overview" className="min-h-0 flex-1 overflow-y-auto p-4">
+      <header className="app-drag flex h-14 shrink-0 items-center gap-1.5 border-b border-neutral-200 px-2.5">
+        <div role="tablist" className="flex min-w-0 flex-1 items-center gap-1.5">
+          {tabs.map((tab) => {
+            const active = tab === activeTab
+            const Icon = tab === 'overview' ? BarChart3 : GitCompareArrows
+            return (
+              <div
+                key={tab}
+                className={`no-drag flex h-8 min-w-0 flex-1 max-w-[168px] items-center rounded-xl transition-colors ${
+                  active
+                    ? 'bg-neutral-100 text-neutral-900'
+                    : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-800'
+                }`}
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  id={`inspector-tab-${tab}`}
+                  aria-controls={`inspector-panel-${tab}`}
+                  aria-selected={active}
+                  className="flex h-full min-w-0 flex-1 items-center gap-2 px-3 text-left text-sm font-medium"
+                  onClick={() => setActiveTab(tab)}
+                >
+                  <Icon size={16} className="shrink-0 text-neutral-600" />
+                  <span className="truncate">{t(tab)}</span>
+                </button>
+                {tab === 'changes' && (
+                  <button
+                    type="button"
+                    aria-label={t('close')}
+                    className="mr-1 grid size-7 shrink-0 place-items-center rounded-md text-neutral-400 hover:bg-neutral-200 hover:text-neutral-700"
+                    onClick={closeChangesTab}
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+        <button
+          type="button"
+          aria-label={t('addInspectorTab')}
+          disabled
+          className="no-drag grid size-9 shrink-0 place-items-center rounded-md text-neutral-400 disabled:cursor-not-allowed disabled:opacity-70"
+        >
+          <Plus size={18} />
+        </button>
+      </header>
+
+      {activeTab === 'overview' ? (
+        <div
+          id="inspector-panel-overview"
+          role="tabpanel"
+          aria-labelledby="inspector-tab-overview"
+          className="min-h-0 flex-1 overflow-y-auto p-4"
+        >
           <section data-status-information className="rounded-lg border border-neutral-200 p-4">
             <h2 className="text-sm font-semibold text-neutral-900">{t('statusInformation')}</h2>
             <ul className="mt-4 space-y-3.5 text-sm text-neutral-800">
-              <li className="flex min-h-5 items-center justify-between gap-3">
-                <span className="flex min-w-0 items-center gap-2.5">
-                  <FileDiff size={16} className="shrink-0 text-neutral-500" />
-                  {t('codeChanges')}
-                </span>
-                <span className="flex shrink-0 items-center gap-2 font-medium tabular-nums">
-                  <span className="text-emerald-600">
-                    +{(gitSummaryQuery.data?.additions ?? 0).toLocaleString()}
+              <li className="-mx-2">
+                <button
+                  type="button"
+                  className="relative isolate flex min-h-7 w-full items-center gap-3 px-2 text-left before:pointer-events-none before:absolute before:-inset-y-1 before:inset-x-0 before:-z-10 before:rounded-xl before:bg-transparent before:transition-colors hover:before:bg-neutral-50"
+                  onClick={openChangesTab}
+                >
+                  <span className="flex min-w-0 items-center gap-2.5">
+                    <FileDiff size={16} className="shrink-0 text-neutral-500" />
+                    {t('codeChanges')}
                   </span>
-                  <span className="text-red-500">
-                    -{(gitSummaryQuery.data?.deletions ?? 0).toLocaleString()}
+                  <span className="ml-auto flex shrink-0 items-center gap-2 font-medium tabular-nums">
+                    <span className="text-emerald-600">
+                      +{(gitSummaryQuery.data?.additions ?? 0).toLocaleString()}
+                    </span>
+                    <span className="text-red-500">
+                      -{(gitSummaryQuery.data?.deletions ?? 0).toLocaleString()}
+                    </span>
                   </span>
-                </span>
+                  <ChevronRight size={14} className="shrink-0 text-neutral-400" />
+                </button>
               </li>
               <li className="flex min-h-5 items-center gap-2.5">
                 <Laptop size={16} className="shrink-0 text-neutral-500" />
@@ -163,57 +217,20 @@ export function InspectorPanel({ bootstrap }: { bootstrap: AppBootstrapDto }): R
               </div>
             </dl>
           </section>
-        </Tabs.Content>
-        <Tabs.Content value="files" className="min-h-0 flex-1 overflow-y-auto">
-          <div className="flex h-10 items-center gap-2 border-b border-neutral-100 px-3 text-xs text-neutral-500">
-            {store.fileDirectory !== '.' && (
-              <IconButton
-                label={t('back')}
-                onClick={() =>
-                  store.setFileDirectory(
-                    store.fileDirectory.split('/').slice(0, -1).join('/') || '.'
-                  )
-                }
-              >
-                <ArrowLeft size={14} />
-              </IconButton>
-            )}
-            <Folder size={14} />
-            <span className="truncate">{store.fileDirectory}</span>
-          </div>
-          {store.selectedFile ? (
-            <pre className="min-h-full overflow-auto whitespace-pre p-4 font-mono text-xs leading-5 text-neutral-700">
-              {fileQuery.data?.content ?? ''}
-            </pre>
-          ) : (
-            <div className="p-2">
-              {(filesQuery.data ?? []).map((entry) => (
-                <button
-                  key={entry.relativePath}
-                  className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-xs text-neutral-700 hover:bg-neutral-100"
-                  onClick={() =>
-                    entry.kind === 'directory'
-                      ? store.setFileDirectory(entry.relativePath)
-                      : store.setSelectedFile(entry.relativePath)
-                  }
-                >
-                  {entry.kind === 'directory' ? (
-                    <Folder size={14} className="text-amber-600" />
-                  ) : (
-                    <FileCode2 size={14} className="text-neutral-400" />
-                  )}
-                  <span className="truncate">{entry.name}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </Tabs.Content>
-        <Tabs.Content value="changes" className="min-h-0 flex-1 overflow-y-auto">
-          {store.selectedChange ? (
+        </div>
+      ) : (
+        <div
+          id="inspector-panel-changes"
+          role="tabpanel"
+          aria-labelledby="inspector-tab-changes"
+          className="min-h-0 flex-1 overflow-y-auto"
+        >
+          {selectedChange ? (
             <div>
               <button
+                type="button"
                 className="m-3 flex items-center gap-1 text-xs text-neutral-500 hover:text-neutral-900"
-                onClick={() => store.setSelectedChange(undefined)}
+                onClick={() => setChangeSelection(undefined)}
               >
                 <ArrowLeft size={13} />
                 {t('back')}
@@ -230,8 +247,11 @@ export function InspectorPanel({ bootstrap }: { bootstrap: AppBootstrapDto }): R
                 changesQuery.data?.map((change) => (
                   <button
                     key={change.path}
+                    type="button"
                     className="flex w-full items-center justify-between rounded px-2 py-2 text-left text-xs hover:bg-neutral-100"
-                    onClick={() => store.setSelectedChange(change.path)}
+                    onClick={() =>
+                      setChangeSelection({ projectId: store.projectId!, path: change.path })
+                    }
                   >
                     <span className="truncate text-neutral-700">{change.path}</span>
                     <span className="font-mono text-orange-600">
@@ -243,8 +263,8 @@ export function InspectorPanel({ bootstrap }: { bootstrap: AppBootstrapDto }): R
               )}
             </div>
           )}
-        </Tabs.Content>
-      </Tabs.Root>
+        </div>
+      )}
     </aside>
   )
 }

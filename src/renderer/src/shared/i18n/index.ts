@@ -31,6 +31,7 @@ const zhCN = {
   cancelled: '已取消',
   interrupted: '已中断',
   overview: '概览',
+  addInspectorTab: '添加标签页',
   files: '文件',
   changes: '改动',
   statusInformation: '状态信息',
