@@ -160,7 +160,7 @@ export function InspectorPanel({ bootstrap }: { bootstrap: AppBootstrapDto }): R
           aria-labelledby="inspector-tab-overview"
           className="min-h-0 flex-1 overflow-y-auto p-4"
         >
-          <section data-status-information className="rounded-lg border border-neutral-200 p-4">
+          <section data-status-information className="rounded-xl border border-neutral-200 p-4">
             <h2 className="text-sm font-semibold text-neutral-900">{t('statusInformation')}</h2>
             <ul className="mt-4 space-y-3.5 text-sm text-neutral-800">
               <li className="-mx-2">
@@ -194,7 +194,7 @@ export function InspectorPanel({ bootstrap }: { bootstrap: AppBootstrapDto }): R
               </li>
             </ul>
           </section>
-          <section className="mt-4 rounded-lg border border-neutral-200 p-4">
+          <section className="mt-4 rounded-xl border border-neutral-200 p-4">
             <h2 className="text-sm font-semibold text-neutral-900">{t('contextWindow')}</h2>
             <div className="mt-4 flex items-center justify-between text-xs">
               <span className="rounded bg-emerald-50 px-2 py-1 font-medium text-emerald-700">
@@ -214,7 +214,7 @@ export function InspectorPanel({ bootstrap }: { bootstrap: AppBootstrapDto }): R
               {percentage.toFixed(1)}%
             </div>
           </section>
-          <section className="mt-4 rounded-lg border border-neutral-200 p-4">
+          <section className="mt-4 rounded-xl border border-neutral-200 p-4">
             <h2 className="text-sm font-semibold text-neutral-900">{t('sessionMetrics')}</h2>
             <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-5 text-xs">
               <div>
