@@ -129,6 +129,10 @@ describe('Core application', () => {
         status: 'completed',
         totalTokens: 7
       })
+      expect(events.find((event) => event.type === 'run.completed')?.payload).toMatchObject({
+        finalText: 'beta4 handle response',
+        finalStep: 2
+      })
 
       const beforeDeniedRun = events.at(-1)?.sequence ?? 0
       await core.handle('runs.enqueue', { threadId: thread.id, input: 'Try the command again' })

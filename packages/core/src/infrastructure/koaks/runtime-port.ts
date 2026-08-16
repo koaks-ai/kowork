@@ -22,7 +22,7 @@ export type AgentStreamEvent =
         | { type: 'custom'; kind: string; payload: unknown }
     }
   | { type: 'step_completed'; step: number }
-  | { type: 'completed'; usage: AgentUsage }
+  | { type: 'completed'; usage: AgentUsage; finalText: string }
   | { type: 'incomplete'; usage: AgentUsage; reason: Record<string, unknown> }
   | { type: 'terminated'; usage?: AgentUsage; reason: Record<string, unknown> }
   | { type: 'failed'; usage: AgentUsage; error: { message: string; type: string } }

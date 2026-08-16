@@ -25,6 +25,7 @@ export class FakeAgentRuntime implements AgentRuntimePort {
         argumentsJson: JSON.stringify({ path: 'README.md', startLine: 1, endLine: 80 })
       }
     }
+    yield { type: 'step_completed', step: 1 }
     await new Promise((resolve) => setTimeout(resolve, 40))
     yield {
       type: 'tool_result',
@@ -42,8 +43,10 @@ export class FakeAgentRuntime implements AgentRuntimePort {
       await new Promise((resolve) => setTimeout(resolve, 20))
       yield { type: 'text_delta', text }
     }
+    yield { type: 'step_completed', step: 2 }
     yield {
       type: 'completed',
+      finalText: response,
       usage: {
         promptTokens: 24,
         completionTokens: 32,

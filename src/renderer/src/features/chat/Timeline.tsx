@@ -1,16 +1,19 @@
 import {
   Activity,
   Brain,
-  CheckCircle2,
+  Check,
   ChevronDown,
   CircleAlert,
   Clock3,
+  Copy,
+  Split,
   TerminalSquare
 } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { RunEventDto } from '@kowork/contracts'
 import { MarkdownContent } from '../../shared/ui/MarkdownContent'
+import { IconButton } from '../../shared/ui/IconButton'
 import { collectTimeline, type ReasoningActivity, type ToolActivity } from './timeline-model'
 
 function CollapsibleContent({
@@ -146,6 +149,54 @@ function StreamingMarkdown({
       data-streaming={active || undefined}
     >
       <MarkdownContent content={displayed} />
+    </div>
+  )
+}
+
+function RunActions({ copyText }: { copyText?: string }): React.JSX.Element {
+  const { t } = useTranslation()
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle')
+  const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(
+    () => () => {
+      if (resetTimer.current) clearTimeout(resetTimer.current)
+    },
+    []
+  )
+
+  const copyFinalText = async (): Promise<void> => {
+    if (!copyText) return
+    try {
+      await navigator.clipboard.writeText(copyText)
+      setCopyState('copied')
+    } catch {
+      setCopyState('failed')
+    }
+    if (resetTimer.current) clearTimeout(resetTimer.current)
+    resetTimer.current = setTimeout(() => setCopyState('idle'), 5_000)
+  }
+
+  const copyLabel =
+    copyState === 'copied'
+      ? t('copied')
+      : copyState === 'failed'
+        ? t('copyFailed')
+        : t('copyFinalResponse')
+
+  return (
+    <div data-run-actions className="mt-3 flex items-center gap-0.5">
+      <IconButton
+        label={copyLabel}
+        data-run-action="copy"
+        disabled={!copyText}
+        onClick={() => void copyFinalText()}
+      >
+        {copyState === 'copied' ? <Check size={16} /> : <Copy size={16} />}
+      </IconButton>
+      <IconButton label={t('branchUnavailable')} data-run-action="branch" disabled>
+        <Split size={17} className="rotate-90" />
+      </IconButton>
     </div>
   )
 }
@@ -400,7 +451,12 @@ export function Timeline({ events }: { events: RunEventDto[] }): React.JSX.Eleme
                   {item.activities.map((activity) => {
                     if (activity.kind === 'text') {
                       return (
-                        <div key={activity.id} data-run-content="text" className="select-text">
+                        <div
+                          key={activity.id}
+                          data-run-content="text"
+                          data-output-kind={activity.role}
+                          className="select-text"
+                        >
                           <StreamingMarkdown
                             content={activity.text}
                             active={activity.id === activeTextId}
@@ -449,21 +505,15 @@ export function Timeline({ events }: { events: RunEventDto[] }): React.JSX.Eleme
                 </div>
               ) : null}
 
-              {item.status && (
-                <div
-                  className={`mt-5 flex items-center gap-1.5 text-xs ${
-                    item.status === 'completed' ? 'text-neutral-400' : 'text-red-600'
-                  }`}
-                >
-                  {item.status === 'completed' ? (
-                    <CheckCircle2 size={14} />
-                  ) : (
-                    <CircleAlert size={14} />
-                  )}
+              {item.status === 'completed' ? (
+                <RunActions copyText={item.copyText} />
+              ) : item.status ? (
+                <div className="mt-5 flex items-center gap-1.5 text-xs text-red-600">
+                  <CircleAlert size={14} />
                   {t(item.status)}
                   {item.error ? ` · ${item.error}` : ''}
                 </div>
-              )}
+              ) : null}
             </div>
           </article>
         )

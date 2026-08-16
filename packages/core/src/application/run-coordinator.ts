@@ -74,6 +74,9 @@ export class RunCoordinator {
   ): Promise<void> {
     const project = this.database.getProject(thread.projectId)
     let usage = zeroUsage
+    let currentStep = 1
+    let finalStep = 0
+    let finalText = ''
     try {
       this.database.updateRun(run.id, { status: 'running' })
       this.events.publish({
@@ -109,7 +112,7 @@ export class RunCoordinator {
             threadId: thread.id,
             runId: run.id,
             type: 'run.text',
-            payload: { text: event.text }
+            payload: { text: event.text, step: currentStep }
           })
         } else if (event.type === 'reasoning_delta') {
           this.events.publish({
@@ -159,8 +162,12 @@ export class RunCoordinator {
                       text: JSON.stringify(progress.payload)
                     }
           })
+        } else if (event.type === 'step_completed') {
+          finalStep = event.step
+          currentStep = event.step + 1
         } else if (event.type === 'completed') {
           usage = event.usage
+          finalText = event.finalText
         } else if (event.type === 'failed') {
           usage = event.usage
           throw new CoreError(event.error.type, event.error.message)
@@ -182,7 +189,7 @@ export class RunCoordinator {
         threadId: thread.id,
         runId: run.id,
         type: 'run.completed',
-        payload: { usage }
+        payload: { usage, finalText, finalStep }
       })
     } catch (error) {
       const cancelled = controller.signal.aborted

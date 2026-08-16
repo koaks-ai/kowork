@@ -73,6 +73,11 @@ function textFromItems(items: ModelItem[]): string {
     .join('\n')
 }
 
+function textFromMessage(item: ModelItem): string {
+  if (item.type !== 'message') return ''
+  return item.content.map((part) => (part.type === 'text' ? part.text : '')).join('')
+}
+
 function toolCallFrom(context: Record<string, JsonValue>): ToolCall {
   const call = context.call
   if (
@@ -534,7 +539,15 @@ export class KoaksAgentRuntime implements AgentRuntimePort {
       }
       if (!terminal)
         throw new CoreError('run_missing_terminal_event', 'Koaks run ended without a result')
-      yield terminal as AgentStreamEvent
+      if (terminal.type === 'completed') {
+        yield {
+          type: 'completed',
+          usage: terminal.usage,
+          finalText: textFromMessage(terminal.message)
+        }
+      } else {
+        yield terminal as AgentStreamEvent
+      }
     } finally {
       if (!terminal) {
         const reason =

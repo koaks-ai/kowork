@@ -205,7 +205,7 @@ export function installBrowserPreviewApi(): void {
           ...runs
         ]
         emit('run.started', { input, requestId: request.id }, runId)
-        setTimeout(() => emit('run.text', { text: '我先确认一下当前项目。' }, runId), 40)
+        setTimeout(() => emit('run.text', { text: '我先确认一下当前项目。', step: 1 }, runId), 40)
         setTimeout(
           () =>
             emit(
@@ -252,7 +252,7 @@ export function installBrowserPreviewApi(): void {
         response
           .match(/.{1,6}/gs)
           ?.forEach((text, index) =>
-            setTimeout(() => emit('run.text', { text }, runId), 1_000 + index * 70)
+            setTimeout(() => emit('run.text', { text, step: 2 }, runId), 1_000 + index * 70)
           )
         setTimeout(() => {
           runs = runs.map((run) =>
@@ -267,7 +267,11 @@ export function installBrowserPreviewApi(): void {
                 }
               : run
           )
-          emit('run.completed', { usage: { totalTokens: 5_558 } }, runId)
+          emit(
+            'run.completed',
+            { usage: { totalTokens: 5_558 }, finalText: response, finalStep: 2 },
+            runId
+          )
         }, 1_900)
         return request
       },

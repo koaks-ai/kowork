@@ -124,7 +124,23 @@ test('runs through the real Electron, preload, main and Core process chain', asy
         elements.map((element) => element.getAttribute('data-run-content'))
       )
     ).toEqual(['text', 'reasoning', 'tool', 'reasoning', 'text'])
-    await expect(page.getByText('已完成')).toBeVisible({ timeout: 5_000 })
+    expect(
+      await orderedContent.evaluateAll((elements) =>
+        elements.map((element) => element.getAttribute('data-output-kind'))
+      )
+    ).toEqual(['process', null, null, null, 'final'])
+    const copyAction = page.locator('[data-run-action="copy"]').first()
+    await expect(copyAction).toHaveAttribute('aria-label', '复制最终回复', { timeout: 5_000 })
+    await expect(page.getByRole('button', { name: '创建分支（暂不可用）' }).first()).toBeDisabled()
+    await expect(page.getByText('已完成')).toHaveCount(0)
+    await copyAction.click()
+    await expect(copyAction).toHaveAttribute('aria-label', '已复制')
+    await expect(copyAction.locator('.lucide-check')).toBeVisible()
+    await expect
+      .poll(() => electronApp.evaluate(({ clipboard }) => clipboard.readText()))
+      .toBe(
+        '已收到任务：检查 README\n\n### 检查结果\n\n- 已读取 `README.md`\n- 当前内容可正常访问\n\n这是 KoWork 测试运行时生成的**流式回复**。'
+      )
     const chatContentBox = await page.locator('[data-chat-content]').evaluate((element) => {
       const bounds = element.getBoundingClientRect()
       const style = getComputedStyle(element)
@@ -194,7 +210,10 @@ test('runs through the real Electron, preload, main and Core process chain', asy
     expect(restored.count).toBeGreaterThan(0)
     expect(restored.types).toContain('run.started')
     await expect(page.getByText(/^后台运行校验/)).toBeVisible({ timeout: 5_000 })
-    await expect(page.getByText('已完成')).toHaveCount(2, { timeout: 10_000 })
+    await expect(page.getByRole('button', { name: '复制最终回复' })).toHaveCount(2, {
+      timeout: 10_000
+    })
+    await expect(page.getByText('已完成')).toHaveCount(0)
 
     await electronApp.evaluate(({ BrowserWindow }) =>
       BrowserWindow.getAllWindows()[0]?.setSize(1_000, 700)

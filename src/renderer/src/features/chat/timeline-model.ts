@@ -9,7 +9,9 @@ export interface ReasoningActivity {
 export interface TextActivity {
   id: string
   kind: 'text'
+  role: 'process' | 'final'
   text: string
+  step?: number
 }
 
 export interface ToolActivity {
@@ -37,6 +39,8 @@ export interface RunTimelineItem {
   input?: string
   activities: RunActivity[]
   status?: RunStatus
+  finalText?: string
+  copyText?: string
   error?: string
   startedAt: number
   finishedAt?: number
@@ -72,11 +76,19 @@ export function collectTimeline(events: RunEventDto[]): RunTimelineItem[] {
     if (event.type === 'run.started') item.input = String(event.payload.input ?? '')
     if (event.type === 'run.text') {
       const text = String(event.payload.text ?? '')
+      const step =
+        typeof event.payload.step === 'number' && Number.isInteger(event.payload.step)
+          ? event.payload.step
+          : undefined
       const previous = item.activities.at(-1)
-      if (item.lastEventType === 'run.text' && previous?.kind === 'text') {
+      if (
+        item.lastEventType === 'run.text' &&
+        previous?.kind === 'text' &&
+        previous.step === step
+      ) {
         previous.text += text
       } else {
-        item.activities.push({ id: event.id, kind: 'text', text })
+        item.activities.push({ id: event.id, kind: 'text', role: 'process', text, step })
       }
     }
     if (event.type === 'run.reasoning') {
@@ -150,7 +162,47 @@ export function collectTimeline(events: RunEventDto[]): RunTimelineItem[] {
         }
       }
     }
-    if (event.type === 'run.completed') item.status = 'completed'
+    if (event.type === 'run.completed') {
+      item.status = 'completed'
+      const textActivities = item.activities.filter(
+        (activity): activity is TextActivity => activity.kind === 'text'
+      )
+      const finalText =
+        typeof event.payload.finalText === 'string' ? event.payload.finalText : undefined
+      const hasFinalText = Boolean(finalText?.trim())
+      const finalStep =
+        typeof event.payload.finalStep === 'number' && event.payload.finalStep > 0
+          ? event.payload.finalStep
+          : undefined
+
+      if (finalStep !== undefined) {
+        for (const activity of textActivities) {
+          activity.role = activity.step === finalStep ? 'final' : 'process'
+        }
+        let finalActivities = textActivities.filter((activity) => activity.role === 'final')
+        if (finalText && finalActivities.length === 0) {
+          const activity: TextActivity = {
+            id: `final:${event.id}`,
+            kind: 'text',
+            role: 'final',
+            text: finalText,
+            step: finalStep
+          }
+          item.activities.push(activity)
+          finalActivities = [activity]
+        }
+        item.finalText = hasFinalText
+          ? finalText
+          : finalActivities.map((activity) => activity.text).join('') || undefined
+      } else {
+        const finalActivity = textActivities.at(-1)
+        if (finalActivity) finalActivity.role = 'final'
+        item.finalText = hasFinalText ? finalText : finalActivity?.text
+      }
+      item.copyText = hasFinalText
+        ? finalText
+        : textActivities.map((activity) => activity.text).join('') || undefined
+    }
     if (event.type === 'run.failed') {
       item.status = 'failed'
       item.error = String(event.payload.message ?? '')
