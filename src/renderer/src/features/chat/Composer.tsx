@@ -1,23 +1,59 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Bot, ChevronUp, CircleHelp, Gauge, Send, ShieldCheck, Square } from 'lucide-react'
-import { useLayoutEffect, useRef, useState } from 'react'
+import { ChevronUp, CircleHelp, Gauge, Send, ShieldCheck, Square } from 'lucide-react'
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { ModelProfileDto, PermissionMode, RunDto, ThreadDto } from '@kowork/contracts'
+import type {
+  ModelProfileDto,
+  PermissionMode,
+  ProviderDto,
+  RunDto,
+  ThreadDto
+} from '@kowork/contracts'
+import { BlurReveal } from '../../shared/ui/BlurReveal'
 import { ApprovalBanner } from '../approvals/ApprovalBanner'
 
 interface ComposerProps {
   thread: ThreadDto
+  providers: ProviderDto[]
   profiles: ModelProfileDto[]
   activeRun?: RunDto
   queuedCount: number
   onHeightChange?(height: number): void
 }
 
+function groupProfilesByProvider(
+  profiles: ModelProfileDto[],
+  providers: ProviderDto[]
+): Array<{ id: string; name: string; profiles: ModelProfileDto[] }> {
+  const profilesByProvider = new Map<string, ModelProfileDto[]>()
+  for (const profile of profiles) {
+    const list = profilesByProvider.get(profile.providerId)
+    if (list) list.push(profile)
+    else profilesByProvider.set(profile.providerId, [profile])
+  }
+
+  const groups: Array<{ id: string; name: string; profiles: ModelProfileDto[] }> = []
+  const seen = new Set<string>()
+  for (const provider of providers) {
+    const providerProfiles = profilesByProvider.get(provider.id)
+    if (!providerProfiles?.length) continue
+    groups.push({ id: provider.id, name: provider.name, profiles: providerProfiles })
+    seen.add(provider.id)
+  }
+  for (const [providerId, providerProfiles] of profilesByProvider) {
+    if (seen.has(providerId)) continue
+    groups.push({ id: providerId, name: providerId, profiles: providerProfiles })
+  }
+  return groups
+}
+
 const permissionModes: PermissionMode[] = ['ask', 'auto', 'yolo']
+const BLUR_REVEAL_EXIT_MS = 220
 
 export function Composer({
   thread,
+  providers,
   profiles,
   activeRun,
   queuedCount,
@@ -26,6 +62,8 @@ export function Composer({
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [value, setValue] = useState('')
+  const [modelMenuOpen, setModelMenuOpen] = useState(false)
+  const [modelMenuLeaving, setModelMenuLeaving] = useState(false)
   const container = useRef<HTMLDivElement>(null)
   const textarea = useRef<HTMLTextAreaElement>(null)
   const enqueue = useMutation({
@@ -49,6 +87,24 @@ export function Composer({
     if (value.trim() && !enqueue.isPending) enqueue.mutate()
   }
   const selectedProfile = profiles.find((profile) => profile.id === thread.modelProfileId)
+  const groupedProfiles = groupProfilesByProvider(profiles, providers)
+  const handleModelMenuOpenChange = useCallback((open: boolean): void => {
+    if (open) {
+      setModelMenuLeaving(false)
+      setModelMenuOpen(true)
+      return
+    }
+    setModelMenuLeaving(true)
+  }, [])
+
+  useEffect(() => {
+    if (!modelMenuLeaving) return
+    const timer = window.setTimeout(() => {
+      setModelMenuOpen(false)
+      setModelMenuLeaving(false)
+    }, BLUR_REVEAL_EXIT_MS)
+    return () => window.clearTimeout(timer)
+  }, [modelMenuLeaving])
   const modeIcons: Record<PermissionMode, React.ReactNode> = {
     ask: <CircleHelp size={14} />,
     auto: <ShieldCheck size={14} />,
@@ -110,12 +166,11 @@ export function Composer({
             />
             <div className="flex min-h-11 items-center justify-between gap-3 px-3 pb-3">
               <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                <DropdownMenu.Root>
+                <DropdownMenu.Root open={modelMenuOpen} onOpenChange={handleModelMenuOpenChange}>
                   <DropdownMenu.Trigger
                     data-model-selector
                     className="flex h-8 items-center gap-1.5 rounded-md border border-neutral-200 bg-neutral-50 px-2 text-xs text-neutral-700 hover:bg-neutral-100"
                   >
-                    <Bot size={14} />{' '}
                     <span className="max-w-36 truncate">{selectedProfile?.name ?? t('model')}</span>
                     <ChevronUp size={12} />
                   </DropdownMenu.Trigger>
@@ -123,21 +178,37 @@ export function Composer({
                     <DropdownMenu.Content
                       side="top"
                       align="start"
-                      className="z-50 min-w-56 rounded-md border border-neutral-200 bg-white p-1 shadow-xl"
+                      className={`z-50 outline-none ${modelMenuLeaving ? 'pointer-events-none' : ''}`}
                     >
-                      {profiles.map((profile) => (
-                        <DropdownMenu.Item
-                          key={profile.id}
-                          disabled={!profile.available}
-                          onSelect={() => updateThread.mutate({ modelProfileId: profile.id })}
-                          className="flex cursor-default items-center justify-between rounded px-2 py-2 text-xs text-neutral-700 outline-none hover:bg-neutral-100 data-[disabled]:opacity-40"
-                        >
-                          <span>{profile.name}</span>
-                          <span className="font-mono text-[10px] text-neutral-400">
-                            {profile.model}
-                          </span>
-                        </DropdownMenu.Item>
-                      ))}
+                      <BlurReveal
+                        className="h-full kowork-blur-reveal-from-bottom"
+                        state={modelMenuLeaving ? 'closed' : 'open'}
+                      >
+                        <div className="max-h-80 min-w-48 overflow-y-auto rounded-xl border border-neutral-200 bg-white p-1 shadow-xl">
+                          {groupedProfiles.map((group, index) => (
+                            <Fragment key={group.id}>
+                              {index > 0 && (
+                                <DropdownMenu.Separator className="my-1 h-px bg-neutral-100" />
+                              )}
+                              <DropdownMenu.Group>
+                                <DropdownMenu.Label className="px-2 py-1.5 text-[10px] font-medium text-neutral-400">
+                                  {group.name}
+                                </DropdownMenu.Label>
+                                {group.profiles.map((profile) => (
+                                  <DropdownMenu.Item
+                                    key={profile.id}
+                                    disabled={!profile.available}
+                                    onSelect={() => updateThread.mutate({ modelProfileId: profile.id })}
+                                    className="flex cursor-default items-center rounded-lg px-2 py-2 text-xs text-neutral-700 outline-none hover:bg-neutral-100 data-[disabled]:opacity-40"
+                                  >
+                                    {profile.name}
+                                  </DropdownMenu.Item>
+                                ))}
+                              </DropdownMenu.Group>
+                            </Fragment>
+                          ))}
+                        </div>
+                      </BlurReveal>
                     </DropdownMenu.Content>
                   </DropdownMenu.Portal>
                 </DropdownMenu.Root>

@@ -296,6 +296,21 @@ textarea,
     kowork-blur-reveal-blur-out 220ms cubic-bezier(0.4, 0, 1, 1) both;
 }
 
+.kowork-blur-reveal.kowork-blur-reveal-from-bottom {
+  transform-origin: bottom left;
+  animation:
+    kowork-blur-reveal-fade-in 200ms cubic-bezier(0.22, 1, 0.36, 1) both,
+    kowork-blur-reveal-blur-in 380ms cubic-bezier(0.22, 1, 0.36, 1) both,
+    kowork-blur-reveal-scale-in 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.kowork-blur-reveal.kowork-blur-reveal-from-bottom[data-state='closed'] {
+  animation:
+    kowork-blur-reveal-fade-out 160ms cubic-bezier(0.4, 0, 1, 1) both,
+    kowork-blur-reveal-blur-out 220ms cubic-bezier(0.4, 0, 1, 1) both,
+    kowork-blur-reveal-scale-out 220ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
 @keyframes kowork-settings-overlay-in {
   from {
     opacity: 0;
@@ -400,6 +415,26 @@ textarea,
   }
 }
 
+@keyframes kowork-blur-reveal-scale-in {
+  from {
+    transform: translateY(6px) scale(0.94);
+  }
+
+  to {
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes kowork-blur-reveal-scale-out {
+  from {
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    transform: translateY(4px) scale(0.96);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .kowork-disclosure {
     transition: none;
@@ -416,7 +451,9 @@ textarea,
   .kowork-settings-overlay,
   .kowork-settings-dialog,
   .kowork-blur-reveal,
-  .kowork-blur-reveal[data-state='closed'] {
+  .kowork-blur-reveal[data-state='closed'],
+  .kowork-blur-reveal.kowork-blur-reveal-from-bottom,
+  .kowork-blur-reveal.kowork-blur-reveal-from-bottom[data-state='closed'] {
     animation: none;
   }
 }

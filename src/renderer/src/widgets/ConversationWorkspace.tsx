@@ -263,6 +263,7 @@ export function ConversationWorkspace({
         </div>
         <Composer
           thread={thread}
+          providers={bootstrap.providers}
           profiles={bootstrap.modelProfiles}
           activeRun={activeRun}
           queuedCount={(queueQuery.data ?? []).filter((item) => item.status === 'queued').length}
