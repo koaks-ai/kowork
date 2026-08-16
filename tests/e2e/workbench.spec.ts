@@ -167,13 +167,41 @@ test('runs through the real Electron, preload, main and Core process chain', asy
     expect(chatScrollBox!.y + chatScrollBox!.height).toBeGreaterThan(
       composerBox!.y + composerBox!.height
     )
+    expect(
+      Math.abs(
+        chatScrollBox!.y + chatScrollBox!.height - (composerBox!.y + composerBox!.height) - 10
+      )
+    ).toBeLessThanOrEqual(1)
     const composerOverlayBox = await page.locator('[data-chat-composer-overlay]').boundingBox()
+    const composerOcclusionBox = await page.locator('[data-chat-composer-occlusion]').boundingBox()
     expect(composerOverlayBox).not.toBeNull()
+    expect(composerOcclusionBox).not.toBeNull()
     expect(Math.abs(composerOverlayBox!.y - composerBox!.y)).toBeLessThanOrEqual(1)
-    await expect(page.locator('[data-chat-composer-overlay]')).toHaveCSS(
+    expect(Math.abs(composerOcclusionBox!.y - (composerBox!.y + 16))).toBeLessThanOrEqual(1)
+    await expect(page.locator('[data-chat-composer]')).toHaveCSS('border-radius', '16px')
+    await expect(page.locator('[data-chat-composer]')).toHaveCSS(
+      'transition-property',
+      'border-color, box-shadow'
+    )
+    await expect(page.locator('[data-chat-composer]')).toHaveCSS('transition-duration', '0.2s')
+    await expect(page.locator('[data-chat-composer-occlusion]')).toHaveCSS(
       'background-color',
       'rgb(255, 255, 255)'
     )
+    const modelSelectorBox = await page.locator('[data-model-selector]').boundingBox()
+    const permissionSelectorBox = await page.locator('[data-permission-selector]').boundingBox()
+    expect(modelSelectorBox).not.toBeNull()
+    expect(permissionSelectorBox).not.toBeNull()
+    expect(Math.abs(modelSelectorBox!.height - permissionSelectorBox!.height)).toBeLessThanOrEqual(
+      1
+    )
+    const sendButtonBox = await page.getByRole('button', { name: '发送' }).boundingBox()
+    const sendButtonRadius = await page
+      .getByRole('button', { name: '发送' })
+      .evaluate((element) => Number.parseFloat(getComputedStyle(element).borderRadius))
+    expect(sendButtonBox).not.toBeNull()
+    expect(sendButtonBox!.width).toBe(sendButtonBox!.height)
+    expect(sendButtonRadius).toBeGreaterThanOrEqual(sendButtonBox!.width / 2)
     await page.screenshot({ path: testInfo.outputPath('conversation.png') })
 
     await page.getByRole('tab', { name: '文件' }).click()
@@ -188,7 +216,15 @@ test('runs through the real Electron, preload, main and Core process chain', asy
     await page.getByRole('button', { name: '返回上级' }).click()
     await page.getByPlaceholder('给 KoWork 发消息…').fill(`后台运行校验 ${'x'.repeat(2_000)}`)
     await page.getByRole('button', { name: '发送' }).click()
-    await expect(page.getByRole('button', { name: '取消运行' })).toBeVisible()
+    const cancelButton = page.getByRole('button', { name: '取消运行' })
+    await expect(cancelButton).toBeVisible()
+    const cancelButtonBox = await cancelButton.boundingBox()
+    const cancelButtonRadius = await cancelButton.evaluate((element) =>
+      Number.parseFloat(getComputedStyle(element).borderRadius)
+    )
+    expect(cancelButtonBox).not.toBeNull()
+    expect(cancelButtonBox!.width).toBe(cancelButtonBox!.height)
+    expect(cancelButtonRadius).toBeGreaterThanOrEqual(cancelButtonBox!.width / 2)
     await expect
       .poll(() =>
         page
