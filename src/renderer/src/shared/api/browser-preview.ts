@@ -160,8 +160,20 @@ export function installBrowserPreviewApi(): void {
         )
         return threads.find((thread) => thread.id === threadId)!
       },
-      archive: async (threadId) => threads.find((thread) => thread.id === threadId)!,
-      restore: async (threadId) => threads.find((thread) => thread.id === threadId)!
+      archive: async (threadId) => {
+        const target = threads.find((thread) => thread.id === threadId)
+        if (!target) throw new Error('Thread not found')
+        const archived = { ...target, deletedAt: Date.now(), updatedAt: Date.now() }
+        threads = threads.filter((thread) => thread.id !== threadId)
+        return archived
+      },
+      restore: async (threadId) => {
+        const target = threads.find((thread) => thread.id === threadId)
+        if (!target) throw new Error('Thread not found')
+        const restored = { ...target, deletedAt: null, updatedAt: Date.now() }
+        threads = threads.map((thread) => (thread.id === threadId ? restored : thread))
+        return restored
+      }
     },
     runs: {
       enqueue: async (threadId, input) => {

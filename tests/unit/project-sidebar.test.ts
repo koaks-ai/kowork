@@ -70,28 +70,54 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
+function installApi(): {
+  list: ReturnType<typeof vi.fn>
+  update: ReturnType<typeof vi.fn>
+  archive: ReturnType<typeof vi.fn>
+} {
+  const list = vi.fn((projectId: string) => Promise.resolve(threads[projectId] ?? []))
+  const update = vi.fn(async (threadId: string, changes: Partial<ThreadDto>) => {
+    const thread = Object.values(threads)
+      .flat()
+      .find((item) => item.id === threadId)!
+    return { ...thread, ...changes, updatedAt: Date.now() }
+  })
+  const archive = vi.fn(async (threadId: string) => {
+    const thread = Object.values(threads)
+      .flat()
+      .find((item) => item.id === threadId)!
+    return { ...thread, deletedAt: Date.now() }
+  })
+  Object.defineProperty(window, 'kowork', {
+    configurable: true,
+    value: { threads: { list, update, archive } } as unknown as KoWorkApi
+  })
+  return { list, update, archive }
+}
+
+function renderSidebar(): { view: ReturnType<typeof render>; queryClient: QueryClient } {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } }
+  })
+  const view = render(
+    createElement(
+      QueryClientProvider,
+      { client: queryClient },
+      createElement(
+        Tooltip.Provider,
+        null,
+        createElement(ProjectSidebar, { bootstrap, isMacOS: false })
+      )
+    )
+  )
+  return { view, queryClient }
+}
+
 describe('ProjectSidebar', () => {
   it('keeps multiple projects expanded independently', async () => {
     useWorkbenchStore.setState({ projectId: 'project-a', threadId: 'thread-project-a' })
-    const listThreads = vi.fn((projectId: string) => Promise.resolve(threads[projectId] ?? []))
-    Object.defineProperty(window, 'kowork', {
-      configurable: true,
-      value: { threads: { list: listThreads } } as unknown as KoWorkApi
-    })
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false }, mutations: { retry: false } }
-    })
-    const view = render(
-      createElement(
-        QueryClientProvider,
-        { client: queryClient },
-        createElement(
-          Tooltip.Provider,
-          null,
-          createElement(ProjectSidebar, { bootstrap, isMacOS: false })
-        )
-      )
-    )
+    installApi()
+    const { view, queryClient } = renderSidebar()
     const alpha = view.getByRole('button', { name: 'Alpha' })
     const beta = view.getByRole('button', { name: 'Beta' })
 
@@ -138,5 +164,41 @@ describe('ProjectSidebar', () => {
     fireEvent.click(alpha)
     expect(alpha.getAttribute('aria-expanded')).toBe('false')
     expect(beta.getAttribute('aria-expanded')).toBe('true')
+  })
+
+  it('renames a thread from the context menu', async () => {
+    useWorkbenchStore.setState({ projectId: 'project-a', threadId: 'thread-project-a' })
+    const api = installApi()
+    const { view } = renderSidebar()
+    await waitFor(() => expect(view.getByText('Alpha conversation')).not.toBeNull())
+
+    fireEvent.contextMenu(view.getByRole('button', { name: 'Alpha conversation' }))
+    fireEvent.click(view.getByRole('menuitem', { name: '修改名称' }))
+
+    const input = view.getByRole('textbox', { name: '会话标题' }) as HTMLInputElement
+    expect(input.value).toBe('Alpha conversation')
+    fireEvent.change(input, { target: { value: '  手动命名的会话  ' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    await waitFor(() =>
+      expect(api.update).toHaveBeenCalledWith('thread-project-a', { title: '手动命名的会话' })
+    )
+    await waitFor(() => expect(view.getByText('手动命名的会话')).not.toBeNull())
+  })
+
+  it('archives a thread from the context menu and clears the selection', async () => {
+    useWorkbenchStore.setState({ projectId: 'project-a', threadId: 'thread-project-a' })
+    const api = installApi()
+    const { view } = renderSidebar()
+    await waitFor(() => expect(view.getByText('Alpha conversation')).not.toBeNull())
+
+    fireEvent.contextMenu(view.getByRole('button', { name: 'Alpha conversation' }))
+    const items = view.getAllByRole('menuitem')
+    expect(items.map((item) => item.textContent)).toEqual(['修改名称', '删除会话'])
+    fireEvent.click(view.getByRole('menuitem', { name: '删除会话' }))
+
+    await waitFor(() => expect(api.archive).toHaveBeenCalledWith('thread-project-a'))
+    await waitFor(() => expect(view.queryByText('Alpha conversation')).toBeNull())
+    expect(useWorkbenchStore.getState().threadId).toBeUndefined()
   })
 })

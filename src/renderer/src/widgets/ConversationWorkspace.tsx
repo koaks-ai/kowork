@@ -14,6 +14,7 @@ import { useWorkbenchStore } from '../shared/store/workbench'
 import { BlurSwapText } from '../shared/ui/BlurSwapText'
 import { BlurReveal } from '../shared/ui/BlurReveal'
 import { IconButton } from '../shared/ui/IconButton'
+import { InlineRenameInput } from '../shared/ui/InlineRenameInput'
 
 const suggestions = [
   'suggestionArchitecture',
@@ -38,6 +39,7 @@ export function ConversationWorkspace({
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [composerHeight, setComposerHeight] = useState(0)
+  const [editingTitle, setEditingTitle] = useState(false)
   const { projectId, threadId } = useWorkbenchStore()
   const scrollContainer = useRef<HTMLDivElement>(null)
   const followingLatest = useRef(true)
@@ -81,6 +83,17 @@ export function ConversationWorkspace({
         current.map((item) => (item.id === updated.id ? updated : item))
       )
   })
+  const renameThread = useMutation({
+    mutationFn: (title: string) => window.kowork.threads.update(thread!.id, { title }),
+    onSuccess: (updated) =>
+      queryClient.setQueryData<ThreadDto[]>(['threads', updated.projectId], (current = []) =>
+        current.map((item) => (item.id === updated.id ? updated : item))
+      )
+  })
+
+  useEffect(() => {
+    setEditingTitle(false)
+  }, [threadId])
 
   useEffect(
     () =>
@@ -171,14 +184,30 @@ export function ConversationWorkspace({
     <main className="flex min-w-0 flex-1 flex-col bg-white">
       <header className="app-drag flex h-14 shrink-0 items-center justify-between border-b border-neutral-200 bg-white px-4">
         <div className="flex min-w-0 items-center gap-2 text-sm">
-          <BlurSwapText
-            value={thread.title}
-            fallback={t('untitledThread')}
-            className="min-w-0 truncate font-medium text-neutral-900"
-          />
-          <IconButton label={t('threadTitle')}>
-            <Pencil size={13} />
-          </IconButton>
+          {editingTitle ? (
+            <InlineRenameInput
+              value={thread.title}
+              placeholder={t('untitledThread')}
+              aria-label={t('threadTitle')}
+              className="no-drag h-8 min-w-[10rem] max-w-md rounded-md border border-neutral-300 bg-white px-2 text-sm font-medium text-neutral-900 outline-none focus:border-blue-400"
+              onSubmit={(title) => {
+                setEditingTitle(false)
+                renameThread.mutate(title)
+              }}
+              onCancel={() => setEditingTitle(false)}
+            />
+          ) : (
+            <>
+              <BlurSwapText
+                value={thread.title}
+                fallback={t('untitledThread')}
+                className="min-w-0 truncate font-medium text-neutral-900"
+              />
+              <IconButton label={t('renameThread')} onClick={() => setEditingTitle(true)}>
+                <Pencil size={13} />
+              </IconButton>
+            </>
+          )}
         </div>
         {thread.queuePaused && (
           <button

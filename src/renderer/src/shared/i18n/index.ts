@@ -137,6 +137,8 @@ const zhCN = {
   back: '返回上级',
   archive: '归档',
   threadTitle: '会话标题',
+  renameThread: '修改名称',
+  deleteThread: '删除会话',
   close: '关闭',
   error: '发生错误',
   projectPath: '项目路径',

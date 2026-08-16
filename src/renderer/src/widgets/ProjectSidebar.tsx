@@ -5,6 +5,7 @@ import {
   Folder,
   FolderPlus,
   MessageSquarePlus,
+  Pencil,
   Plus,
   Trash2
 } from 'lucide-react'
@@ -15,7 +16,9 @@ import { SettingsDialog } from '../features/settings/SettingsDialog'
 import { useWorkbenchStore } from '../shared/store/workbench'
 import { AnimatedDisclosure } from '../shared/ui/AnimatedDisclosure'
 import { BlurSwapText } from '../shared/ui/BlurSwapText'
+import { ContextMenu } from '../shared/ui/ContextMenu'
 import { IconButton } from '../shared/ui/IconButton'
+import { InlineRenameInput } from '../shared/ui/InlineRenameInput'
 
 interface ProjectSidebarProps {
   bootstrap: AppBootstrapDto
@@ -28,6 +31,7 @@ interface ProjectThreadListProps {
   threads: ThreadDto[]
   selectedThreadId?: string
   onSelect(threadId: string): void
+  onRename(threadId: string, title: string): void
   onArchive(threadId: string): void
 }
 
@@ -35,17 +39,22 @@ function ProjectThreadList({
   threads,
   selectedThreadId,
   onSelect,
+  onRename,
   onArchive
 }: ProjectThreadListProps): React.JSX.Element {
   const { t } = useTranslation()
   const selectedIndex = threads.findIndex((thread) => thread.id === selectedThreadId)
   const [highlightedIndex, setHighlightedIndex] = useState(Math.max(selectedIndex, 0))
   const [previousSelectedIndex, setPreviousSelectedIndex] = useState(selectedIndex)
+  const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [menu, setMenu] = useState<{ threadId: string; x: number; y: number } | null>(null)
 
   if (selectedIndex !== previousSelectedIndex) {
     setPreviousSelectedIndex(selectedIndex)
     if (selectedIndex >= 0) setHighlightedIndex(selectedIndex)
   }
+
+  const menuThread = menu ? threads.find((thread) => thread.id === menu.threadId) : undefined
 
   return (
     <div className="relative">
@@ -58,23 +67,59 @@ function ProjectThreadList({
       {threads.map((thread) => (
         <div
           key={thread.id}
-          className={`group relative z-10 flex h-[34px] items-center rounded-lg ${thread.id === selectedThreadId ? 'text-neutral-900' : 'text-neutral-700 hover:bg-neutral-50'}`}
+          className={`relative z-10 flex h-[34px] items-center rounded-lg ${thread.id === selectedThreadId ? 'text-neutral-900' : 'text-neutral-700 hover:bg-neutral-50'}`}
+          onContextMenu={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+            setRenamingId(null)
+            setMenu({ threadId: thread.id, x: event.clientX, y: event.clientY })
+          }}
         >
-          <button
-            className="min-w-0 flex h-full flex-1 items-center truncate px-2 text-left text-sm"
-            onClick={() => onSelect(thread.id)}
-          >
-            <BlurSwapText value={thread.title} fallback={t('untitledThread')} />
-          </button>
-          <button
-            className="mr-1 hidden p-1 text-neutral-400 hover:text-red-600 group-hover:block"
-            aria-label={t('archive')}
-            onClick={() => onArchive(thread.id)}
-          >
-            <Trash2 size={13} />
-          </button>
+          {renamingId === thread.id ? (
+            <InlineRenameInput
+              value={thread.title}
+              placeholder={t('untitledThread')}
+              aria-label={t('threadTitle')}
+              className="mx-0.5 h-[26px] w-full rounded-md border border-blue-300 bg-white px-2 text-sm text-neutral-900 outline-none"
+              onSubmit={(title) => {
+                setRenamingId(null)
+                onRename(thread.id, title)
+              }}
+              onCancel={() => setRenamingId(null)}
+            />
+          ) : (
+            <button
+              className="flex h-full min-w-0 flex-1 items-center truncate px-2 text-left text-sm"
+              onClick={() => onSelect(thread.id)}
+            >
+              <BlurSwapText value={thread.title} fallback={t('untitledThread')} />
+            </button>
+          )}
         </div>
       ))}
+      {menu && menuThread ? (
+        <ContextMenu
+          x={menu.x}
+          y={menu.y}
+          onClose={() => setMenu(null)}
+          items={[
+            {
+              id: 'rename',
+              label: t('renameThread'),
+              icon: <Pencil size={14} />,
+              onSelect: () => setRenamingId(menuThread.id)
+            },
+            {
+              id: 'delete',
+              label: t('deleteThread'),
+              icon: <Trash2 size={14} />,
+              destructive: true,
+              separatorBefore: true,
+              onSelect: () => onArchive(menuThread.id)
+            }
+          ]}
+        />
+      ) : null}
     </div>
   )
 }
@@ -130,11 +175,22 @@ export function ProjectSidebar({ bootstrap, isMacOS }: ProjectSidebarProps): Rea
       setThread(thread.id)
     }
   })
+  const renameThread = useMutation({
+    mutationFn: ({ threadId: targetThreadId, title }: { threadId: string; title: string }) =>
+      window.kowork.threads.update(targetThreadId, { title }),
+    onSuccess: (thread) => {
+      queryClient.setQueryData<ThreadDto[]>(['threads', thread.projectId], (current = []) =>
+        current.map((item) => (item.id === thread.id ? thread : item))
+      )
+    }
+  })
   const archiveThread = useMutation({
     mutationFn: (targetThreadId: string) => window.kowork.threads.archive(targetThreadId),
     onSuccess: (thread) => {
-      void queryClient.invalidateQueries({ queryKey: ['threads', thread.projectId] })
-      if (threadId === thread.id) setThread(undefined)
+      queryClient.setQueryData<ThreadDto[]>(['threads', thread.projectId], (current = []) =>
+        current.filter((item) => item.id !== thread.id)
+      )
+      if (useWorkbenchStore.getState().threadId === thread.id) setThread(undefined)
     }
   })
 
@@ -209,6 +265,9 @@ export function ProjectSidebar({ bootstrap, isMacOS }: ProjectSidebarProps): Rea
                         if (!selected) setProject(project.id)
                         setThread(targetThreadId)
                       }}
+                      onRename={(targetThreadId, title) =>
+                        renameThread.mutate({ threadId: targetThreadId, title })
+                      }
                       onArchive={(targetThreadId) => archiveThread.mutate(targetThreadId)}
                     />
                   </div>
