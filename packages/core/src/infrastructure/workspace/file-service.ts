@@ -1,16 +1,13 @@
 import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises'
 import { dirname, relative } from 'node:path'
 import { applyPatch } from 'diff'
-import type { FileContentDto, FileEntryDto, ProjectDto, ThreadDto } from '@kowork/contracts'
+import type { FileContentDto, FileEntryDto, ProjectDto } from '@kowork/contracts'
 import { CoreError } from '../../domain/errors'
-import type { ApprovalService } from '../../application/approval-service'
 import { isWithinPath, resolveProjectPath } from './path-policy'
 
 const ignoredNames = new Set(['.git', 'node_modules', '.DS_Store', 'out', 'dist'])
 
 export class FileService {
-  constructor(private readonly approvals: ApprovalService) {}
-
   async list(project: ProjectDto, relativePath = '.'): Promise<FileEntryDto[]> {
     const directory = await resolveProjectPath(project.rootPath, relativePath)
     if (!isWithinPath(project.rootPath, directory))
@@ -52,39 +49,12 @@ export class FileService {
     }
   }
 
-  async readForTool(input: {
-    project: ProjectDto
-    thread: ThreadDto
-    runId: string
-    path: string
-  }): Promise<string> {
-    const requested = await resolveProjectPath(input.project.rootPath, input.path)
-    const authorized = await this.approvals.authorizePath({
-      ...input,
-      targetPath: requested,
-      write: false,
-      title: '读取文件',
-      detail: `读取 ${requested}`
-    })
-    return await readFile(authorized, 'utf8')
+  async readForTool(authorizedPath: string): Promise<string> {
+    return await readFile(authorizedPath, 'utf8')
   }
 
-  async listForTool(input: {
-    project: ProjectDto
-    thread: ThreadDto
-    runId: string
-    path: string
-  }): Promise<string> {
-    const requested = await resolveProjectPath(input.project.rootPath, input.path)
-    const authorized = await this.approvals.authorizePath({
-      ...input,
-      targetPath: requested,
-      targetIsDirectory: true,
-      write: false,
-      title: '列出目录',
-      detail: `列出 ${requested}`
-    })
-    const entries = await readdir(authorized, { withFileTypes: true })
+  async listForTool(authorizedPath: string): Promise<string> {
+    const entries = await readdir(authorizedPath, { withFileTypes: true })
     return JSON.stringify(
       entries
         .filter((entry) => !ignoredNames.has(entry.name))
@@ -92,39 +62,33 @@ export class FileService {
     )
   }
 
-  async applyPatch(input: {
-    project: ProjectDto
-    thread: ThreadDto
-    runId: string
-    path: string
-    patch: string
-  }): Promise<string> {
-    const requested = await resolveProjectPath(input.project.rootPath, input.path, true)
-    const authorized = await this.approvals.authorizePath({
-      ...input,
-      targetPath: requested,
-      write: true,
-      title: '修改文件',
-      detail: `应用补丁到 ${requested}`
-    })
+  async applyPatchForTool(authorizedPath: string, patch: string): Promise<string> {
     let source = ''
     try {
-      source = await readFile(authorized, 'utf8')
+      source = await readFile(authorizedPath, 'utf8')
     } catch {
       source = ''
     }
-    const updated = applyPatch(source, input.patch)
+    const updated = applyPatch(source, patch)
     if (updated === false)
-      throw new CoreError('patch_failed', `Patch could not be applied to '${input.path}'`)
-    await mkdir(dirname(authorized), { recursive: true })
-    await writeFile(authorized, updated, 'utf8')
-    return `Applied patch to ${input.path}`
+      throw new CoreError('patch_failed', `Patch could not be applied to '${authorizedPath}'`)
+    await mkdir(dirname(authorizedPath), { recursive: true })
+    await writeFile(authorizedPath, updated, 'utf8')
+    return `Applied patch to ${authorizedPath}`
   }
 
   async search(project: ProjectDto, query: string, relativePath = '.'): Promise<string> {
     const root = await resolveProjectPath(project.rootPath, relativePath)
     if (!isWithinPath(project.rootPath, root))
       throw new CoreError('path_outside_project', `'${relativePath}' is outside the project`)
+    return await this.searchDirectory(root, query)
+  }
+
+  async searchForTool(authorizedPath: string, query: string): Promise<string> {
+    return await this.searchDirectory(authorizedPath, query)
+  }
+
+  private async searchDirectory(root: string, query: string): Promise<string> {
     const matches: string[] = []
     const walk = async (directory: string): Promise<void> => {
       for (const entry of await readdir(directory, { withFileTypes: true })) {
@@ -139,7 +103,7 @@ export class FileService {
           const lines = content.split(/\r?\n/)
           lines.forEach((line, index) => {
             if (matches.length < 200 && line.toLowerCase().includes(query.toLowerCase())) {
-              matches.push(`${relative(project.rootPath, path)}:${index + 1}:${line}`)
+              matches.push(`${relative(root, path)}:${index + 1}:${line}`)
             }
           })
         } catch {
@@ -149,24 +113,5 @@ export class FileService {
     }
     await walk(root)
     return matches.length === 0 ? 'No matches found.' : matches.join('\n')
-  }
-
-  async searchForTool(input: {
-    project: ProjectDto
-    thread: ThreadDto
-    runId: string
-    query: string
-    path: string
-  }): Promise<string> {
-    const requested = await resolveProjectPath(input.project.rootPath, input.path)
-    await this.approvals.authorizePath({
-      ...input,
-      targetPath: requested,
-      targetIsDirectory: true,
-      write: false,
-      title: '搜索目录',
-      detail: `在 ${requested} 中搜索 ${input.query}`
-    })
-    return await this.search({ ...input.project, rootPath: requested }, input.query, '.')
   }
 }

@@ -11,7 +11,7 @@ import {
 import type { CoreEventBus } from './event-bus'
 
 interface PendingApproval {
-  resolve: (allowed: boolean) => void
+  settle: (allowed: boolean) => void
 }
 
 export class ApprovalService {
@@ -29,20 +29,14 @@ export class ApprovalService {
 
   respond(approvalId: string, decision: 'allow' | 'deny'): ApprovalDto {
     const approval = this.database.resolveApproval(approvalId, decision)
-    this.events.publish({
-      projectId: approval.projectId,
-      threadId: approval.threadId,
-      runId: approval.runId,
-      type: 'approval.resolved',
-      payload: { approvalId, decision }
-    })
-    this.pending.get(approvalId)?.resolve(decision === 'allow')
-    this.pending.delete(approvalId)
+    this.publishResolution(approval, decision)
+    this.pending.get(approvalId)?.settle(decision === 'allow')
     return approval
   }
 
   private async request(
-    input: Omit<ApprovalDto, 'id' | 'status' | 'createdAt' | 'resolvedAt'>
+    input: Omit<ApprovalDto, 'id' | 'status' | 'createdAt' | 'resolvedAt'>,
+    signal?: AbortSignal
   ): Promise<boolean> {
     if (!this.accepting) throw new CoreError('core_shutting_down', 'Core is shutting down')
     const approval = this.database.createApproval(input)
@@ -61,11 +55,58 @@ export class ApprovalService {
       type: 'run.waiting',
       payload: { approvalId: approval.id }
     })
-    const allowed = await new Promise<boolean>((resolve) =>
-      this.pending.set(approval.id, { resolve })
-    )
-    this.database.updateRun(input.runId, { status: 'running' })
+    const allowed = await new Promise<boolean>((resolve, reject) => {
+      let settled = false
+      const cleanup = (): void => {
+        this.pending.delete(approval.id)
+        signal?.removeEventListener('abort', abort)
+      }
+      const settle = (value: boolean): void => {
+        if (settled) return
+        settled = true
+        cleanup()
+        resolve(value)
+      }
+      const abort = (): void => {
+        if (settled) return
+        settled = true
+        cleanup()
+        try {
+          const denied = this.database.resolveApproval(approval.id, 'deny')
+          this.publishResolution(denied, 'deny', 'run_cancelled')
+        } catch {
+          // A user response can win the same race as run cancellation.
+        }
+        reject(
+          new CoreError(
+            'approval_cancelled',
+            typeof signal?.reason === 'string'
+              ? signal.reason
+              : 'Run cancelled while waiting for approval'
+          )
+        )
+      }
+
+      this.pending.set(approval.id, { settle })
+      if (signal?.aborted) abort()
+      else signal?.addEventListener('abort', abort, { once: true })
+    })
+    if (!signal?.aborted) this.database.updateRun(input.runId, { status: 'running' })
     return allowed
+  }
+
+  private publishResolution(
+    approval: ApprovalDto,
+    decision: 'allow' | 'deny',
+    reason?: string
+  ): void {
+    this.events.publish({
+      projectId: approval.projectId,
+      threadId: approval.threadId,
+      runId: approval.runId,
+      type: 'approval.resolved',
+      payload: { approvalId: approval.id, decision, ...(reason ? { reason } : {}) }
+    })
   }
 
   async authorizePath(input: {
@@ -77,6 +118,7 @@ export class ApprovalService {
     targetIsDirectory?: boolean
     title: string
     detail: string
+    signal?: AbortSignal
   }): Promise<string> {
     const canonical = await canonicalizePath(input.targetPath, input.write)
     const grants = this.database.listPathGrants(input.runId)
@@ -85,15 +127,18 @@ export class ApprovalService {
 
     if (!insideProject && !insideGrant) {
       const proposedRoot = input.targetIsDirectory ? canonical : dirname(canonical)
-      const allowed = await this.request({
-        projectId: input.project.id,
-        threadId: input.thread.id,
-        runId: input.runId,
-        kind: 'external_path',
-        title: '访问项目外目录',
-        detail: `${input.detail}\n授权目录：${proposedRoot}`,
-        requestedPath: proposedRoot
-      })
+      const allowed = await this.request(
+        {
+          projectId: input.project.id,
+          threadId: input.thread.id,
+          runId: input.runId,
+          kind: 'external_path',
+          title: '访问项目外目录',
+          detail: `${input.detail}\n授权目录：${proposedRoot}`,
+          requestedPath: proposedRoot
+        },
+        input.signal
+      )
       if (!allowed)
         throw new CoreError('permission_denied', `Access to '${proposedRoot}' was denied`)
       this.database.addPathGrant(input.runId, proposedRoot)
@@ -101,15 +146,18 @@ export class ApprovalService {
     }
 
     if (insideProject && input.write && input.thread.permissionMode === 'ask') {
-      const allowed = await this.request({
-        projectId: input.project.id,
-        threadId: input.thread.id,
-        runId: input.runId,
-        kind: 'file_write',
-        title: input.title,
-        detail: input.detail,
-        requestedPath: canonical
-      })
+      const allowed = await this.request(
+        {
+          projectId: input.project.id,
+          threadId: input.thread.id,
+          runId: input.runId,
+          kind: 'file_write',
+          title: input.title,
+          detail: input.detail,
+          requestedPath: canonical
+        },
+        input.signal
+      )
       if (!allowed) throw new CoreError('permission_denied', `Write to '${canonical}' was denied`)
     }
     return canonical
@@ -121,6 +169,7 @@ export class ApprovalService {
     runId: string
     cwd: string
     command: string
+    signal?: AbortSignal
   }): Promise<string> {
     const canonicalCwd = await canonicalizePath(input.cwd)
     const grants = this.database.listPathGrants(input.runId)
@@ -128,15 +177,18 @@ export class ApprovalService {
       !isWithinPath(input.project.rootPath, canonicalCwd) &&
       !authorizedByAnyRoot(canonicalCwd, grants)
     if (external) {
-      const allowed = await this.request({
-        projectId: input.project.id,
-        threadId: input.thread.id,
-        runId: input.runId,
-        kind: 'external_path',
-        title: '在项目外执行命令',
-        detail: `${input.command}\n工作目录：${canonicalCwd}`,
-        requestedPath: canonicalCwd
-      })
+      const allowed = await this.request(
+        {
+          projectId: input.project.id,
+          threadId: input.thread.id,
+          runId: input.runId,
+          kind: 'external_path',
+          title: '在项目外执行命令',
+          detail: `${input.command}\n工作目录：${canonicalCwd}`,
+          requestedPath: canonicalCwd
+        },
+        input.signal
+      )
       if (!allowed)
         throw new CoreError('permission_denied', `Shell access to '${canonicalCwd}' was denied`)
       this.database.addPathGrant(input.runId, canonicalCwd)
@@ -144,15 +196,18 @@ export class ApprovalService {
     }
 
     if (requiresShellApproval(input.thread.permissionMode, input.command)) {
-      const allowed = await this.request({
-        projectId: input.project.id,
-        threadId: input.thread.id,
-        runId: input.runId,
-        kind: 'shell',
-        title: '执行命令',
-        detail: `${input.command}\n工作目录：${canonicalCwd}`,
-        requestedPath: canonicalCwd
-      })
+      const allowed = await this.request(
+        {
+          projectId: input.project.id,
+          threadId: input.thread.id,
+          runId: input.runId,
+          kind: 'shell',
+          title: '执行命令',
+          detail: `${input.command}\n工作目录：${canonicalCwd}`,
+          requestedPath: canonicalCwd
+        },
+        input.signal
+      )
       if (!allowed)
         throw new CoreError('permission_denied', `Command '${input.command}' was denied`)
     }
@@ -161,13 +216,14 @@ export class ApprovalService {
 
   close(): void {
     this.accepting = false
-    for (const [approvalId, pending] of this.pending) {
+    for (const [approvalId, pending] of [...this.pending]) {
       try {
-        this.database.resolveApproval(approvalId, 'deny')
+        const approval = this.database.resolveApproval(approvalId, 'deny')
+        this.publishResolution(approval, 'deny', 'core_shutdown')
       } catch {
         // A concurrent response may already have resolved the persisted approval.
       }
-      pending.resolve(false)
+      pending.settle(false)
     }
     this.pending.clear()
   }

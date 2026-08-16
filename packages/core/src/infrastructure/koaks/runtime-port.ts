@@ -13,6 +13,14 @@ export type AgentStreamEvent =
   | { type: 'reasoning_delta'; text: string }
   | { type: 'tool_call_requested'; call: { id: string; name: string; argumentsJson: string } }
   | { type: 'tool_result'; callId: string; output: string; isError: boolean }
+  | {
+      type: 'tool_progress'
+      callId: string
+      progress:
+        | { type: 'output'; text: string; stream?: 'stdout' | 'stderr' }
+        | { type: 'status'; message: string }
+        | { type: 'custom'; kind: string; payload: unknown }
+    }
   | { type: 'step_completed'; step: number }
   | { type: 'completed'; usage: AgentUsage }
   | { type: 'incomplete'; usage: AgentUsage; reason: Record<string, unknown> }

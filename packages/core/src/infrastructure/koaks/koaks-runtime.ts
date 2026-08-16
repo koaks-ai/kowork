@@ -1,10 +1,14 @@
 import type {
   AgentConfig,
   AgentEvent,
+  HookExecutionContext,
+  JsonValue,
   KoaksAgent,
   KoaksRuntime,
   ModelItem,
   ModelProvider,
+  ToolCall,
+  ToolDecision,
   ToolDefinition
 } from '@koaks/node'
 import type {
@@ -23,12 +27,9 @@ import type { FileService } from '../workspace/file-service'
 import type { CommandRunner } from '../shell/command-runner'
 import type { GitService } from '../git/git-service'
 import type { CredentialProvider } from '../credentials/credential-provider'
+import { resolveProjectPath } from '../workspace/path-policy'
 import { PersistentThreadMemory } from './persistent-memory'
 import type { AgentRuntimePort, AgentStreamEvent } from './runtime-port'
-
-interface ActiveRunLookup {
-  getRunId(threadId: string): string | undefined
-}
 
 function estimateTokens(value: string): number {
   return Math.ceil(Buffer.byteLength(value, 'utf8') / 3)
@@ -67,6 +68,56 @@ function textFromItems(items: ModelItem[]): string {
     .join('\n')
 }
 
+function toolCallFrom(context: Record<string, JsonValue>): ToolCall {
+  const call = context.call
+  if (
+    call === null ||
+    typeof call !== 'object' ||
+    Array.isArray(call) ||
+    typeof call.id !== 'string' ||
+    typeof call.name !== 'string' ||
+    typeof call.argumentsJson !== 'string'
+  ) {
+    throw new CoreError('invalid_tool_context', 'Koaks Hook did not provide a valid tool call')
+  }
+  return call as unknown as ToolCall
+}
+
+function toolArguments(call: ToolCall): Record<string, unknown> {
+  try {
+    const value = call.argumentsJson.trim() ? (JSON.parse(call.argumentsJson) as unknown) : {}
+    if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+      return value as Record<string, unknown>
+    }
+  } catch {
+    // Report a stable application error below.
+  }
+  throw new CoreError('invalid_tool_arguments', `Tool '${call.name}' arguments are not an object`)
+}
+
+function stringArgument(
+  call: ToolCall,
+  args: Record<string, unknown>,
+  name: string,
+  fallback?: string
+): string {
+  const value = args[name]
+  if (typeof value === 'string') return value
+  if (value === undefined && fallback !== undefined) return fallback
+  throw new CoreError('invalid_tool_arguments', `Tool '${call.name}' requires string '${name}'`)
+}
+
+function replaceArguments(
+  call: ToolCall,
+  args: Record<string, unknown>,
+  values: Record<string, string>
+): ToolDecision {
+  return {
+    action: 'replace',
+    call: { ...call, argumentsJson: JSON.stringify({ ...args, ...values }) }
+  }
+}
+
 export class KoaksAgentRuntime implements AgentRuntimePort {
   private runtime?: KoaksRuntime
   private readonly agents = new Map<string, KoaksAgent>()
@@ -75,18 +126,21 @@ export class KoaksAgentRuntime implements AgentRuntimePort {
   constructor(
     private readonly database: AppDatabase,
     private readonly credentials: CredentialProvider,
-    private readonly activeRuns: ActiveRunLookup,
     private readonly files: FileService,
     private readonly commands: CommandRunner,
     private readonly git: GitService,
-    _approvals: ApprovalService,
+    private readonly approvals: ApprovalService,
     private readonly events: CoreEventBus
   ) {}
 
   private async getRuntime(): Promise<KoaksRuntime> {
     if (!this.runtime) {
       const { createRuntime } = await import('@koaks/node')
-      this.runtime = createRuntime({ maxConcurrency: 4, highWaterMark: 128 })
+      this.runtime = createRuntime({
+        maxConcurrency: 4,
+        highWaterMark: 128,
+        runEventBufferCapacity: 2_048
+      })
     }
     return this.runtime
   }
@@ -95,14 +149,6 @@ export class KoaksAgentRuntime implements AgentRuntimePort {
     const files = this.files
     const commands = this.commands
     const git = this.git
-    const context = (threadId?: string): { thread: ThreadDto; runId: string } => {
-      if (!threadId)
-        throw new CoreError('missing_thread_context', 'Tool execution has no thread context')
-      const runId = this.activeRuns.getRunId(threadId)
-      if (!runId)
-        throw new CoreError('run_not_active', `No active application run for thread '${threadId}'`)
-      return { thread: this.database.getThread(threadId), runId }
-    }
     return [
       {
         name: 'list_files',
@@ -111,9 +157,9 @@ export class KoaksAgentRuntime implements AgentRuntimePort {
           type: 'object',
           properties: { path: { type: 'string' } }
         },
-        async execute({ path = '.' }, { runtime }) {
-          const active = context(runtime.threadId)
-          return await files.listForTool({ project, ...active, path: String(path) })
+        async execute({ path = '.' }) {
+          const authorized = await resolveProjectPath(project.rootPath, String(path))
+          return await files.listForTool(authorized)
         }
       },
       {
@@ -124,9 +170,9 @@ export class KoaksAgentRuntime implements AgentRuntimePort {
           properties: { path: { type: 'string' } },
           required: ['path']
         },
-        async execute({ path }, { runtime }) {
-          const active = context(runtime.threadId)
-          return await files.readForTool({ project, ...active, path: String(path) })
+        async execute({ path }) {
+          const authorized = await resolveProjectPath(project.rootPath, String(path))
+          return await files.readForTool(authorized)
         }
       },
       {
@@ -137,14 +183,9 @@ export class KoaksAgentRuntime implements AgentRuntimePort {
           properties: { query: { type: 'string' }, path: { type: 'string' } },
           required: ['query']
         },
-        async execute({ query, path = '.' }, { runtime }) {
-          const active = context(runtime.threadId)
-          return await files.searchForTool({
-            project,
-            ...active,
-            query: String(query),
-            path: String(path)
-          })
+        async execute({ query, path = '.' }) {
+          const authorized = await resolveProjectPath(project.rootPath, String(path))
+          return await files.searchForTool(authorized, String(query))
         }
       },
       {
@@ -156,14 +197,9 @@ export class KoaksAgentRuntime implements AgentRuntimePort {
           required: ['path', 'patch']
         },
         hasSideEffects: true,
-        async execute({ path, patch }, { runtime }) {
-          const active = context(runtime.threadId)
-          return await files.applyPatch({
-            project,
-            ...active,
-            path: String(path),
-            patch: String(patch)
-          })
+        async execute({ path, patch }) {
+          const authorized = await resolveProjectPath(project.rootPath, String(path), true)
+          return await files.applyPatchForTool(authorized, String(patch))
         }
       },
       {
@@ -176,14 +212,12 @@ export class KoaksAgentRuntime implements AgentRuntimePort {
         },
         hasSideEffects: true,
         async execute({ command, cwd = project.rootPath }, toolContext) {
-          const active = context(toolContext.runtime.threadId)
+          const authorized = await resolveProjectPath(project.rootPath, String(cwd))
           return await commands.run({
-            project,
-            ...active,
-            executionId: toolContext.executionId,
             command: String(command),
-            cwd: String(cwd),
-            signal: toolContext.signal
+            cwd: authorized,
+            signal: toolContext.signal,
+            reportProgress: (progress) => toolContext.reportProgress(progress)
           })
         }
       },
@@ -211,6 +245,74 @@ export class KoaksAgentRuntime implements AgentRuntimePort {
     ]
   }
 
+  private applicationRun(
+    project: ProjectDto,
+    execution: HookExecutionContext
+  ): { runId: string; thread: ThreadDto } {
+    const runId = execution.correlationId
+    if (!runId) {
+      throw new CoreError(
+        'missing_run_correlation',
+        `Koaks run '${execution.runId ?? 'unknown'}' has no application correlation ID`
+      )
+    }
+    const run = this.database.getRun(runId)
+    const thread = this.database.getThread(run.threadId)
+    if (thread.projectId !== project.id) {
+      throw new CoreError('run_project_mismatch', `Run '${runId}' does not belong to this project`)
+    }
+    return { runId, thread }
+  }
+
+  private async authorizeTool(
+    project: ProjectDto,
+    context: Record<string, JsonValue>,
+    execution: HookExecutionContext
+  ): Promise<ToolDecision> {
+    const call = toolCallFrom(context)
+    if (
+      !['list_files', 'read_file', 'search_files', 'apply_patch', 'run_command'].includes(call.name)
+    ) {
+      return { action: 'proceed' }
+    }
+
+    const args = toolArguments(call)
+    const active = this.applicationRun(project, execution)
+    try {
+      if (call.name === 'run_command') {
+        const command = stringArgument(call, args, 'command')
+        const cwd = stringArgument(call, args, 'cwd', project.rootPath)
+        const authorized = await this.approvals.authorizeShell({
+          project,
+          ...active,
+          command,
+          cwd: await resolveProjectPath(project.rootPath, cwd),
+          signal: execution.signal
+        })
+        return replaceArguments(call, args, { cwd: authorized })
+      }
+
+      const requestedPath = stringArgument(call, args, 'path', '.')
+      const write = call.name === 'apply_patch'
+      const authorized = await this.approvals.authorizePath({
+        project,
+        ...active,
+        targetPath: await resolveProjectPath(project.rootPath, requestedPath, write),
+        targetIsDirectory: call.name === 'list_files' || call.name === 'search_files',
+        write,
+        title: write ? '修改文件' : '访问文件',
+        detail: `${call.name} ${requestedPath}`,
+        signal: execution.signal
+      })
+      return replaceArguments(call, args, { path: authorized })
+    } catch (error) {
+      if (error instanceof CoreError && error.code === 'permission_denied') {
+        return { action: 'deny', reason: error.message }
+      }
+      throw error
+    }
+  }
+
   private async getAgent(project: ProjectDto, profile: ModelProfileDto): Promise<KoaksAgent> {
     const provider = this.database.getProvider(profile.providerId)
     const key = `${project.id}:${profile.id}:${profile.updatedAt}:${provider.updatedAt}`
@@ -233,6 +335,11 @@ export class KoaksAgentRuntime implements AgentRuntimePort {
         open: (threadId) => new PersistentThreadMemory(threadId, this.database)
       },
       tools: this.toolsFor(project),
+      hooks: [
+        {
+          beforeTool: (context, execution) => this.authorizeTool(project, context, execution)
+        }
+      ],
       termination: { maxSteps: 80 },
       runBudget: { maxTotalSteps: 120 },
       errorPolicy: { type: 'retry_retriable', maxRetries: 2, delayMs: 800 }
@@ -335,12 +442,46 @@ export class KoaksAgentRuntime implements AgentRuntimePort {
   }): AsyncIterable<AgentStreamEvent> {
     const profile = this.database.getProfile(input.request.modelProfileId)
     const agent = await this.getAgent(input.project, profile)
-    for await (const event of agent.stream(input.request.input, {
+    const handle = await agent.spawn(input.request.input, {
       threadId: input.thread.id,
       signal: input.signal,
-      highWaterMark: 128
-    })) {
-      yield event as AgentEvent as AgentStreamEvent
+      correlationId: input.runId
+    })
+    let terminal: AgentEvent | undefined
+    try {
+      for await (const envelope of handle.events({ signal: input.signal, highWaterMark: 128 })) {
+        if (envelope.kind === 'history_gap') {
+          throw new CoreError(
+            'run_event_history_gap',
+            `Run event history after ${envelope.requestedAfter} is unavailable; oldest retained sequence is ${envelope.oldestAvailable}`
+          )
+        }
+        if (envelope.kind !== 'agent') continue
+        const event = envelope.event
+        if (
+          event.type === 'completed' ||
+          event.type === 'incomplete' ||
+          event.type === 'terminated' ||
+          event.type === 'failed'
+        ) {
+          terminal = event
+        } else {
+          yield event as AgentStreamEvent
+        }
+      }
+      if (!terminal)
+        throw new CoreError('run_missing_terminal_event', 'Koaks run ended without a result')
+      yield terminal as AgentStreamEvent
+    } finally {
+      if (!terminal) {
+        const reason =
+          typeof input.signal.reason === 'string'
+            ? input.signal.reason
+            : 'KoWork stopped consuming run events'
+        await handle.cancel(reason).catch(() => undefined)
+        await handle.result().catch(() => undefined)
+      }
+      await handle.release()
     }
   }
 

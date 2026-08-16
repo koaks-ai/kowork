@@ -41,26 +41,21 @@ export class CoreApplication {
     this.approvals = new ApprovalService(this.database, this.events)
     this.projects = new ProjectService(this.database)
     this.providers = new ProviderService(this.database, credentials)
-    this.files = new FileService(this.approvals)
+    this.files = new FileService()
     this.git = new GitService()
-    this.commands = new CommandRunner(this.approvals, this.events)
-    let coordinator: RunCoordinator | undefined
-    const lookup = {
-      getRunId: (threadId: string): string | undefined => coordinator?.getRunId(threadId)
-    }
+    this.commands = new CommandRunner()
     this.runtime = testMode
       ? new FakeAgentRuntime()
       : new KoaksAgentRuntime(
           this.database,
           credentials,
-          lookup,
           this.files,
           this.commands,
           this.git,
           this.approvals,
           this.events
         )
-    this.runs = coordinator = new RunCoordinator(this.database, this.runtime, this.events)
+    this.runs = new RunCoordinator(this.database, this.runtime, this.events)
 
     for (const run of this.database.recoverInterruptedRuns()) {
       const thread = this.database.getThread(run.threadId)

@@ -28,10 +28,6 @@ export class RunCoordinator {
     private readonly events: CoreEventBus
   ) {}
 
-  getRunId(threadId: string): string | undefined {
-    return this.activeByThread.get(threadId)?.run.id
-  }
-
   enqueue(threadId: string, input: string): QueuedRequestDto {
     if (!this.accepting) throw new CoreError('core_shutting_down', 'Core is shutting down')
     const thread = this.database.getThread(threadId)
@@ -135,6 +131,30 @@ export class RunCoordinator {
             runId: run.id,
             type: 'run.tool-output',
             payload: { callId: event.callId, text: event.output, isError: event.isError }
+          })
+        } else if (event.type === 'tool_progress') {
+          const progress = event.progress
+          this.events.publish({
+            projectId: project.id,
+            threadId: thread.id,
+            runId: run.id,
+            type: 'run.tool-output',
+            payload:
+              progress.type === 'output'
+                ? {
+                    callId: event.callId,
+                    stream: progress.stream ?? 'stdout',
+                    text: progress.text
+                  }
+                : progress.type === 'status'
+                  ? { callId: event.callId, stream: 'status', text: progress.message }
+                  : {
+                      callId: event.callId,
+                      stream: 'custom',
+                      kind: progress.kind,
+                      data: progress.payload,
+                      text: JSON.stringify(progress.payload)
+                    }
           })
         } else if (event.type === 'completed') {
           usage = event.usage

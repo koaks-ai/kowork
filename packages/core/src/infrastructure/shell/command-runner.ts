@@ -1,7 +1,5 @@
 import { spawn } from 'node:child_process'
-import type { ProjectDto, ThreadDto } from '@kowork/contracts'
-import type { ApprovalService } from '../../application/approval-service'
-import type { CoreEventBus } from '../../application/event-bus'
+import type { ToolProgress } from '@koaks/node'
 
 const isSensitiveEnvironmentKey = (key: string): boolean =>
   /(?:^|_)(?:API_?KEY|ACCESS_?TOKEN|SECRET|PASSWORD)$/iu.test(key)
@@ -13,21 +11,12 @@ function shellEnvironment(): NodeJS.ProcessEnv {
 }
 
 export class CommandRunner {
-  constructor(
-    private readonly approvals: ApprovalService,
-    private readonly events: CoreEventBus
-  ) {}
-
   async run(input: {
-    project: ProjectDto
-    thread: ThreadDto
-    runId: string
-    executionId: string
     command: string
     cwd: string
     signal: AbortSignal
+    reportProgress: (progress: ToolProgress) => Promise<void>
   }): Promise<string> {
-    const cwd = await this.approvals.authorizeShell(input)
     const shell =
       process.platform === 'win32'
         ? (process.env.ComSpec ?? 'cmd.exe')
@@ -36,26 +25,26 @@ export class CommandRunner {
       process.platform === 'win32' ? ['/d', '/s', '/c', input.command] : ['-lc', input.command]
     return await new Promise<string>((resolve, reject) => {
       const child = spawn(shell, args, {
-        cwd,
+        cwd: input.cwd,
         env: shellEnvironment(),
         stdio: ['ignore', 'pipe', 'pipe']
       })
       let modelOutput = ''
-      const append = (stream: 'stdout' | 'stderr', chunk: Buffer): void => {
-        const text = chunk.toString('utf8')
-        this.events.publish({
-          projectId: input.project.id,
-          threadId: input.thread.id,
-          runId: input.runId,
-          type: 'run.tool-output',
-          payload: {
-            executionId: input.executionId,
-            toolName: 'run_command',
-            stream,
-            text,
-            command: input.command
+      let progressQueue = Promise.resolve()
+      let progressError: unknown
+      const enqueueProgress = (progress: ToolProgress): void => {
+        progressQueue = progressQueue.then(async () => {
+          if (progressError) return
+          try {
+            await input.reportProgress(progress)
+          } catch (error) {
+            progressError = error
           }
         })
+      }
+      const append = (stream: 'stdout' | 'stderr', chunk: Buffer): void => {
+        const text = chunk.toString('utf8')
+        enqueueProgress({ type: 'output', stream, text })
         modelOutput += text
         if (modelOutput.length > 128 * 1024) modelOutput = modelOutput.slice(-128 * 1024)
       }
@@ -73,20 +62,11 @@ export class CommandRunner {
       child.once('close', (code, signal) => {
         input.signal.removeEventListener('abort', abort)
         const suffix = `\n[exit code: ${code ?? 'none'}${signal ? `, signal: ${signal}` : ''}]`
-        this.events.publish({
-          projectId: input.project.id,
-          threadId: input.thread.id,
-          runId: input.runId,
-          type: 'run.tool-output',
-          payload: {
-            executionId: input.executionId,
-            toolName: 'run_command',
-            stream: 'status',
-            text: suffix,
-            command: input.command
-          }
-        })
-        resolve(modelOutput + suffix)
+        enqueueProgress({ type: 'status', message: suffix })
+        void progressQueue.then(
+          () => (progressError ? reject(progressError) : resolve(modelOutput + suffix)),
+          (error) => reject(error)
+        )
       })
     })
   }
