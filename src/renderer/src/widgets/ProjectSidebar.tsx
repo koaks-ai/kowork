@@ -151,7 +151,7 @@ export function ProjectSidebar({ bootstrap, isMacOS }: ProjectSidebarProps): Rea
   })
 
   return (
-    <aside className="flex h-full w-[264px] shrink-0 flex-col border-r border-neutral-200 bg-white">
+    <aside className="flex h-full w-full flex-col border-r border-neutral-200 bg-white">
       <div
         className={`app-brand app-drag flex shrink-0 justify-start border-b border-neutral-100 px-4 text-lg font-bold tracking-normal text-neutral-900 ${isMacOS ? 'h-[88px] items-end pb-3' : 'h-14 items-center'}`}
       >

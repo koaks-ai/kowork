@@ -29,6 +29,12 @@ body,
   overflow: hidden;
 }
 
+html.kowork-panel-resizing,
+html.kowork-panel-resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
 body {
   user-select: none;
 }

@@ -7,6 +7,8 @@ const zhCN = {
   untitledThread: '未命名会话',
   addProject: '添加项目',
   projects: '项目',
+  resizeProjectSidebar: '调整项目侧边栏宽度',
+  resizeInspectorPanel: '调整详情侧边栏宽度',
   noProject: '添加一个项目开始工作',
   noThread: '创建会话后即可向 Agent 发送任务',
   codingAgent: '一个编码智能体',

@@ -68,7 +68,7 @@ export function InspectorPanel({ bootstrap }: { bootstrap: AppBootstrapDto }): R
   const percentage = Math.min((latestPrompt / limit) * 100, 100)
 
   return (
-    <aside className="hidden h-full w-[332px] shrink-0 border-l border-neutral-200 bg-white xl:flex xl:flex-col">
+    <aside className="flex h-full w-full flex-col border-l border-neutral-200 bg-white">
       <Tabs.Root
         value={store.inspectorTab}
         onValueChange={(value) => store.setInspectorTab(value as 'overview' | 'files' | 'changes')}
