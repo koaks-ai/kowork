@@ -7,7 +7,7 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@koaks/node": "file:../../vendor/koaks/koaks-node-0.0.1-beta3.tgz",
+    "@koaks/node": "file:../../vendor/koaks/koaks-node-0.0.1-beta4.tgz",
     "@kowork/contracts": "workspace:*",
     "better-sqlite3": "^13.0.3",
     "chokidar": "^5.0.0",

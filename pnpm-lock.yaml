@@ -15,8 +15,8 @@ importers:
         specifier: ^4.0.0
         version: 4.0.0(electron@39.8.10)
       '@koaks/node':
-        specifier: file:vendor/koaks/koaks-node-0.0.1-beta3.tgz
-        version: file:vendor/koaks/koaks-node-0.0.1-beta3.tgz
+        specifier: file:vendor/koaks/koaks-node-0.0.1-beta4.tgz
+        version: file:vendor/koaks/koaks-node-0.0.1-beta4.tgz
       '@kowork/contracts':
         specifier: workspace:*
         version: link:packages/contracts
@@ -175,8 +175,8 @@ importers:
   packages/core:
     dependencies:
       '@koaks/node':
-        specifier: file:../../vendor/koaks/koaks-node-0.0.1-beta3.tgz
-        version: file:vendor/koaks/koaks-node-0.0.1-beta3.tgz
+        specifier: file:../../vendor/koaks/koaks-node-0.0.1-beta4.tgz
+        version: file:vendor/koaks/koaks-node-0.0.1-beta4.tgz
       '@kowork/contracts':
         specifier: workspace:*
         version: link:../contracts
@@ -973,9 +973,9 @@ packages:
   '@js-joda/core@3.2.0':
     resolution: {integrity: sha512-PMqgJ0sw5B7FKb2d5bWYIoxjri+QlW/Pys7+Rw82jSH0QN3rB05jZ/VrrsUdh1w4+i2kw9JOejXGq/KhDOX7Kg==}
 
-  '@koaks/node@file:vendor/koaks/koaks-node-0.0.1-beta3.tgz':
-    resolution: {integrity: sha512-MRsCYMn3gyY7/ZLhY0DScwG5l9ECnrE/i5qP+FACkIIGPBdpo35YfyMZoEaRZ5qyf44E/kSYR4j7eGT0ICT7pg==, tarball: file:vendor/koaks/koaks-node-0.0.1-beta3.tgz}
-    version: 0.0.1-beta3
+  '@koaks/node@file:vendor/koaks/koaks-node-0.0.1-beta4.tgz':
+    resolution: {integrity: sha512-hmdYtJXbXyfh+hapBDx7pjQeQx+fJKKbN8Si+iytvl42VKaDJNn/0jSnDgEaQqPoYUkpIncb16yo8xbe5XKqmQ==, tarball: file:vendor/koaks/koaks-node-0.0.1-beta4.tgz}
+    version: 0.0.1-beta4
     engines: {node: '>=20'}
 
   '@malept/cross-spawn-promise@2.0.0':
@@ -5103,7 +5103,7 @@ snapshots:
 
   '@js-joda/core@3.2.0': {}
 
-  '@koaks/node@file:vendor/koaks/koaks-node-0.0.1-beta3.tgz':
+  '@koaks/node@file:vendor/koaks/koaks-node-0.0.1-beta4.tgz':
     dependencies:
       '@js-joda/core': 3.2.0
       format-util: 1.0.5
