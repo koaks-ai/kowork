@@ -17,4 +17,11 @@ describe('workspace path policy', () => {
     const escaped = await canonicalizePath(join(project, 'escape'))
     expect(isWithinPath(canonicalProject, escaped)).toBe(false)
   })
+
+  it('returns stable errors for missing read paths while resolving missing write targets', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'kowork-path-missing-'))
+    const missing = join(await realpath(root), 'missing', 'file.txt')
+    await expect(canonicalizePath(missing)).rejects.toMatchObject({ code: 'path_not_found' })
+    await expect(canonicalizePath(missing, true)).resolves.toBe(missing)
+  })
 })

@@ -1,13 +1,7 @@
-import { dirname } from 'node:path'
 import type { ApprovalDto, ProjectDto, ThreadDto } from '@kowork/contracts'
 import { CoreError } from '../domain/errors'
-import { requiresShellApproval } from '../domain/permission-policy'
 import type { AppDatabase } from '../infrastructure/db/database'
-import {
-  authorizedByAnyRoot,
-  canonicalizePath,
-  isWithinPath
-} from '../infrastructure/workspace/path-policy'
+import { canonicalizePath, isWithinPath } from '../infrastructure/workspace/path-policy'
 import type { CoreEventBus } from './event-bus'
 
 interface PendingApproval {
@@ -114,38 +108,52 @@ export class ApprovalService {
     thread: ThreadDto
     runId: string
     targetPath: string
-    write: boolean
+    access: 'read' | 'write'
     targetIsDirectory?: boolean
     title: string
     detail: string
     signal?: AbortSignal
   }): Promise<string> {
-    const canonical = await canonicalizePath(input.targetPath, input.write)
+    const write = input.access === 'write'
+    const canonical = await canonicalizePath(input.targetPath, write)
     const grants = this.database.listPathGrants(input.runId)
     const insideProject = isWithinPath(input.project.rootPath, canonical)
-    const insideGrant = authorizedByAnyRoot(canonical, grants)
+    const insideGrant = grants.some(
+      (grant) =>
+        (grant.rootPath === canonical ||
+          (grant.isDirectory && isWithinPath(grant.rootPath, canonical))) &&
+        (input.access === 'read' || grant.accessMode === 'write')
+    )
 
     if (!insideProject && !insideGrant) {
-      const proposedRoot = input.targetIsDirectory ? canonical : dirname(canonical)
+      const proposedRoot = canonical
+      const targetKind = input.targetIsDirectory ? '目录' : '文件'
+      const action = write ? '修改' : '读取'
       const allowed = await this.request(
         {
           projectId: input.project.id,
           threadId: input.thread.id,
           runId: input.runId,
           kind: 'external_path',
-          title: '访问项目外目录',
-          detail: `${input.detail}\n授权目录：${proposedRoot}`,
-          requestedPath: proposedRoot
+          title: `${action}项目外${targetKind}`,
+          detail: `${input.detail}\n授权${targetKind}：${proposedRoot}`,
+          requestedPath: proposedRoot,
+          requestedAccess: input.access
         },
         input.signal
       )
       if (!allowed)
         throw new CoreError('permission_denied', `Access to '${proposedRoot}' was denied`)
-      this.database.addPathGrant(input.runId, proposedRoot)
+      this.database.addPathGrant(
+        input.runId,
+        proposedRoot,
+        input.access,
+        input.targetIsDirectory ?? false
+      )
       return canonical
     }
 
-    if (insideProject && input.write && input.thread.permissionMode === 'ask') {
+    if (insideProject && write && input.thread.permissionMode === 'ask') {
       const allowed = await this.request(
         {
           projectId: input.project.id,
@@ -154,7 +162,8 @@ export class ApprovalService {
           kind: 'file_write',
           title: input.title,
           detail: input.detail,
-          requestedPath: canonical
+          requestedPath: canonical,
+          requestedAccess: 'write'
         },
         input.signal
       )
@@ -172,30 +181,7 @@ export class ApprovalService {
     signal?: AbortSignal
   }): Promise<string> {
     const canonicalCwd = await canonicalizePath(input.cwd)
-    const grants = this.database.listPathGrants(input.runId)
-    const external =
-      !isWithinPath(input.project.rootPath, canonicalCwd) &&
-      !authorizedByAnyRoot(canonicalCwd, grants)
-    if (external) {
-      const allowed = await this.request(
-        {
-          projectId: input.project.id,
-          threadId: input.thread.id,
-          runId: input.runId,
-          kind: 'external_path',
-          title: '在项目外执行命令',
-          detail: `${input.command}\n工作目录：${canonicalCwd}`,
-          requestedPath: canonicalCwd
-        },
-        input.signal
-      )
-      if (!allowed)
-        throw new CoreError('permission_denied', `Shell access to '${canonicalCwd}' was denied`)
-      this.database.addPathGrant(input.runId, canonicalCwd)
-      return canonicalCwd
-    }
-
-    if (requiresShellApproval(input.thread.permissionMode, input.command)) {
+    if (input.thread.permissionMode !== 'yolo') {
       const allowed = await this.request(
         {
           projectId: input.project.id,
@@ -204,7 +190,8 @@ export class ApprovalService {
           kind: 'shell',
           title: '执行命令',
           detail: `${input.command}\n工作目录：${canonicalCwd}`,
-          requestedPath: canonicalCwd
+          requestedPath: canonicalCwd,
+          requestedAccess: null
         },
         input.signal
       )

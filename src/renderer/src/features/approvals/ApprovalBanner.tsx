@@ -7,12 +7,11 @@ import { BlurReveal } from '../../shared/ui/BlurReveal'
 
 const BLUR_REVEAL_EXIT_MS = 220
 
-function approvalPrompt(
-  kind: ApprovalDto['kind'],
-  t: ReturnType<typeof useTranslation>['t']
-): string {
-  if (kind === 'shell') return t('approvalShellPrompt')
-  if (kind === 'file_write') return t('approvalFileWritePrompt')
+function approvalPrompt(approval: ApprovalDto, t: ReturnType<typeof useTranslation>['t']): string {
+  if (approval.kind === 'shell') return t('approvalShellPrompt')
+  if (approval.kind === 'file_write') return t('approvalFileWritePrompt')
+  if (approval.requestedAccess === 'read') return t('approvalExternalPathReadPrompt')
+  if (approval.requestedAccess === 'write') return t('approvalExternalPathWritePrompt')
   return t('approvalExternalPathPrompt')
 }
 
@@ -26,24 +25,19 @@ export function ApprovalBanner({ threadId }: { threadId: string }): React.JSX.El
   const approval = query.data?.[0]
 
   const [retained, setRetained] = useState<ApprovalDto | undefined>(approval)
-  const [leaving, setLeaving] = useState(false)
 
   useEffect(() => {
     if (approval) {
-      setRetained(approval)
-      setLeaving(false)
-      return undefined
+      const timer = window.setTimeout(() => setRetained(approval), 0)
+      return () => window.clearTimeout(timer)
     }
-    if (!retained || leaving) return undefined
-    setLeaving(true)
-    const timer = window.setTimeout(() => {
-      setRetained(undefined)
-      setLeaving(false)
-    }, BLUR_REVEAL_EXIT_MS)
+    if (!retained) return undefined
+    const timer = window.setTimeout(() => setRetained(undefined), BLUR_REVEAL_EXIT_MS)
     return () => window.clearTimeout(timer)
-  }, [approval, retained, leaving])
+  }, [approval, retained])
 
   const current = approval ?? retained
+  const leaving = !approval && retained !== undefined
 
   const respond = useMutation({
     mutationFn: (decision: 'allow' | 'deny') =>
@@ -71,7 +65,7 @@ export function ApprovalBanner({ threadId }: { threadId: string }): React.JSX.El
           </div>
           <div className="min-w-0 pt-0.5">
             <h2 id={promptId} className="text-sm font-medium text-neutral-900">
-              {approvalPrompt(current.kind, t)}
+              {approvalPrompt(current, t)}
             </h2>
             <p className="mt-0.5 text-xs text-neutral-500">{current.title}</p>
           </div>

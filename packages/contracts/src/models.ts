@@ -123,7 +123,6 @@ export const queuedRequestSchema = z.object({
   input: z.string(),
   status: z.enum(['queued', 'running', 'completed', 'failed', 'cancelled', 'interrupted']),
   modelProfileId: z.string(),
-  permissionMode: permissionModeSchema,
   contextWindowTokens: z.number().int().positive(),
   position: z.number().int().nonnegative(),
   createdAt: z.number(),
@@ -198,6 +197,7 @@ export const approvalSchema = z.object({
   detail: z.string(),
   status: z.enum(['pending', 'allowed', 'denied']),
   requestedPath: z.string().nullable(),
+  requestedAccess: z.enum(['read', 'write']).nullable(),
   createdAt: z.number(),
   resolvedAt: z.number().nullable()
 })

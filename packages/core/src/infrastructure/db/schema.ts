@@ -54,7 +54,6 @@ export const turnRequests = sqliteTable('turn_requests', {
   input: text('input').notNull(),
   status: text('status').notNull(),
   modelProfileId: text('model_profile_id').notNull(),
-  permissionMode: text('permission_mode').notNull(),
   contextWindowTokens: integer('context_window_tokens').notNull(),
   position: integer('position').notNull(),
   createdAt: integer('created_at').notNull(),
@@ -96,6 +95,7 @@ export const approvals = sqliteTable('approvals', {
   detail: text('detail').notNull(),
   status: text('status').notNull(),
   requestedPath: text('requested_path'),
+  requestedAccess: text('requested_access'),
   createdAt: integer('created_at').notNull(),
   resolvedAt: integer('resolved_at')
 })
@@ -104,6 +104,8 @@ export const pathGrants = sqliteTable('path_grants', {
   id: text('id').primaryKey(),
   runId: text('run_id').notNull(),
   rootPath: text('root_path').notNull(),
+  accessMode: text('access_mode').notNull().default('read'),
+  isDirectory: integer('is_directory', { mode: 'boolean' }).notNull().default(false),
   createdAt: integer('created_at').notNull()
 })
 

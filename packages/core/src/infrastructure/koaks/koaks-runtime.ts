@@ -1,15 +1,10 @@
 import type {
   AgentConfig,
   AgentEvent,
-  HookExecutionContext,
-  JsonValue,
   KoaksAgent,
   KoaksRuntime,
   ModelItem,
-  ModelProvider,
-  ToolCall,
-  ToolDecision,
-  ToolDefinition
+  ModelProvider
 } from '@koaks/node'
 import type {
   ModelProfileDto,
@@ -33,7 +28,9 @@ import type { FileService } from '../workspace/file-service'
 import type { CommandRunner } from '../shell/command-runner'
 import type { GitService } from '../git/git-service'
 import type { CredentialProvider } from '../credentials/credential-provider'
-import { resolveProjectPath } from '../workspace/path-policy'
+import { coreToolSpecs } from '../../tools/catalog'
+import { ProjectToolLocks } from '../../tools/tool-lock'
+import { ToolRegistry } from '../../tools/tool-registry'
 import { PersistentThreadMemory } from './persistent-memory'
 import type { AgentRuntimePort, AgentStreamEvent } from './runtime-port'
 
@@ -79,56 +76,6 @@ function textFromMessage(item: ModelItem): string {
   return item.content.map((part) => (part.type === 'text' ? part.text : '')).join('')
 }
 
-function toolCallFrom(context: Record<string, JsonValue>): ToolCall {
-  const call = context.call
-  if (
-    call === null ||
-    typeof call !== 'object' ||
-    Array.isArray(call) ||
-    typeof call.id !== 'string' ||
-    typeof call.name !== 'string' ||
-    typeof call.argumentsJson !== 'string'
-  ) {
-    throw new CoreError('invalid_tool_context', 'Koaks Hook did not provide a valid tool call')
-  }
-  return call as unknown as ToolCall
-}
-
-function toolArguments(call: ToolCall): Record<string, unknown> {
-  try {
-    const value = call.argumentsJson.trim() ? (JSON.parse(call.argumentsJson) as unknown) : {}
-    if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
-      return value as Record<string, unknown>
-    }
-  } catch {
-    // Report a stable application error below.
-  }
-  throw new CoreError('invalid_tool_arguments', `Tool '${call.name}' arguments are not an object`)
-}
-
-function stringArgument(
-  call: ToolCall,
-  args: Record<string, unknown>,
-  name: string,
-  fallback?: string
-): string {
-  const value = args[name]
-  if (typeof value === 'string') return value
-  if (value === undefined && fallback !== undefined) return fallback
-  throw new CoreError('invalid_tool_arguments', `Tool '${call.name}' requires string '${name}'`)
-}
-
-function replaceArguments(
-  call: ToolCall,
-  args: Record<string, unknown>,
-  values: Record<string, string>
-): ToolDecision {
-  return {
-    action: 'replace',
-    call: { ...call, argumentsJson: JSON.stringify({ ...args, ...values }) }
-  }
-}
-
 export class KoaksAgentRuntime implements AgentRuntimePort {
   private runtime?: KoaksRuntime
   private runtimePromise?: Promise<KoaksRuntime>
@@ -136,6 +83,7 @@ export class KoaksAgentRuntime implements AgentRuntimePort {
   private readonly summarizers = new Map<string, KoaksAgent>()
   private readonly titleGenerators = new Map<string, KoaksAgent>()
   private readonly titleGeneratorCreations = new Map<string, Promise<KoaksAgent>>()
+  private readonly toolLocks = new ProjectToolLocks()
 
   constructor(
     private readonly database: AppDatabase,
@@ -168,187 +116,26 @@ export class KoaksAgentRuntime implements AgentRuntimePort {
     }
   }
 
-  private toolsFor(project: ProjectDto): ToolDefinition<Record<string, unknown>>[] {
-    const files = this.files
-    const commands = this.commands
-    const git = this.git
-    return [
-      {
-        name: 'list_files',
-        description: 'List files and directories in the current project',
-        inputSchema: {
-          type: 'object',
-          properties: { path: { type: 'string' } }
-        },
-        async execute({ path = '.' }) {
-          const authorized = await resolveProjectPath(project.rootPath, String(path))
-          return await files.listForTool(authorized)
-        }
-      },
-      {
-        name: 'read_file',
-        description: 'Read a UTF-8 text file',
-        inputSchema: {
-          type: 'object',
-          properties: { path: { type: 'string' } },
-          required: ['path']
-        },
-        async execute({ path }) {
-          const authorized = await resolveProjectPath(project.rootPath, String(path))
-          return await files.readForTool(authorized)
-        }
-      },
-      {
-        name: 'search_files',
-        description: 'Search text in project files',
-        inputSchema: {
-          type: 'object',
-          properties: { query: { type: 'string' }, path: { type: 'string' } },
-          required: ['query']
-        },
-        async execute({ query, path = '.' }) {
-          const authorized = await resolveProjectPath(project.rootPath, String(path))
-          return await files.searchForTool(authorized, String(query))
-        }
-      },
-      {
-        name: 'apply_patch',
-        description: 'Apply a unified diff patch to one file',
-        inputSchema: {
-          type: 'object',
-          properties: { path: { type: 'string' }, patch: { type: 'string' } },
-          required: ['path', 'patch']
-        },
-        hasSideEffects: true,
-        async execute({ path, patch }) {
-          const authorized = await resolveProjectPath(project.rootPath, String(path), true)
-          return await files.applyPatchForTool(authorized, String(patch))
-        }
-      },
-      {
-        name: 'run_command',
-        description: 'Run a shell command in the project or an approved directory',
-        inputSchema: {
-          type: 'object',
-          properties: { command: { type: 'string' }, cwd: { type: 'string' } },
-          required: ['command']
-        },
-        hasSideEffects: true,
-        async execute({ command, cwd = project.rootPath }, toolContext) {
-          const authorized = await resolveProjectPath(project.rootPath, String(cwd))
-          return await commands.run({
-            command: String(command),
-            cwd: authorized,
-            signal: toolContext.signal,
-            reportProgress: (progress) => toolContext.reportProgress(progress)
-          })
-        }
-      },
-      {
-        name: 'git_status',
-        description: 'Read git working tree status',
-        inputSchema: { type: 'object', properties: {} },
-        async execute() {
-          return JSON.stringify(await git.status(project))
-        }
-      },
-      {
-        name: 'git_diff',
-        description: 'Read the current unstaged git diff',
-        inputSchema: {
-          type: 'object',
-          properties: { path: { type: 'string' } }
-        },
-        async execute({ path }) {
-          return await git
-            .diff(project, path ? String(path) : undefined)
-            .then((result) => result.diff)
-        }
-      }
-    ]
-  }
-
-  private applicationRun(
-    project: ProjectDto,
-    execution: HookExecutionContext
-  ): { runId: string; thread: ThreadDto } {
-    const runId = execution.correlationId
-    if (!runId) {
-      throw new CoreError(
-        'missing_run_correlation',
-        `Koaks run '${execution.runId ?? 'unknown'}' has no application correlation ID`
-      )
-    }
-    const run = this.database.getRun(runId)
-    const thread = this.database.getThread(run.threadId)
-    if (thread.projectId !== project.id) {
-      throw new CoreError('run_project_mismatch', `Run '${runId}' does not belong to this project`)
-    }
-    return { runId, thread }
-  }
-
-  private async authorizeTool(
-    project: ProjectDto,
-    context: Record<string, JsonValue>,
-    execution: HookExecutionContext
-  ): Promise<ToolDecision> {
-    const call = toolCallFrom(context)
-    if (
-      !['list_files', 'read_file', 'search_files', 'apply_patch', 'run_command'].includes(call.name)
-    ) {
-      return { action: 'proceed' }
-    }
-
-    const args = toolArguments(call)
-    const active = this.applicationRun(project, execution)
-    try {
-      if (call.name === 'run_command') {
-        const command = stringArgument(call, args, 'command')
-        const cwd = stringArgument(call, args, 'cwd', project.rootPath)
-        const authorized = await this.approvals.authorizeShell({
-          project,
-          ...active,
-          command,
-          cwd: await resolveProjectPath(project.rootPath, cwd),
-          signal: execution.signal
-        })
-        return replaceArguments(call, args, { cwd: authorized })
-      }
-
-      const requestedPath = stringArgument(call, args, 'path', '.')
-      const write = call.name === 'apply_patch'
-      const authorized = await this.approvals.authorizePath({
-        project,
-        ...active,
-        targetPath: await resolveProjectPath(project.rootPath, requestedPath, write),
-        targetIsDirectory: call.name === 'list_files' || call.name === 'search_files',
-        write,
-        title: write ? '修改文件' : '访问文件',
-        detail: `${call.name} ${requestedPath}`,
-        signal: execution.signal
-      })
-      return replaceArguments(call, args, { path: authorized })
-    } catch (error) {
-      if (error instanceof CoreError && error.code === 'permission_denied') {
-        return { action: 'deny', reason: error.message }
-      }
-      throw error
-    }
-  }
-
   private async getAgent(project: ProjectDto, profile: ModelProfileDto): Promise<KoaksAgent> {
     const provider = this.database.getProvider(profile.providerId)
     const key = `${project.id}:${profile.id}:${profile.updatedAt}:${provider.updatedAt}`
     const existing = this.agents.get(key)
     if (existing) return existing
     const runtime = await this.getRuntime()
+    const registry = new ToolRegistry(
+      coreToolSpecs(),
+      { project, files: this.files, commands: this.commands, git: this.git },
+      this.database,
+      this.approvals,
+      this.toolLocks
+    )
     const config: AgentConfig = {
       id: `coding-${project.id}-${profile.id}`,
       name: 'KoWork Coding Agent',
       instructions: [
         {
           type: 'static',
-          text: `You are KoWork, a pragmatic coding agent. The default workspace is ${project.rootPath}. Inspect before editing, use patches for file changes, and explain failures clearly.`
+          text: `You are KoWork, a pragmatic coding agent. The default workspace is ${project.rootPath}. Inspect before editing. Prefer edit_file for focused changes; use write_file only to create a file or when a complete replacement is necessary. Explain failures clearly.`
         }
       ],
       model: await providerFor(profile, provider, this.credentials),
@@ -357,12 +144,8 @@ export class KoaksAgentRuntime implements AgentRuntimePort {
         id: 'kowork-sqlite-memory-v1',
         open: (threadId) => new PersistentThreadMemory(threadId, this.database)
       },
-      tools: this.toolsFor(project),
-      hooks: [
-        {
-          beforeTool: (context, execution) => this.authorizeTool(project, context, execution)
-        }
-      ],
+      tools: registry.definitions(),
+      hooks: [registry.hook()],
       termination: { maxSteps: 1024 },
       runBudget: { maxTotalSteps: 4096 },
       errorPolicy: { type: 'retry_retriable', maxRetries: 2, delayMs: 800 }

@@ -49,6 +49,8 @@ const zhCN = {
   approvalShellPrompt: '是否允许 KoWork 执行以下命令？',
   approvalFileWritePrompt: '是否允许 KoWork 修改此文件？',
   approvalExternalPathPrompt: '是否允许 KoWork 访问项目外路径？',
+  approvalExternalPathReadPrompt: '是否允许 KoWork 读取此项目外路径？',
+  approvalExternalPathWritePrompt: '是否允许 KoWork 修改此项目外路径？',
   approvalResponseFailed: '未能提交审批结果，请重试。',
   settings: '设置',
   settingsDescription: '管理新会话默认值和模型连接。',

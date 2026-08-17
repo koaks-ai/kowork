@@ -200,7 +200,6 @@ export function installBrowserPreviewApi(): void {
           input,
           status: 'running',
           modelProfileId: profiles[0].id,
-          permissionMode: 'auto',
           contextWindowTokens: 128_000,
           position: 0,
           createdAt: Date.now(),

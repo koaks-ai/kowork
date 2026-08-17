@@ -12,14 +12,27 @@ export function isWithinPath(rootPath: string, targetPath: string): boolean {
 
 export async function canonicalizePath(targetPath: string, forWrite = false): Promise<string> {
   const normalized = normalize(resolve(targetPath))
-  if (!forWrite) return await realpath(normalized)
+  if (!forWrite) {
+    try {
+      return await realpath(normalized)
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code
+      throw new CoreError(
+        code === 'ENOENT' ? 'path_not_found' : 'path_not_resolvable',
+        `Cannot resolve path '${targetPath}'`
+      )
+    }
+  }
   let existing = normalized
   const missing: string[] = []
   while (true) {
     try {
       const base = await realpath(existing)
       return join(base, ...missing.reverse())
-    } catch {
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        throw new CoreError('path_not_resolvable', `Cannot resolve path '${targetPath}'`)
+      }
       const parent = dirname(existing)
       if (parent === existing)
         throw new CoreError('path_not_resolvable', `Cannot resolve path '${targetPath}'`)

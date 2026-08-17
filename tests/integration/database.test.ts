@@ -102,6 +102,82 @@ describe('SQLite persistence', () => {
     database.close()
   })
 
+  it('migrates v2 queues and approvals to live permissions and read-only legacy grants', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'kowork-db-v2-'))
+    const path = join(root, 'kowork.sqlite')
+    const sqlite = new BetterSqlite3(path)
+    sqlite.exec(migrations[0]!.sql)
+    sqlite.pragma('foreign_keys = OFF')
+    sqlite.exec(migrations[1]!.sql)
+    sqlite.pragma('foreign_keys = ON')
+    sqlite.exec(
+      'CREATE TABLE _kowork_migrations (id INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at INTEGER NOT NULL)'
+    )
+    sqlite.prepare('INSERT INTO _kowork_migrations VALUES (?, ?, ?)').run(1, 'initial', Date.now())
+    sqlite
+      .prepare('INSERT INTO _kowork_migrations VALUES (?, ?, ?)')
+      .run(2, 'provider_credentials_and_models', Date.now())
+    const now = Date.now()
+    sqlite
+      .prepare('INSERT INTO projects VALUES (?, ?, ?, ?, ?, NULL)')
+      .run('project-v2', 'project', root, now, now)
+    sqlite
+      .prepare('INSERT INTO threads VALUES (?, ?, ?, ?, ?, NULL, 0, ?, ?, NULL)')
+      .run('thread-v2', 'project-v2', 'Thread', 'ollama-qwen3', 'auto', now, now)
+    sqlite
+      .prepare('INSERT INTO turn_requests VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(
+        'request-v2',
+        'thread-v2',
+        'queued input',
+        'queued',
+        'ollama-qwen3',
+        'ask',
+        32_000,
+        0,
+        now,
+        now
+      )
+    sqlite
+      .prepare('INSERT INTO approvals VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(
+        'approval-v2',
+        'project-v2',
+        'thread-v2',
+        'run-v2',
+        'external_path',
+        'Legacy path',
+        'Legacy detail',
+        'allowed',
+        root,
+        now,
+        now
+      )
+    sqlite
+      .prepare('INSERT INTO path_grants VALUES (?, ?, ?, ?)')
+      .run('grant-v2', 'run-v2', root, now)
+    sqlite.close()
+
+    const database = new AppDatabase(path)
+    expect(database.getRequest('request-v2')).toMatchObject({
+      input: 'queued input',
+      modelProfileId: 'ollama-qwen3',
+      contextWindowTokens: 32_000
+    })
+    expect(database.listApprovals('thread-v2')).toEqual([
+      expect.objectContaining({ id: 'approval-v2', requestedAccess: null })
+    ])
+    expect(database.listPathGrants('run-v2')).toEqual([
+      { rootPath: root, accessMode: 'read', isDirectory: true }
+    ])
+    const requestColumns = database.sqlite
+      .prepare('PRAGMA table_info(turn_requests)')
+      .all()
+      .map((column) => (column as { name: string }).name)
+    expect(requestColumns).not.toContain('permission_mode')
+    database.close()
+  })
+
   it('keeps conversation history when Koaks turn ids restart with the application', async () => {
     const root = await mkdtemp(join(tmpdir(), 'kowork-memory-restart-'))
     const path = join(root, 'kowork.sqlite')

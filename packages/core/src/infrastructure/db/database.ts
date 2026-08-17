@@ -43,8 +43,7 @@ function asThread(row: typeof schema.threads.$inferSelect): ThreadDto {
 function asRequest(row: typeof schema.turnRequests.$inferSelect): QueuedRequestDto {
   return {
     ...row,
-    status: row.status as QueuedRequestDto['status'],
-    permissionMode: row.permissionMode as PermissionMode
+    status: row.status as QueuedRequestDto['status']
   }
 }
 
@@ -63,6 +62,7 @@ function asApproval(row: typeof schema.approvals.$inferSelect): ApprovalDto {
     kind: row.kind as ApprovalDto['kind'],
     status: row.status as ApprovalDto['status'],
     requestedPath: row.requestedPath ?? null,
+    requestedAccess: (row.requestedAccess as ApprovalDto['requestedAccess']) ?? null,
     resolvedAt: row.resolvedAt ?? null
   }
 }
@@ -518,7 +518,6 @@ export class AppDatabase {
         input,
         status: 'queued',
         modelProfileId: thread.modelProfileId,
-        permissionMode: thread.permissionMode,
         contextWindowTokens,
         position: maxPosition + 1,
         createdAt: now,
@@ -818,20 +817,38 @@ export class AppDatabase {
     return next
   }
 
-  addPathGrant(runId: string, rootPath: string): void {
+  addPathGrant(
+    runId: string,
+    rootPath: string,
+    accessMode: 'read' | 'write',
+    isDirectory: boolean
+  ): void {
     this.db
       .insert(schema.pathGrants)
-      .values({ id: createId('grant'), runId, rootPath, createdAt: Date.now() })
+      .values({
+        id: createId('grant'),
+        runId,
+        rootPath,
+        accessMode,
+        isDirectory,
+        createdAt: Date.now()
+      })
       .run()
   }
 
-  listPathGrants(runId: string): string[] {
+  listPathGrants(
+    runId: string
+  ): Array<{ rootPath: string; accessMode: 'read' | 'write'; isDirectory: boolean }> {
     return this.db
       .select()
       .from(schema.pathGrants)
       .where(eq(schema.pathGrants.runId, runId))
       .all()
-      .map((row) => row.rootPath)
+      .map((row) => ({
+        rootPath: row.rootPath,
+        accessMode: row.accessMode as 'read' | 'write',
+        isDirectory: row.isDirectory
+      }))
   }
 
   getConversationTurns(threadId: string): Array<typeof schema.conversationTurns.$inferSelect> {
