@@ -28,6 +28,7 @@ interface ProjectSidebarProps {
 }
 
 const EMPTY_THREADS: ThreadDto[] = []
+const SIDEBAR_ROW_HEIGHT = 34
 
 interface ProjectThreadListProps {
   threads: ThreadDto[]
@@ -62,7 +63,7 @@ function ProjectThreadList({
     <SelectionList
       index={highlightedIndex}
       visible={selectedIndex >= 0}
-      itemHeight={34}
+      itemHeight={SIDEBAR_ROW_HEIGHT}
       radius="lg"
     >
       {threads.map((thread) => (
@@ -246,7 +247,7 @@ export function ProjectSidebar({
                   aria-controls={disclosureId}
                   aria-expanded={expanded}
                   data-selected={selected || undefined}
-                  className={`kowork-select-item kowork-select-item-fill flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-sm font-medium ${selected ? 'text-neutral-900' : 'text-neutral-700'}`}
+                  className={`kowork-select-item kowork-select-item-fill flex h-[34px] w-full items-center gap-2 rounded-lg px-2 text-left text-sm font-medium ${selected ? 'text-neutral-900' : 'text-neutral-700'}`}
                   onClick={() => {
                     setExpandedProjectIds((current) => {
                       const next = new Set(current)
@@ -256,7 +257,7 @@ export function ProjectSidebar({
                     })
                   }}
                 >
-                  <Folder size={15} className={selected ? 'text-blue-600' : 'text-neutral-400'} />
+                  <Folder size={15} className={selected ? 'text-neutral-600' : 'text-neutral-400'} />
                   <span className="min-w-0 flex-1 truncate">{project.name}</span>
                   <ChevronRight
                     size={14}
