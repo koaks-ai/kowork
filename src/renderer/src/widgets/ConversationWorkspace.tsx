@@ -182,7 +182,7 @@ export function ConversationWorkspace({
   const hasConversation = eventsQuery.data?.some((event) => event.type === 'run.started') ?? false
   return (
     <main className="relative flex min-w-0 flex-1 flex-col bg-white">
-      <header className="app-drag kowork-dot-blur absolute inset-x-0 top-0 z-20 flex h-14 items-center justify-between border-b border-neutral-200 px-4">
+      <header className="app-drag kowork-dot-blur absolute inset-x-0 top-0 z-20 flex h-12 items-center justify-between border-b border-neutral-200 px-4">
         <div className="flex min-w-0 items-center gap-2 text-sm">
           {editingTitle ? (
             <InlineRenameInput
@@ -233,7 +233,7 @@ export function ConversationWorkspace({
         >
           <BlurReveal contentKey={threadId} className="flex min-h-full flex-1 flex-col">
             <div
-              className="flex flex-1 flex-col pt-14"
+              className="flex flex-1 flex-col pt-12"
               style={{ paddingBottom: composerHeight }}
             >
               {hasConversation ? (

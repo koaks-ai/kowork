@@ -83,7 +83,7 @@ export function InspectorPanel({ bootstrap }: { bootstrap: AppBootstrapDto }): R
 
   return (
     <aside className="flex h-full w-full flex-col border-l border-neutral-200 bg-white">
-      <header className="app-drag flex h-14 shrink-0 items-center gap-1.5 border-b border-neutral-200 px-2.5">
+      <header className="app-drag flex h-12 shrink-0 items-center gap-1.5 border-b border-neutral-200 px-2.5">
         <div role="tablist" className="flex min-w-0 flex-1 items-center">
           {INSPECTOR_TABS.map((tab) => {
             const active = tab === activeTab
