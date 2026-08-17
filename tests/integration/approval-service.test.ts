@@ -15,7 +15,7 @@ describe('Approval lifecycle', () => {
     const events = new CoreEventBus(database)
     const approvals = new ApprovalService(database, events)
     const project = database.addProject(projectPath, 'project')
-    const thread = database.createThread(project.id, 'Approval', 'ollama-qwen3')
+    const thread = database.createThread(project.id, 'Approval', 'openai-gpt-4.1-mini')
     const request = database.enqueueRequest(thread, 'run a command', 32_000)
     const run = database.createRun(request)
     const controller = new AbortController()
@@ -51,7 +51,7 @@ describe('Approval lifecycle', () => {
     const events = new CoreEventBus(database)
     const approvals = new ApprovalService(database, events)
     const project = database.addProject(projectPath, 'project')
-    const thread = database.createThread(project.id, 'Approval', 'ollama-qwen3')
+    const thread = database.createThread(project.id, 'Approval', 'openai-gpt-4.1-mini')
     const request = database.enqueueRequest(thread, 'run a command', 32_000)
     const run = database.createRun(request)
 

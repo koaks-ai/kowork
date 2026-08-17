@@ -1,35 +1,20 @@
 import { z } from 'zod'
-import type {
-  ModelProfileDto,
-  ModelRefreshResultDto,
-  ProviderDto,
-  ProviderKind,
-  ProviderProtocol
+import {
+  builtinProviderName,
+  isBuiltinProviderId,
+  protocolsByKind,
+  type ModelProfileDto,
+  type ModelRefreshResultDto,
+  type ProviderDto,
+  type ProviderKind,
+  type ProviderProtocol
 } from '@kowork/contracts'
 import { CoreError } from '../domain/errors'
 import type { CredentialProvider } from '../infrastructure/credentials/credential-provider'
 import type { AppDatabase } from '../infrastructure/db/database'
 
-const protocolsByKind: Record<ProviderKind, readonly ProviderProtocol[]> = {
-  openai: ['openai-chat', 'openai-responses'],
-  anthropic: ['anthropic'],
-  deepseek: ['openai-chat', 'openai-responses', 'anthropic'],
-  qwen: ['qwen'],
-  ollama: ['ollama'],
-  custom: ['openai-chat', 'openai-responses', 'anthropic']
-}
-
 const listedModelsSchema = z.object({
   data: z.array(z.object({ id: z.string().min(1) }))
-})
-
-const ollamaModelsSchema = z.object({
-  models: z.array(
-    z.object({
-      name: z.string().optional(),
-      model: z.string().optional()
-    })
-  )
 })
 
 function assertConfiguration(
@@ -58,16 +43,8 @@ function stripKnownEndpoint(pathname: string): string {
 function modelListUrl(provider: ProviderDto): string {
   const url = new URL(provider.baseUrl)
   const path = stripKnownEndpoint(url.pathname)
-  if (provider.protocol === 'ollama') {
-    url.pathname = `${path}/api/tags`.replace(/\/{2,}/gu, '/')
-    return url.toString()
-  }
   if (provider.protocol === 'anthropic') {
     url.pathname = `${path.endsWith('/v1') ? path : `${path}/v1`}/models`.replace(/\/{2,}/gu, '/')
-    return url.toString()
-  }
-  if (provider.kind === 'deepseek' && path === '') {
-    url.pathname = '/models'
     return url.toString()
   }
   url.pathname = `${path.endsWith('/v1') ? path : `${path}/v1`}/models`.replace(/\/{2,}/gu, '/')
@@ -93,6 +70,9 @@ export class ProviderService {
     credentialId: string | null
     defaultContextWindowTokens: number
   }): ProviderDto {
+    if (isBuiltinProviderId(input.id)) {
+      throw new CoreError('builtin_provider_protected', 'Built-in providers cannot be created')
+    }
     assertConfiguration(input.kind, input.protocol, input.baseUrl)
     return this.database.createProvider(input)
   }
@@ -110,29 +90,45 @@ export class ProviderService {
     }>
   ): ProviderDto {
     const current = this.database.getProvider(providerId)
-    assertConfiguration(
-      changes.kind ?? current.kind,
-      changes.protocol ?? current.protocol,
-      changes.baseUrl ?? current.baseUrl
-    )
+    const nextKind = changes.kind ?? current.kind
+    const nextProtocol = changes.protocol ?? current.protocol
+    const nextBaseUrl = changes.baseUrl ?? current.baseUrl
+    if (isBuiltinProviderId(providerId)) {
+      if (changes.kind && changes.kind !== current.kind) {
+        throw new CoreError(
+          'builtin_provider_protected',
+          'Built-in provider kind cannot be changed'
+        )
+      }
+      assertConfiguration(current.kind, nextProtocol, nextBaseUrl)
+      return this.database.updateProvider(providerId, {
+        ...changes,
+        kind: current.kind,
+        name: builtinProviderName(providerId) ?? current.name
+      })
+    }
+    assertConfiguration(nextKind, nextProtocol, nextBaseUrl)
     return this.database.updateProvider(providerId, changes)
   }
 
   archive(providerId: string): ProviderDto {
+    if (isBuiltinProviderId(providerId)) {
+      throw new CoreError('builtin_provider_protected', 'Built-in providers cannot be removed')
+    }
     return this.database.archiveProvider(providerId)
   }
 
   async refreshModels(providerId: string): Promise<ModelRefreshResultDto> {
     const provider = this.database.getProvider(providerId)
-    const apiKey = provider.kind === 'ollama' ? undefined : await this.credentials.get(provider.id)
-    if (provider.kind !== 'ollama' && !apiKey) {
+    const apiKey = await this.credentials.get(provider.id)
+    if (!apiKey) {
       throw new CoreError('api_key_missing', `Provider '${provider.name}' has no API key`)
     }
     const headers: Record<string, string> = { Accept: 'application/json' }
     if (provider.protocol === 'anthropic') {
-      headers['x-api-key'] = apiKey!
+      headers['x-api-key'] = apiKey
       headers['anthropic-version'] = '2023-06-01'
-    } else if (apiKey) {
+    } else {
       headers.Authorization = `Bearer ${apiKey}`
     }
     let response: Response
@@ -154,13 +150,7 @@ export class ProviderService {
       )
     }
     const body: unknown = await response.json()
-    const models =
-      provider.protocol === 'ollama'
-        ? ollamaModelsSchema
-            .parse(body)
-            .models.map((item) => item.name ?? item.model)
-            .filter((value): value is string => Boolean(value))
-        : listedModelsSchema.parse(body).data.map((item) => item.id)
+    const models = listedModelsSchema.parse(body).data.map((item) => item.id)
     const uniqueModels = [...new Set(models.map((model) => model.trim()).filter(Boolean))].slice(
       0,
       5_000

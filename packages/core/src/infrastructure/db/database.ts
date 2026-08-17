@@ -19,7 +19,12 @@ import type {
   RunEventType,
   ThreadDto
 } from '@kowork/contracts'
-import { appSettingsSchema } from '@kowork/contracts'
+import {
+  appSettingsSchema,
+  compareProviders,
+  DEFAULT_MODEL_PROFILE_ID,
+  isBuiltinProviderId
+} from '@kowork/contracts'
 import { createId } from '../../domain/ids'
 import { CoreError } from '../../domain/errors'
 import { migrations } from './migrations'
@@ -77,7 +82,8 @@ function asProvider(row: typeof schema.providers.$inferSelect): ProviderDto {
     baseUrl: row.baseUrl,
     credentialConfigured: row.credentialId !== null,
     enabled: row.enabled,
-    available: row.enabled && (kind === 'ollama' || row.credentialId !== null),
+    available: row.enabled && row.credentialId !== null,
+    builtin: isBuiltinProviderId(row.id),
     defaultContextWindowTokens: row.defaultContextWindowTokens,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt
@@ -89,9 +95,7 @@ function asProfile(
   provider: typeof schema.providers.$inferSelect
 ): ModelProfileDto {
   const providerAvailable =
-    provider.enabled &&
-    provider.deletedAt === null &&
-    (provider.kind === 'ollama' || provider.credentialId !== null)
+    provider.enabled && provider.deletedAt === null && provider.credentialId !== null
   return {
     id: row.id,
     providerId: row.providerId,
@@ -162,7 +166,7 @@ export class AppDatabase {
           .where(isNull(schema.providers.deletedAt))
           .orderBy(asc(schema.providers.name))
           .all()
-    return rows.map(asProvider)
+    return rows.map(asProvider).sort(compareProviders)
   }
 
   getProvider(id: string): ProviderDto {
@@ -454,7 +458,7 @@ export class AppDatabase {
   createThread(
     projectId: string,
     title: string,
-    defaultProfileId = 'deepseek-chat',
+    defaultProfileId = DEFAULT_MODEL_PROFILE_ID,
     defaultPermissionMode: PermissionMode = 'ask'
   ): ThreadDto {
     this.getProject(projectId)

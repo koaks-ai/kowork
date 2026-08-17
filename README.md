@@ -17,9 +17,9 @@ pnpm install
 
 ## 模型配置
 
-在应用的“设置 -> 模型供应商”中管理模型连接。首版支持 OpenAI、Anthropic、DeepSeek、Qwen、Ollama 和自定义供应商；DeepSeek 可选择 Chat Completions、Responses 或 Anthropic 协议，自定义供应商也支持这三类协议。
+在应用的“设置 → 模型 → 接入”中管理模型连接。默认提供 OpenAI、Anthropic 和 Qwen；OpenAI 可选择 Chat Completions 或 Responses。底部可添加更多提供商（再加一条 OpenAI / Anthropic / Qwen，或 OpenAI / Anthropic 兼容端点），名称默认为提供商名，便于同一平台使用多把 API Key。
 
-API Key 由 Electron Main 使用 `safeStorage` 加密后持久化。SQLite 只保存供应商、模型和凭据标识，Renderer 只能看到“已配置”状态，无法读回明文。Core 在创建 Agent 或刷新模型列表时按需向 Main 请求凭据。Ollama 不需要 API Key，也可以手工添加未提供模型枚举接口的模型 ID。
+API Key 由 Electron Main 使用 `safeStorage` 加密后持久化。SQLite 只保存供应商、模型和凭据标识，Renderer 只能看到“已配置”状态，无法读回明文。Core 在创建 Agent 或刷新模型列表时按需向 Main 请求凭据。也可以手工添加未提供模型枚举接口的模型 ID。
 
 ## 开发与验证
 

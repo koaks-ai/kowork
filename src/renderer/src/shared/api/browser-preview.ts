@@ -34,39 +34,55 @@ const project: ProjectDto = {
 }
 let providers: ProviderDto[] = [
   {
-    id: 'provider-deepseek',
-    name: 'DeepSeek',
-    kind: 'deepseek',
+    id: 'provider-openai-chat',
+    name: 'OpenAI',
+    kind: 'openai',
     protocol: 'openai-chat',
-    baseUrl: 'https://api.deepseek.com',
+    baseUrl: 'https://api.openai.com',
     credentialConfigured: true,
     enabled: true,
     available: true,
-    defaultContextWindowTokens: 128_000,
+    builtin: true,
+    defaultContextWindowTokens: 1_000_000,
     createdAt: now,
     updatedAt: now
   },
   {
-    id: 'provider-ollama',
-    name: 'Ollama',
-    kind: 'ollama',
-    protocol: 'ollama',
-    baseUrl: 'http://127.0.0.1:11434',
+    id: 'provider-anthropic',
+    name: 'Anthropic',
+    kind: 'anthropic',
+    protocol: 'anthropic',
+    baseUrl: 'https://api.anthropic.com',
     credentialConfigured: false,
     enabled: true,
-    available: true,
-    defaultContextWindowTokens: 32_768,
+    available: false,
+    builtin: true,
+    defaultContextWindowTokens: 200_000,
+    createdAt: now,
+    updatedAt: now
+  },
+  {
+    id: 'provider-qwen',
+    name: 'Qwen',
+    kind: 'qwen',
+    protocol: 'qwen',
+    baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode',
+    credentialConfigured: false,
+    enabled: true,
+    available: false,
+    builtin: true,
+    defaultContextWindowTokens: 131_072,
     createdAt: now,
     updatedAt: now
   }
 ]
 let profiles: ModelProfileDto[] = [
   {
-    id: 'deepseek-chat',
-    providerId: 'provider-deepseek',
-    name: 'DeepSeek Chat',
-    model: 'deepseek-chat',
-    contextWindowTokens: 128_000,
+    id: 'openai-gpt-4.1-mini',
+    providerId: 'provider-openai-chat',
+    name: 'GPT-4.1 mini',
+    model: 'gpt-4.1-mini',
+    contextWindowTokens: 1_000_000,
     source: 'builtin',
     enabled: true,
     createdAt: now,
@@ -74,16 +90,16 @@ let profiles: ModelProfileDto[] = [
     available: true
   },
   {
-    id: 'ollama-qwen3',
-    providerId: 'provider-ollama',
-    name: 'Ollama Qwen3',
-    model: 'qwen3:8b',
-    contextWindowTokens: 32_768,
+    id: 'anthropic-sonnet',
+    providerId: 'provider-anthropic',
+    name: 'Claude Sonnet 4.5',
+    model: 'claude-sonnet-4-5',
+    contextWindowTokens: 200_000,
     source: 'builtin',
     enabled: true,
     createdAt: now,
     updatedAt: now,
-    available: true
+    available: false
   }
 ]
 let threads: ThreadDto[] = [
@@ -325,7 +341,8 @@ export function installBrowserPreviewApi(): void {
           baseUrl: input.baseUrl,
           credentialConfigured: Boolean(input.apiKey),
           enabled: true,
-          available: input.kind === 'ollama' || Boolean(input.apiKey),
+          available: Boolean(input.apiKey),
+          builtin: false,
           defaultContextWindowTokens: input.defaultContextWindowTokens,
           createdAt: Date.now(),
           updatedAt: Date.now()

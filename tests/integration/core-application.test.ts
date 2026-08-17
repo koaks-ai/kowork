@@ -295,15 +295,15 @@ describe('Core application', () => {
     const core = new CoreApplication(dataPath, undefined, true)
     const project = await core.handle('projects.add', { rootPath: projectPath })
     const settings = await core.handle('settings.update', {
-      defaultModelProfileId: 'ollama-qwen3',
+      defaultModelProfileId: 'openai-gpt-4.1-mini',
       defaultPermissionMode: 'yolo'
     })
     expect(settings).toEqual({
-      defaultModelProfileId: 'ollama-qwen3',
+      defaultModelProfileId: 'openai-gpt-4.1-mini',
       defaultPermissionMode: 'yolo'
     })
     const thread = await core.handle('threads.create', { projectId: project.id })
-    expect(thread.modelProfileId).toBe('ollama-qwen3')
+    expect(thread.modelProfileId).toBe('openai-gpt-4.1-mini')
     expect(thread.permissionMode).toBe('yolo')
     await core.close()
 

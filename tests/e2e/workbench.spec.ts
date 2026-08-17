@@ -304,13 +304,12 @@ test('stores provider credentials securely and restores them after restart', asy
     await page.getByRole('button', { name: '设置' }).first().click()
     await page.getByRole('button', { name: '模型' }).click()
     await page.getByRole('tab', { name: '接入' }).click()
-    await page.getByRole('button', { name: '添加供应商' }).click()
-    await page.getByLabel('供应商品牌').selectOption('deepseek')
-    await page.getByLabel('调用协议').selectOption('anthropic')
-    await page.getByLabel('名称').fill('E2E DeepSeek Anthropic')
+    await page.getByRole('button', { name: '添加自定义提供商' }).click()
+    await page.getByLabel('提供商').selectOption('anthropic-compatible')
+    await page.getByLabel('名称').fill('E2E Anthropic Compatible')
     await page.getByLabel('API Key', { exact: true }).fill(secret)
     await page.getByRole('button', { name: '保存' }).click()
-    await expect(page.getByText('E2E DeepSeek Anthropic').first()).toBeVisible()
+    await expect(page.getByText('E2E Anthropic Compatible').first()).toBeVisible()
     await page.screenshot({ path: testInfo.outputPath('providers.png') })
     await electronApp.evaluate(({ BrowserWindow }) =>
       BrowserWindow.getAllWindows()[0]?.setSize(1_000, 700)
@@ -325,12 +324,13 @@ test('stores provider credentials securely and restores them after restart', asy
       const api = Reflect.get(window, 'kowork') as KoWorkApi
       return await api.bootstrap()
     })
-    const provider = bootstrap.providers.find((item) => item.name === 'E2E DeepSeek Anthropic')
+    const provider = bootstrap.providers.find((item) => item.name === 'E2E Anthropic Compatible')
     expect(provider).toMatchObject({
-      kind: 'deepseek',
+      kind: 'custom',
       protocol: 'anthropic',
       credentialConfigured: true,
-      available: true
+      available: true,
+      builtin: false
     })
     expect(JSON.stringify(bootstrap)).not.toContain(secret)
 
@@ -346,7 +346,7 @@ test('stores provider credentials securely and restores them after restart', asy
     const restored = await page.evaluate(async () => {
       const api = Reflect.get(window, 'kowork') as KoWorkApi
       const bootstrapAfterRestart = await api.bootstrap()
-      return bootstrapAfterRestart.providers.find((item) => item.name === 'E2E DeepSeek Anthropic')
+      return bootstrapAfterRestart.providers.find((item) => item.name === 'E2E Anthropic Compatible')
     })
     expect(restored).toMatchObject({ credentialConfigured: true, available: true })
   } finally {

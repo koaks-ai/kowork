@@ -3,24 +3,151 @@ import { z } from 'zod'
 export const permissionModeSchema = z.enum(['ask', 'auto', 'yolo'])
 export type PermissionMode = z.infer<typeof permissionModeSchema>
 
-export const providerKindSchema = z.enum([
-  'openai',
-  'anthropic',
-  'deepseek',
-  'qwen',
-  'ollama',
-  'custom'
-])
+export const providerKindSchema = z.enum(['openai', 'anthropic', 'qwen', 'custom'])
 export type ProviderKind = z.infer<typeof providerKindSchema>
 
 export const providerProtocolSchema = z.enum([
   'openai-chat',
   'openai-responses',
   'anthropic',
-  'qwen',
-  'ollama'
+  'qwen'
 ])
 export type ProviderProtocol = z.infer<typeof providerProtocolSchema>
+
+export const providerCatalogOptionSchema = z.enum([
+  'openai',
+  'anthropic',
+  'qwen',
+  'openai-compatible',
+  'anthropic-compatible'
+])
+export type ProviderCatalogOption = z.infer<typeof providerCatalogOptionSchema>
+
+export const PROVIDER_CATALOG_OPTIONS = [
+  'openai',
+  'anthropic',
+  'qwen',
+  'openai-compatible',
+  'anthropic-compatible'
+] as const satisfies readonly ProviderCatalogOption[]
+
+export const BUILTIN_PROVIDER_IDS = [
+  'provider-openai-chat',
+  'provider-anthropic',
+  'provider-qwen'
+] as const
+export type BuiltinProviderId = (typeof BUILTIN_PROVIDER_IDS)[number]
+
+export const DEFAULT_MODEL_PROFILE_ID = 'openai-gpt-4.1-mini'
+
+export const protocolsByKind: Record<ProviderKind, readonly ProviderProtocol[]> = {
+  openai: ['openai-chat', 'openai-responses'],
+  anthropic: ['anthropic'],
+  qwen: ['qwen'],
+  custom: ['openai-chat', 'anthropic']
+}
+
+export const builtinProviders = [
+  {
+    id: 'provider-openai-chat',
+    kind: 'openai',
+    name: 'OpenAI',
+    protocol: 'openai-chat',
+    baseUrl: 'https://api.openai.com',
+    defaultContextWindowTokens: 1_000_000
+  },
+  {
+    id: 'provider-anthropic',
+    kind: 'anthropic',
+    name: 'Anthropic',
+    protocol: 'anthropic',
+    baseUrl: 'https://api.anthropic.com',
+    defaultContextWindowTokens: 200_000
+  },
+  {
+    id: 'provider-qwen',
+    kind: 'qwen',
+    name: 'Qwen',
+    protocol: 'qwen',
+    baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode',
+    defaultContextWindowTokens: 131_072
+  }
+] as const satisfies readonly {
+  id: BuiltinProviderId
+  kind: ProviderKind
+  name: string
+  protocol: ProviderProtocol
+  baseUrl: string
+  defaultContextWindowTokens: number
+}[]
+
+export const providerCatalogDefaults: Record<
+  ProviderCatalogOption,
+  {
+    kind: ProviderKind
+    protocol: ProviderProtocol
+    baseUrl: string
+    defaultContextWindowTokens: number
+  }
+> = {
+  openai: {
+    kind: 'openai',
+    protocol: 'openai-chat',
+    baseUrl: 'https://api.openai.com',
+    defaultContextWindowTokens: 1_000_000
+  },
+  anthropic: {
+    kind: 'anthropic',
+    protocol: 'anthropic',
+    baseUrl: 'https://api.anthropic.com',
+    defaultContextWindowTokens: 200_000
+  },
+  qwen: {
+    kind: 'qwen',
+    protocol: 'qwen',
+    baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode',
+    defaultContextWindowTokens: 131_072
+  },
+  'openai-compatible': {
+    kind: 'custom',
+    protocol: 'openai-chat',
+    baseUrl: 'http://127.0.0.1:8000',
+    defaultContextWindowTokens: 128_000
+  },
+  'anthropic-compatible': {
+    kind: 'custom',
+    protocol: 'anthropic',
+    baseUrl: 'http://127.0.0.1:8000',
+    defaultContextWindowTokens: 200_000
+  }
+}
+
+export function isBuiltinProviderId(id: string): id is BuiltinProviderId {
+  return (BUILTIN_PROVIDER_IDS as readonly string[]).includes(id)
+}
+
+export function builtinProviderName(id: string): string | undefined {
+  return builtinProviders.find((provider) => provider.id === id)?.name
+}
+
+export function catalogOptionFromProvider(
+  kind: ProviderKind,
+  protocol: ProviderProtocol
+): ProviderCatalogOption {
+  if (kind === 'custom') {
+    return protocol === 'anthropic' ? 'anthropic-compatible' : 'openai-compatible'
+  }
+  return kind
+}
+
+export function compareProviders<T extends { id: string; name: string }>(left: T, right: T): number {
+  const leftBuiltin = BUILTIN_PROVIDER_IDS.indexOf(left.id as BuiltinProviderId)
+  const rightBuiltin = BUILTIN_PROVIDER_IDS.indexOf(right.id as BuiltinProviderId)
+  if (leftBuiltin !== -1 && rightBuiltin !== -1) return leftBuiltin - rightBuiltin
+  if (leftBuiltin !== -1) return -1
+  if (rightBuiltin !== -1) return 1
+  return left.name.localeCompare(right.name)
+}
 
 export const modelSourceSchema = z.enum(['builtin', 'remote', 'manual'])
 export type ModelSource = z.infer<typeof modelSourceSchema>
@@ -34,6 +161,7 @@ export const providerSchema = z.object({
   credentialConfigured: z.boolean(),
   enabled: z.boolean(),
   available: z.boolean(),
+  builtin: z.boolean(),
   defaultContextWindowTokens: z.number().int().positive(),
   createdAt: z.number(),
   updatedAt: z.number()

@@ -43,9 +43,6 @@ async function providerFor(
   provider: ProviderDto,
   credentials: CredentialProvider
 ): Promise<ModelProvider> {
-  if (provider.protocol === 'ollama') {
-    return { type: 'ollama', baseUrl: provider.baseUrl, model: profile.model }
-  }
   const apiKey = await credentials.get(provider.id)
   if (!apiKey) throw new CoreError('api_key_missing', `Provider '${provider.name}' has no API key`)
   const common = { model: profile.model, baseUrl: provider.baseUrl, apiKey }

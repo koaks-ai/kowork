@@ -30,7 +30,7 @@ async function fixture(permissionMode: PermissionMode): Promise<PermissionFixtur
   const events = new CoreEventBus(database)
   const approvals = new ApprovalService(database, events)
   const project = database.addProject(projectRoot, 'project')
-  const thread = database.createThread(project.id, 'Permissions', 'ollama-qwen3', permissionMode)
+  const thread = database.createThread(project.id, 'Permissions', 'openai-gpt-4.1-mini', permissionMode)
   const newRun = (input: string): RunDto => {
     const request = database.enqueueRequest(thread, input, 32_000)
     return database.createRun(request)

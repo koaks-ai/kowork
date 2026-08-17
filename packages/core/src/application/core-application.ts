@@ -1,6 +1,6 @@
 import { join } from 'node:path'
 import type { AppBootstrapDto, RpcInput, RpcMethod, RpcOutput } from '@kowork/contracts'
-import { parseRpcInput } from '@kowork/contracts'
+import { DEFAULT_MODEL_PROFILE_ID, parseRpcInput } from '@kowork/contracts'
 import { toCoreError } from '../domain/errors'
 import { AppDatabase } from '../infrastructure/db/database'
 import { GitService } from '../infrastructure/git/git-service'
@@ -111,7 +111,7 @@ export class CoreApplication {
         return this.database.createThread(
           value.projectId,
           value.title?.trim() || UNTITLED_THREAD_TITLE,
-          available?.id ?? 'deepseek-chat',
+          available?.id ?? DEFAULT_MODEL_PROFILE_ID,
           settings.defaultPermissionMode
         )
       }

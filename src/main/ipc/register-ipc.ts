@@ -24,7 +24,7 @@ export function registerIpc(
   ipcMain.handle('kowork:providers-create', async (_event, rawInput: unknown) => {
     const input = providerCreateRequestSchema.parse(rawInput)
     const providerId = `provider-${crypto.randomUUID()}`
-    const apiKey = input.kind === 'ollama' ? undefined : input.apiKey
+    const apiKey = input.apiKey
     if (apiKey) await credentials.set(providerId, apiKey)
     try {
       return await supervisor.request('providers.create', {
@@ -45,19 +45,17 @@ export function registerIpc(
   ipcMain.handle('kowork:providers-update', async (_event, rawInput: unknown) => {
     const input = providerUpdateRequestSchema.parse(rawInput)
     const { providerId, apiKey, ...changes } = input
-    const changesCredential = Object.hasOwn(input, 'apiKey') || input.kind === 'ollama'
+    const changesCredential = Object.hasOwn(input, 'apiKey')
     const previousCredential = changesCredential ? await credentials.get(providerId) : undefined
     if (changesCredential) {
-      if (apiKey && input.kind !== 'ollama') await credentials.set(providerId, apiKey)
+      if (apiKey) await credentials.set(providerId, apiKey)
       else await credentials.remove(providerId)
     }
     try {
       return await supervisor.request('providers.update', {
         providerId,
         ...changes,
-        ...(changesCredential
-          ? { credentialId: apiKey && input.kind !== 'ollama' ? providerId : null }
-          : {})
+        ...(changesCredential ? { credentialId: apiKey ? providerId : null } : {})
       })
     } catch (error) {
       if (changesCredential) {

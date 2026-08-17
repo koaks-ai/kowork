@@ -23,30 +23,30 @@ describe('RPC contracts', () => {
       parseRpcInput('providers.create', {
         id: 'provider-1',
         name: 'DeepSeek',
-        kind: 'deepseek',
+        kind: 'custom',
         protocol: 'anthropic',
-        baseUrl: 'https://api.deepseek.com',
+        baseUrl: 'http://127.0.0.1:8000',
         credentialId: 'provider-1',
-        defaultContextWindowTokens: 128_000
+        defaultContextWindowTokens: 200_000
       })
     ).toEqual({
       id: 'provider-1',
       name: 'DeepSeek',
-      kind: 'deepseek',
+      kind: 'custom',
       protocol: 'anthropic',
-      baseUrl: 'https://api.deepseek.com',
+      baseUrl: 'http://127.0.0.1:8000',
       credentialId: 'provider-1',
-      defaultContextWindowTokens: 128_000
+      defaultContextWindowTokens: 200_000
     })
   })
 
   it('validates typed application settings', () => {
     expect(
       parseRpcInput('settings.update', {
-        defaultModelProfileId: 'ollama-qwen3',
+        defaultModelProfileId: 'openai-gpt-4.1-mini',
         defaultPermissionMode: 'auto'
       })
-    ).toEqual({ defaultModelProfileId: 'ollama-qwen3', defaultPermissionMode: 'auto' })
+    ).toEqual({ defaultModelProfileId: 'openai-gpt-4.1-mini', defaultPermissionMode: 'auto' })
     expect(() =>
       parseRpcInput('settings.update', { defaultPermissionMode: 'unrestricted' })
     ).toThrow()

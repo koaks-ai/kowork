@@ -12,11 +12,15 @@ import {
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type {
-  ModelProfileDto,
-  ProviderDto,
-  ProviderKind,
-  ProviderProtocol
+import {
+  catalogOptionFromProvider,
+  PROVIDER_CATALOG_OPTIONS,
+  providerCatalogDefaults,
+  protocolsByKind,
+  type ModelProfileDto,
+  type ProviderCatalogOption,
+  type ProviderDto,
+  type ProviderProtocol
 } from '@kowork/contracts'
 import { BlurReveal } from '../../shared/ui/BlurReveal'
 import { IconButton } from '../../shared/ui/IconButton'
@@ -24,7 +28,7 @@ import { ResizablePanel } from '../../shared/ui/ResizablePanel'
 
 interface ProviderDraft {
   name: string
-  kind: ProviderKind
+  catalogOption: ProviderCatalogOption
   protocol: ProviderProtocol
   baseUrl: string
   apiKey: string
@@ -32,61 +36,21 @@ interface ProviderDraft {
   defaultContextWindowTokens: number
 }
 
-const protocolsByKind: Record<ProviderKind, ProviderProtocol[]> = {
-  openai: ['openai-chat', 'openai-responses'],
-  anthropic: ['anthropic'],
-  deepseek: ['openai-chat', 'openai-responses', 'anthropic'],
-  qwen: ['qwen'],
-  ollama: ['ollama'],
-  custom: ['openai-chat', 'openai-responses', 'anthropic']
-}
-
-const defaultsByKind: Record<
-  ProviderKind,
-  Pick<ProviderDraft, 'protocol' | 'baseUrl' | 'defaultContextWindowTokens'>
-> = {
-  openai: {
-    protocol: 'openai-responses',
-    baseUrl: 'https://api.openai.com',
-    defaultContextWindowTokens: 1_000_000
-  },
-  anthropic: {
-    protocol: 'anthropic',
-    baseUrl: 'https://api.anthropic.com',
-    defaultContextWindowTokens: 200_000
-  },
-  deepseek: {
-    protocol: 'openai-chat',
-    baseUrl: 'https://api.deepseek.com',
-    defaultContextWindowTokens: 128_000
-  },
-  qwen: {
-    protocol: 'qwen',
-    baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode',
-    defaultContextWindowTokens: 131_072
-  },
-  ollama: {
-    protocol: 'ollama',
-    baseUrl: 'http://127.0.0.1:11434',
-    defaultContextWindowTokens: 32_768
-  },
-  custom: {
-    protocol: 'openai-chat',
-    baseUrl: 'http://127.0.0.1:8000',
-    defaultContextWindowTokens: 128_000
-  }
-}
-
 function draftFromProvider(provider: ProviderDto): ProviderDraft {
+  const catalogOption = catalogOptionFromProvider(provider.kind, provider.protocol)
   return {
     name: provider.name,
-    kind: provider.kind,
+    catalogOption,
     protocol: provider.protocol,
     baseUrl: provider.baseUrl,
     apiKey: '',
     removeApiKey: false,
     defaultContextWindowTokens: provider.defaultContextWindowTokens
   }
+}
+
+function draftKind(option: ProviderCatalogOption) {
+  return providerCatalogDefaults[option].kind
 }
 
 const fieldClassName =
@@ -109,27 +73,30 @@ export function ProviderSettings({
   const [manualModel, setManualModel] = useState('')
   const [manualContext, setManualContext] = useState(128_000)
 
-  const providerKindLabels: Record<ProviderKind, string> = {
+  const catalogLabels: Record<ProviderCatalogOption, string> = {
     openai: t('providerOpenAI'),
     anthropic: t('providerAnthropic'),
-    deepseek: t('providerDeepSeek'),
     qwen: t('providerQwen'),
-    ollama: t('providerOllama'),
-    custom: t('providerCustom')
+    'openai-compatible': t('providerOpenAICompatible'),
+    'anthropic-compatible': t('providerAnthropicCompatible')
   }
   const protocolLabels: Record<ProviderProtocol, string> = {
     'openai-chat': t('protocolChatCompletions'),
     'openai-responses': t('protocolResponses'),
-    anthropic: t('protocolAnthropic'),
-    qwen: t('protocolQwen'),
-    ollama: t('protocolOllama')
+    anthropic: t('providerAnthropic'),
+    qwen: t('providerQwen')
   }
   const selectedProvider = providers.find((provider) => provider.id === selectedProviderId)
+  const builtinProviders = providers.filter((provider) => provider.builtin)
+  const addedProviders = providers.filter((provider) => !provider.builtin)
   const selectedModels = useMemo(
     () =>
       profiles.filter((profile) => profile.providerId === selectedProviderId && profile.enabled),
     [profiles, selectedProviderId]
   )
+  const kind = draft ? draftKind(draft.catalogOption) : undefined
+  const showProtocol = kind === 'openai'
+  const showIdentityFields = creating || Boolean(selectedProvider && !selectedProvider.builtin)
 
   const refreshBootstrap = (): void => {
     void queryClient.invalidateQueries({ queryKey: ['bootstrap'] })
@@ -137,12 +104,14 @@ export function ProviderSettings({
   const saveProvider = useMutation({
     mutationFn: async () => {
       if (!draft) throw new Error(t('providerFormIncomplete'))
+      const defaults = providerCatalogDefaults[draft.catalogOption]
+      const protocol = defaults.kind === 'openai' ? draft.protocol : defaults.protocol
       const apiKey = draft.apiKey.trim()
       if (creating) {
         return await window.kowork.providers.create({
           name: draft.name,
-          kind: draft.kind,
-          protocol: draft.protocol,
+          kind: defaults.kind,
+          protocol,
           baseUrl: draft.baseUrl,
           defaultContextWindowTokens: draft.defaultContextWindowTokens,
           ...(apiKey ? { apiKey } : {})
@@ -152,8 +121,8 @@ export function ProviderSettings({
       return await window.kowork.providers.update({
         providerId: selectedProviderId,
         name: draft.name,
-        kind: draft.kind,
-        protocol: draft.protocol,
+        kind: defaults.kind,
+        protocol,
         baseUrl: draft.baseUrl,
         defaultContextWindowTokens: draft.defaultContextWindowTokens,
         ...(draft.removeApiKey ? { apiKey: null } : apiKey ? { apiKey } : {})
@@ -194,13 +163,16 @@ export function ProviderSettings({
   })
 
   const beginCreate = (): void => {
-    const kind: ProviderKind = 'openai'
+    const catalogOption: ProviderCatalogOption = 'openai'
+    const defaults = providerCatalogDefaults[catalogOption]
     setCreating(true)
     setSelectedProviderId(undefined)
     setDraft({
-      name: providerKindLabels[kind],
-      kind,
-      ...defaultsByKind[kind],
+      name: catalogLabels[catalogOption],
+      catalogOption,
+      protocol: defaults.protocol,
+      baseUrl: defaults.baseUrl,
+      defaultContextWindowTokens: defaults.defaultContextWindowTokens,
       apiKey: '',
       removeApiKey: false
     })
@@ -211,18 +183,56 @@ export function ProviderSettings({
     setDraft(draftFromProvider(provider))
     setManualContext(provider.defaultContextWindowTokens)
   }
-  const changeKind = (kind: ProviderKind): void => {
+  const changeCatalogOption = (catalogOption: ProviderCatalogOption): void => {
+    const defaults = providerCatalogDefaults[catalogOption]
     setDraft((current) =>
       current
         ? {
             ...current,
-            name: creating ? providerKindLabels[kind] : current.name,
-            kind,
-            ...defaultsByKind[kind],
-            apiKey: kind === 'ollama' ? '' : current.apiKey,
-            removeApiKey: kind === 'ollama'
+            name:
+              current.name === catalogLabels[current.catalogOption]
+                ? catalogLabels[catalogOption]
+                : current.name,
+            catalogOption,
+            protocol: defaults.protocol,
+            baseUrl: defaults.baseUrl,
+            defaultContextWindowTokens: defaults.defaultContextWindowTokens
           }
         : current
+    )
+  }
+
+  const providerSubtitle = (provider: ProviderDto): string | undefined => {
+    if (provider.kind === 'openai') return protocolLabels[provider.protocol]
+    if (provider.kind === 'custom') {
+      return catalogLabels[catalogOptionFromProvider(provider.kind, provider.protocol)]
+    }
+    return provider.builtin ? undefined : catalogLabels[provider.kind]
+  }
+
+  const renderProviderButton = (provider: ProviderDto): React.JSX.Element => {
+    const selected = provider.id === selectedProviderId && !creating
+    const subtitle = providerSubtitle(provider)
+    return (
+      <button
+        key={provider.id}
+        type="button"
+        data-selected={selected || undefined}
+        onClick={() => chooseProvider(provider)}
+        className={`kowork-select-item kowork-select-item-fill mb-1 flex w-full items-center gap-2 rounded-md px-2.5 py-2.5 text-left ${
+          selected ? 'text-neutral-900' : 'text-neutral-700'
+        }`}
+      >
+        <span
+          className={`size-2 shrink-0 rounded-full ${provider.available ? 'bg-emerald-500' : 'bg-neutral-300'}`}
+        />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-medium">{provider.name}</span>
+          {subtitle && (
+            <span className="block truncate text-[11px] text-neutral-500">{subtitle}</span>
+          )}
+        </span>
+      </button>
     )
   }
 
@@ -237,39 +247,25 @@ export function ProviderSettings({
         resizeLabel={t('resizeProviderList')}
       >
         <aside className="flex h-full w-full flex-col border-r border-neutral-200 bg-neutral-50/70">
-          <div className="flex h-12 items-center justify-between border-b border-neutral-200 px-3">
+          <div className="flex h-12 items-center border-b border-neutral-200 px-3">
             <span className="truncate text-xs font-semibold text-neutral-600">
               {t('modelProviders')}
             </span>
-            <IconButton label={t('addProvider')} onClick={beginCreate}>
-              <Plus size={15} />
-            </IconButton>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto p-2">
-            {providers.map((provider) => {
-              const selected = provider.id === selectedProviderId && !creating
-              return (
-                <button
-                  key={provider.id}
-                  type="button"
-                  data-selected={selected || undefined}
-                  onClick={() => chooseProvider(provider)}
-                  className={`kowork-select-item kowork-select-item-fill mb-1 flex w-full items-center gap-2 rounded-md px-2.5 py-2.5 text-left ${
-                    selected ? 'text-neutral-900' : 'text-neutral-700'
-                  }`}
-                >
-                  <span
-                    className={`size-2 shrink-0 rounded-full ${provider.available ? 'bg-emerald-500' : 'bg-neutral-300'}`}
-                  />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">{provider.name}</span>
-                    <span className="block truncate text-[11px] text-neutral-500">
-                      {protocolLabels[provider.protocol]}
-                    </span>
-                  </span>
-                </button>
-              )
-            })}
+            {builtinProviders.map(renderProviderButton)}
+            {addedProviders.map(renderProviderButton)}
+            <button
+              type="button"
+              data-selected={creating || undefined}
+              onClick={beginCreate}
+              className={`kowork-select-item kowork-select-item-fill mt-1 flex w-full items-center gap-2 rounded-md px-2.5 py-2.5 text-left ${
+                creating ? 'text-neutral-900' : 'text-neutral-700'
+              }`}
+            >
+              <Plus size={15} className="shrink-0" />
+              <span className="truncate text-sm font-medium">{t('addProvider')}</span>
+            </button>
             {providers.length === 0 && !creating && (
               <div className="px-3 py-8 text-center text-xs text-neutral-500">
                 {t('noProviders')}
@@ -297,7 +293,7 @@ export function ProviderSettings({
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                {!creating && selectedProviderId && (
+                {!creating && selectedProviderId && !selectedProvider?.builtin && (
                   <button
                     className="flex h-8 items-center gap-1.5 rounded-md border border-neutral-200 px-2.5 text-xs text-neutral-600 hover:border-red-200 hover:text-red-700"
                     onClick={() => {
@@ -325,55 +321,63 @@ export function ProviderSettings({
             </div>
 
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <label className="text-xs font-medium text-neutral-600">
-                {t('providerName')}
-                <input
-                  className={fieldClassName}
-                  value={draft.name}
-                  onChange={(event) =>
-                    setDraft((current) =>
-                      current ? { ...current, name: event.target.value } : current
-                    )
-                  }
-                />
-              </label>
-              <label className="text-xs font-medium text-neutral-600">
-                {t('providerKind')}
-                <select
-                  className={fieldClassName}
-                  value={draft.kind}
-                  onChange={(event) => changeKind(event.target.value as ProviderKind)}
-                >
-                  {(Object.keys(providerKindLabels) as ProviderKind[]).map((kind) => (
-                    <option key={kind} value={kind}>
-                      {providerKindLabels[kind]}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="text-xs font-medium text-neutral-600">
-                {t('providerProtocol')}
-                <select
-                  className={fieldClassName}
-                  value={draft.protocol}
-                  onChange={(event) =>
-                    setDraft((current) =>
-                      current
-                        ? {
-                            ...current,
-                            protocol: event.target.value as ProviderProtocol
-                          }
-                        : current
-                    )
-                  }
-                >
-                  {protocolsByKind[draft.kind].map((protocol) => (
-                    <option key={protocol} value={protocol}>
-                      {protocolLabels[protocol]}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              {showIdentityFields && (
+                <>
+                  <label className="text-xs font-medium text-neutral-600">
+                    {t('provider')}
+                    <select
+                      className={fieldClassName}
+                      value={draft.catalogOption}
+                      onChange={(event) =>
+                        changeCatalogOption(event.target.value as ProviderCatalogOption)
+                      }
+                    >
+                      {PROVIDER_CATALOG_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                          {catalogLabels[option]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="text-xs font-medium text-neutral-600">
+                    {t('providerName')}
+                    <input
+                      className={fieldClassName}
+                      value={draft.name}
+                      onChange={(event) =>
+                        setDraft((current) =>
+                          current ? { ...current, name: event.target.value } : current
+                        )
+                      }
+                    />
+                  </label>
+                </>
+              )}
+              {showProtocol && (
+                <label className="text-xs font-medium text-neutral-600">
+                  {t('providerProtocol')}
+                  <select
+                    className={fieldClassName}
+                    value={draft.protocol}
+                    onChange={(event) =>
+                      setDraft((current) =>
+                        current
+                          ? {
+                              ...current,
+                              protocol: event.target.value as ProviderProtocol
+                            }
+                          : current
+                      )
+                    }
+                  >
+                    {protocolsByKind.openai.map((protocol) => (
+                      <option key={protocol} value={protocol}>
+                        {protocolLabels[protocol]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <label className="text-xs font-medium text-neutral-600">
                 {t('contextWindowTokens')}
                 <input
@@ -406,55 +410,53 @@ export function ProviderSettings({
                   }
                 />
               </label>
-              {draft.kind !== 'ollama' && (
-                <label className="text-xs font-medium text-neutral-600 sm:col-span-2">
-                  <span className="flex items-center justify-between">
-                    <span>{t('apiKey')}</span>
-                    {selectedProvider?.credentialConfigured && !draft.removeApiKey && (
-                      <span className="flex items-center gap-1 font-normal text-emerald-700">
-                        <KeyRound size={12} /> {t('apiKeyStored')}
-                      </span>
-                    )}
-                  </span>
-                  <input
-                    className={fieldClassName}
-                    type="password"
-                    autoComplete="new-password"
-                    disabled={draft.removeApiKey}
-                    placeholder={
-                      selectedProvider?.credentialConfigured
-                        ? t('apiKeyKeepPlaceholder')
-                        : t('apiKeyPlaceholder')
-                    }
-                    value={draft.apiKey}
-                    onChange={(event) =>
-                      setDraft((current) =>
-                        current ? { ...current, apiKey: event.target.value } : current
-                      )
-                    }
-                  />
-                  {selectedProvider?.credentialConfigured && (
-                    <label className="mt-2 flex items-center gap-2 text-xs font-normal text-neutral-500">
-                      <input
-                        type="checkbox"
-                        checked={draft.removeApiKey}
-                        onChange={(event) =>
-                          setDraft((current) =>
-                            current
-                              ? {
-                                  ...current,
-                                  removeApiKey: event.target.checked,
-                                  apiKey: ''
-                                }
-                              : current
-                          )
-                        }
-                      />
-                      {t('removeApiKey')}
-                    </label>
+              <label className="text-xs font-medium text-neutral-600 sm:col-span-2">
+                <span className="flex items-center justify-between">
+                  <span>{t('apiKey')}</span>
+                  {selectedProvider?.credentialConfigured && !draft.removeApiKey && (
+                    <span className="flex items-center gap-1 font-normal text-emerald-700">
+                      <KeyRound size={12} /> {t('apiKeyStored')}
+                    </span>
                   )}
-                </label>
-              )}
+                </span>
+                <input
+                  className={fieldClassName}
+                  type="password"
+                  autoComplete="new-password"
+                  disabled={draft.removeApiKey}
+                  placeholder={
+                    selectedProvider?.credentialConfigured
+                      ? t('apiKeyKeepPlaceholder')
+                      : t('apiKeyPlaceholder')
+                  }
+                  value={draft.apiKey}
+                  onChange={(event) =>
+                    setDraft((current) =>
+                      current ? { ...current, apiKey: event.target.value } : current
+                    )
+                  }
+                />
+                {selectedProvider?.credentialConfigured && (
+                  <label className="mt-2 flex items-center gap-2 text-xs font-normal text-neutral-500">
+                    <input
+                      type="checkbox"
+                      checked={draft.removeApiKey}
+                      onChange={(event) =>
+                        setDraft((current) =>
+                          current
+                            ? {
+                                ...current,
+                                removeApiKey: event.target.checked,
+                                apiKey: ''
+                              }
+                            : current
+                        )
+                      }
+                    />
+                    {t('removeApiKey')}
+                  </label>
+                )}
+              </label>
             </div>
 
             {saveProvider.error && (

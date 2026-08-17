@@ -41,7 +41,7 @@ describe('SQLite persistence', () => {
     await mkdir(projectRoot)
     const database = new AppDatabase(join(root, 'kowork.sqlite'))
     const project = database.addProject(projectRoot, 'project')
-    const thread = database.createThread(project.id, 'Thread', 'ollama-qwen3')
+    const thread = database.createThread(project.id, 'Thread', 'openai-gpt-4.1-mini')
     const first = database.enqueueRequest(thread, 'first', 32_000)
     const second = database.enqueueRequest(thread, 'second', 32_000)
     expect(database.nextQueued(thread.id)?.id).toBe(first.id)
@@ -94,11 +94,11 @@ describe('SQLite persistence', () => {
     const database = new AppDatabase(path)
     expect(database.getThread('thread-1').modelProfileId).toBe('legacy-deepseek')
     expect(database.getProfile('legacy-deepseek')).toMatchObject({
-      providerId: 'provider-deepseek',
+      providerId: 'provider-openai-chat',
       model: 'deepseek-chat',
       available: false
     })
-    expect(database.getProvider('provider-deepseek').credentialConfigured).toBe(false)
+    expect(database.getProvider('provider-openai-chat').name).toBe('OpenAI')
     database.close()
   })
 
@@ -123,7 +123,7 @@ describe('SQLite persistence', () => {
       .run('project-v2', 'project', root, now, now)
     sqlite
       .prepare('INSERT INTO threads VALUES (?, ?, ?, ?, ?, NULL, 0, ?, ?, NULL)')
-      .run('thread-v2', 'project-v2', 'Thread', 'ollama-qwen3', 'auto', now, now)
+      .run('thread-v2', 'project-v2', 'Thread', 'openai-gpt-4.1-mini', 'auto', now, now)
     sqlite
       .prepare('INSERT INTO turn_requests VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
       .run(
@@ -131,7 +131,7 @@ describe('SQLite persistence', () => {
         'thread-v2',
         'queued input',
         'queued',
-        'ollama-qwen3',
+        'openai-gpt-4.1-mini',
         'ask',
         32_000,
         0,
@@ -161,7 +161,7 @@ describe('SQLite persistence', () => {
     const database = new AppDatabase(path)
     expect(database.getRequest('request-v2')).toMatchObject({
       input: 'queued input',
-      modelProfileId: 'ollama-qwen3',
+      modelProfileId: 'openai-gpt-4.1-mini',
       contextWindowTokens: 32_000
     })
     expect(database.listApprovals('thread-v2')).toEqual([
@@ -186,7 +186,7 @@ describe('SQLite persistence', () => {
 
     const firstDatabase = new AppDatabase(path)
     const project = firstDatabase.addProject(projectRoot, 'project')
-    const thread = firstDatabase.createThread(project.id, 'Thread', 'ollama-qwen3')
+    const thread = firstDatabase.createThread(project.id, 'Thread', 'openai-gpt-4.1-mini')
     new PersistentThreadMemory(thread.id, firstDatabase).commit(
       completedTurn('0', 'My name is Lin.', 'I will remember that.')
     )

@@ -13,20 +13,31 @@ afterEach(async () => {
 })
 
 describe('Provider service', () => {
-  it('supports the requested DeepSeek protocols and rejects invalid built-in combinations', async () => {
+  it('allows extra OpenAI and custom Anthropic providers, and rejects invalid combinations', async () => {
     const root = await mkdtemp(join(tmpdir(), 'kowork-provider-policy-'))
     const database = new AppDatabase(join(root, 'kowork.sqlite'))
     closeCallbacks.push(async () => database.close())
     const service = new ProviderService(database, { get: async () => 'secret' })
     expect(
       service.create({
-        id: 'deepseek-anthropic',
-        name: 'DeepSeek Anthropic',
-        kind: 'deepseek',
+        id: 'openai-work',
+        name: 'OpenAI Work',
+        kind: 'openai',
+        protocol: 'openai-responses',
+        baseUrl: 'https://api.openai.com',
+        credentialId: 'openai-work',
+        defaultContextWindowTokens: 1_000_000
+      }).kind
+    ).toBe('openai')
+    expect(
+      service.create({
+        id: 'custom-anthropic',
+        name: 'Gateway',
+        kind: 'custom',
         protocol: 'anthropic',
-        baseUrl: 'https://api.deepseek.com',
-        credentialId: 'deepseek-anthropic',
-        defaultContextWindowTokens: 128_000
+        baseUrl: 'http://127.0.0.1:8000',
+        credentialId: 'custom-anthropic',
+        defaultContextWindowTokens: 200_000
       }).protocol
     ).toBe('anthropic')
     expect(() =>
@@ -40,6 +51,18 @@ describe('Provider service', () => {
         defaultContextWindowTokens: 128_000
       })
     ).toThrow(/not supported/)
+    expect(() =>
+      service.create({
+        id: 'invalid-custom',
+        name: 'Invalid Custom',
+        kind: 'custom',
+        protocol: 'openai-responses',
+        baseUrl: 'http://127.0.0.1:8000',
+        credentialId: 'invalid-custom',
+        defaultContextWindowTokens: 128_000
+      })
+    ).toThrow(/not supported/)
+    expect(() => service.archive('provider-openai-chat')).toThrow(/cannot be removed/)
   })
 
   it('refreshes Anthropic-compatible models with the stored credential', async () => {
