@@ -5,7 +5,14 @@ import * as Tooltip from '@radix-ui/react-tooltip'
 import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import { createElement } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { AppBootstrapDto, KoWorkApi, ProjectDto, ThreadDto } from '@kowork/contracts'
+import type {
+  AppBootstrapDto,
+  KoWorkApi,
+  ProjectDto,
+  RunDto,
+  RunEventDto,
+  ThreadDto
+} from '@kowork/contracts'
 import { useWorkbenchStore } from '../../src/renderer/src/shared/store/workbench'
 import '../../src/renderer/src/shared/i18n'
 import { ProjectSidebar } from '../../src/renderer/src/widgets/ProjectSidebar'
@@ -64,6 +71,35 @@ const bootstrap: AppBootstrapDto = {
   lastEventSequence: 0
 }
 
+function runningRun(threadId: string): RunDto {
+  return {
+    id: `run-${threadId}`,
+    requestId: `request-${threadId}`,
+    threadId,
+    status: 'running',
+    modelProfileId: 'model',
+    startedAt: now,
+    finishedAt: null,
+    promptTokens: 0,
+    completionTokens: 0,
+    totalTokens: 0,
+    error: null
+  }
+}
+
+function runEvent(type: RunEventDto['type'], threadId: string): RunEventDto {
+  return {
+    sequence: 1,
+    id: `event-${type}-${threadId}`,
+    projectId: threadId.replace('thread-', ''),
+    threadId,
+    runId: `run-${threadId}`,
+    type,
+    payload: {},
+    createdAt: now
+  }
+}
+
 afterEach(() => {
   cleanup()
   useWorkbenchStore.setState({ projectId: undefined, threadId: undefined })
@@ -74,6 +110,7 @@ function installApi(): {
   list: ReturnType<typeof vi.fn>
   update: ReturnType<typeof vi.fn>
   archive: ReturnType<typeof vi.fn>
+  emit(event: RunEventDto): void
 } {
   const list = vi.fn((projectId: string) => Promise.resolve(threads[projectId] ?? []))
   const update = vi.fn(async (threadId: string, changes: Partial<ThreadDto>) => {
@@ -88,14 +125,35 @@ function installApi(): {
       .find((item) => item.id === threadId)!
     return { ...thread, deletedAt: Date.now() }
   })
+  let listener: ((event: RunEventDto) => void) | undefined
   Object.defineProperty(window, 'kowork', {
     configurable: true,
-    value: { threads: { list, update, archive } } as unknown as KoWorkApi
+    value: {
+      threads: { list, update, archive },
+      events: {
+        subscribe: (next: (event: RunEventDto) => void) => {
+          listener = next
+          return () => {
+            if (listener === next) listener = undefined
+          }
+        }
+      }
+    } as unknown as KoWorkApi
   })
-  return { list, update, archive }
+  return {
+    list,
+    update,
+    archive,
+    emit(event) {
+      listener?.(event)
+    }
+  }
 }
 
-function renderSidebar(): { view: ReturnType<typeof render>; queryClient: QueryClient } {
+function renderSidebar(bootstrapOverride: AppBootstrapDto = bootstrap): {
+  view: ReturnType<typeof render>
+  queryClient: QueryClient
+} {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } }
   })
@@ -106,7 +164,7 @@ function renderSidebar(): { view: ReturnType<typeof render>; queryClient: QueryC
       createElement(
         Tooltip.Provider,
         null,
-        createElement(ProjectSidebar, { bootstrap, isMacOS: false })
+        createElement(ProjectSidebar, { bootstrap: bootstrapOverride, isMacOS: false })
       )
     )
   )
@@ -136,9 +194,7 @@ describe('ProjectSidebar', () => {
     })
     await waitFor(() => expect(view.getByText('Alpha follow-up')).not.toBeNull())
     const alphaDisclosure = view.container.querySelector('#project-threads-project-a')!
-    const highlight = alphaDisclosure.querySelector(
-      '[data-selection-highlight]'
-    ) as HTMLElement
+    const highlight = alphaDisclosure.querySelector('[data-selection-highlight]') as HTMLElement
     expect(highlight.style.transform).toBe('translateY(0px)')
 
     fireEvent.click(view.getByRole('button', { name: 'Alpha follow-up' }))
@@ -200,5 +256,39 @@ describe('ProjectSidebar', () => {
     await waitFor(() => expect(api.archive).toHaveBeenCalledWith('thread-project-a'))
     await waitFor(() => expect(view.queryByText('Alpha conversation')).toBeNull())
     expect(useWorkbenchStore.getState().threadId).toBeUndefined()
+  })
+
+  it('shows a spinning orbit on threads with an active run', async () => {
+    useWorkbenchStore.setState({ projectId: 'project-a', threadId: 'thread-project-a' })
+    installApi()
+    const { view } = renderSidebar({
+      ...bootstrap,
+      activeRuns: [runningRun('thread-project-a')]
+    })
+    await waitFor(() => expect(view.getByText('Alpha conversation')).not.toBeNull())
+
+    const alpha = view.getByRole('button', { name: 'Alpha conversation' })
+    expect(alpha.querySelector('[data-orbit-squares]')).not.toBeNull()
+    expect(view.container.querySelectorAll('[data-orbit-squares]')).toHaveLength(1)
+  })
+
+  it('starts and stops the orbit from live run events', async () => {
+    useWorkbenchStore.setState({ projectId: 'project-a', threadId: 'thread-project-a' })
+    const api = installApi()
+    const { view } = renderSidebar()
+    await waitFor(() => expect(view.getByText('Alpha conversation')).not.toBeNull())
+
+    const alpha = view.getByRole('button', { name: 'Alpha conversation' })
+    expect(alpha.querySelector('[data-orbit-squares]')).toBeNull()
+
+    act(() => {
+      api.emit(runEvent('run.started', 'thread-project-a'))
+    })
+    expect(alpha.querySelector('[data-orbit-squares]')).not.toBeNull()
+
+    act(() => {
+      api.emit(runEvent('run.completed', 'thread-project-a'))
+    })
+    expect(alpha.querySelector('[data-orbit-squares]')).toBeNull()
   })
 })

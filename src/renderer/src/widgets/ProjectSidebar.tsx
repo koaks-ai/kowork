@@ -11,7 +11,13 @@ import {
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { AppBootstrapDto, ProjectDto, ThreadDto } from '@kowork/contracts'
+import type {
+  AppBootstrapDto,
+  ProjectDto,
+  RunDto,
+  RunEventType,
+  ThreadDto
+} from '@kowork/contracts'
 import { SettingsDialog } from '../features/settings/SettingsDialog'
 import { useWorkbenchStore } from '../shared/store/workbench'
 import { AnimatedDisclosure } from '../shared/ui/AnimatedDisclosure'
@@ -19,6 +25,7 @@ import { BlurSwapText } from '../shared/ui/BlurSwapText'
 import { ContextMenu } from '../shared/ui/ContextMenu'
 import { IconButton } from '../shared/ui/IconButton'
 import { InlineRenameInput } from '../shared/ui/InlineRenameInput'
+import { OrbitSquares } from '../shared/ui/OrbitSquares'
 import { SelectionList } from '../shared/ui/SelectionList'
 
 interface ProjectSidebarProps {
@@ -29,18 +36,65 @@ interface ProjectSidebarProps {
 
 const EMPTY_THREADS: ThreadDto[] = []
 const SIDEBAR_ROW_HEIGHT = 34
+const RUN_STARTED_EVENTS = new Set<RunEventType>(['run.started', 'run.waiting'])
+const RUN_ENDED_EVENTS = new Set<RunEventType>([
+  'run.completed',
+  'run.failed',
+  'run.cancelled',
+  'run.interrupted'
+])
+
+function useRunningThreadIds(initialRuns: RunDto[]): Set<string> {
+  const [ids, setIds] = useState(() => new Set(initialRuns.map((run) => run.threadId)))
+
+  useEffect(() => {
+    return window.kowork.events.subscribe((event) => {
+      if (!event.threadId) return
+      const threadId = event.threadId
+      if (RUN_STARTED_EVENTS.has(event.type)) {
+        setIds((current) => {
+          if (current.has(threadId)) return current
+          const next = new Set(current)
+          next.add(threadId)
+          return next
+        })
+        return
+      }
+      if (RUN_ENDED_EVENTS.has(event.type)) {
+        setIds((current) => {
+          if (!current.has(threadId)) return current
+          const next = new Set(current)
+          next.delete(threadId)
+          return next
+        })
+      }
+    })
+  }, [])
+
+  return ids
+}
 
 interface ProjectThreadListProps {
   threads: ThreadDto[]
   selectedThreadId?: string
+  runningThreadIds: Set<string>
   onSelect(threadId: string): void
   onRename(threadId: string, title: string): void
   onArchive(threadId: string): void
 }
 
+function ThreadRunningMark({ running }: { running: boolean }): React.JSX.Element {
+  return (
+    <span className="flex w-[15px] shrink-0 items-center justify-center">
+      {running ? <OrbitSquares /> : null}
+    </span>
+  )
+}
+
 function ProjectThreadList({
   threads,
   selectedThreadId,
+  runningThreadIds,
   onSelect,
   onRename,
   onArchive
@@ -70,7 +124,7 @@ function ProjectThreadList({
         <div
           key={thread.id}
           data-selected={thread.id === selectedThreadId || undefined}
-          className={`kowork-select-item flex h-[34px] items-center rounded-lg ${thread.id === selectedThreadId ? 'text-neutral-900' : 'text-neutral-700'}`}
+          className={`kowork-select-item flex h-[34px] w-full items-center rounded-lg px-2 ${thread.id === selectedThreadId ? 'text-neutral-900' : 'text-neutral-700'}`}
           onContextMenu={(event) => {
             event.preventDefault()
             event.stopPropagation()
@@ -79,23 +133,31 @@ function ProjectThreadList({
           }}
         >
           {renamingId === thread.id ? (
-            <InlineRenameInput
-              value={thread.title}
-              placeholder={t('untitledThread')}
-              aria-label={t('threadTitle')}
-              className="mx-0.5 h-[26px] w-full rounded-md border border-blue-300 bg-white px-2 text-sm text-neutral-900 outline-none"
-              onSubmit={(title) => {
-                setRenamingId(null)
-                onRename(thread.id, title)
-              }}
-              onCancel={() => setRenamingId(null)}
-            />
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <ThreadRunningMark running={runningThreadIds.has(thread.id)} />
+              <InlineRenameInput
+                value={thread.title}
+                placeholder={t('untitledThread')}
+                aria-label={t('threadTitle')}
+                className="mx-0.5 h-[26px] min-w-0 flex-1 rounded-md border border-blue-300 bg-white px-2 text-sm text-neutral-900 outline-none"
+                onSubmit={(title) => {
+                  setRenamingId(null)
+                  onRename(thread.id, title)
+                }}
+                onCancel={() => setRenamingId(null)}
+              />
+            </div>
           ) : (
             <button
-              className="flex h-full min-w-0 flex-1 items-center truncate px-2 text-left text-sm"
+              className="flex h-full min-w-0 flex-1 items-center gap-2 text-left text-sm"
               onClick={() => onSelect(thread.id)}
             >
-              <BlurSwapText value={thread.title} fallback={t('untitledThread')} />
+              <ThreadRunningMark running={runningThreadIds.has(thread.id)} />
+              <BlurSwapText
+                className="min-w-0 flex-1"
+                value={thread.title}
+                fallback={t('untitledThread')}
+              />
             </button>
           )}
         </div>
@@ -136,6 +198,7 @@ export function ProjectSidebar({
   const queryClient = useQueryClient()
   const { projectId, threadId, setProject, setThread } = useWorkbenchStore()
   const projects = bootstrap.projects
+  const runningThreadIds = useRunningThreadIds(bootstrap.activeRuns)
   const [expandedProjectIds, setExpandedProjectIds] = useState<Set<string>>(() => {
     const initialProjectId = projectId ?? projects[0]?.id
     return initialProjectId ? new Set([initialProjectId]) : new Set()
@@ -246,8 +309,7 @@ export function ProjectSidebar({
                   type="button"
                   aria-controls={disclosureId}
                   aria-expanded={expanded}
-                  data-selected={selected || undefined}
-                  className={`kowork-select-item kowork-select-item-fill flex h-[34px] w-full items-center gap-2 rounded-lg px-2 text-left text-sm font-medium ${selected ? 'text-neutral-900' : 'text-neutral-700'}`}
+                  className={`kowork-select-item flex h-[34px] w-full items-center gap-2 rounded-lg px-2 text-left text-sm font-medium ${selected ? 'text-neutral-900' : 'text-neutral-700'}`}
                   onClick={() => {
                     setExpandedProjectIds((current) => {
                       const next = new Set(current)
@@ -257,7 +319,10 @@ export function ProjectSidebar({
                     })
                   }}
                 >
-                  <Folder size={15} className={selected ? 'text-neutral-600' : 'text-neutral-400'} />
+                  <Folder
+                    size={15}
+                    className={selected ? 'text-neutral-600' : 'text-neutral-400'}
+                  />
                   <span className="min-w-0 flex-1 truncate">{project.name}</span>
                   <ChevronRight
                     size={14}
@@ -265,10 +330,11 @@ export function ProjectSidebar({
                   />
                 </button>
                 <AnimatedDisclosure open={expanded} id={disclosureId}>
-                  <div className="ml-4 border-l border-neutral-200 pb-1 pl-1.5 pt-1">
+                  <div className="pb-1 pt-1">
                     <ProjectThreadList
                       threads={projectThreads}
                       selectedThreadId={threadId}
+                      runningThreadIds={runningThreadIds}
                       onSelect={(targetThreadId) => {
                         if (!selected) setProject(project.id)
                         setThread(targetThreadId)
