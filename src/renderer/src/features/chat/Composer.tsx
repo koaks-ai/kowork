@@ -144,7 +144,7 @@ export function Composer({
           />
           <div
             data-chat-composer
-            className="pointer-events-auto relative rounded-2xl border border-neutral-300 bg-white shadow-sm transition-[border-color,box-shadow] duration-200 ease-out focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500/15 motion-reduce:transition-none"
+            className="pointer-events-auto relative rounded-2xl border border-neutral-300 bg-white shadow-sm transition-[border-color,box-shadow] duration-200 ease-out focus-within:border-neutral-400 focus-within:ring-1 focus-within:ring-neutral-400/25 motion-reduce:transition-none"
           >
             <textarea
               ref={textarea}
