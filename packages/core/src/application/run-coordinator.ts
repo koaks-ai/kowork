@@ -123,24 +123,23 @@ export class RunCoordinator {
             payload: { text: event.text, kind: event.kind, itemRef: event.itemRef }
           })
         } else if (event.type === 'model') {
-          const payload = { event: event.event, step: event.step, phase: event.phase }
           const type =
-            event.event.type === 'provider_event'
-              ? 'run.provider-event'
-              : event.event.type === 'tool_call_delta'
-                ? 'run.tool-call-delta'
-                : event.event.type === 'refusal_delta'
-                  ? 'run.refusal'
-                  : event.event.type === 'annotation_added'
-                    ? 'run.annotation'
-                    : 'run.model-event'
-          this.events.publish({
-            projectId: project.id,
-            threadId: thread.id,
-            runId: run.id,
-            type,
-            payload
-          })
+            event.event.type === 'tool_call_delta'
+              ? 'run.tool-call-delta'
+              : event.event.type === 'refusal_delta'
+                ? 'run.refusal'
+                : event.event.type === 'annotation_added'
+                  ? 'run.annotation'
+                  : undefined
+          if (type) {
+            this.events.publish({
+              projectId: project.id,
+              threadId: thread.id,
+              runId: run.id,
+              type,
+              payload: { event: event.event, step: event.step, phase: event.phase }
+            })
+          }
         } else if (event.type === 'tool_call_requested') {
           this.events.publish({
             projectId: project.id,

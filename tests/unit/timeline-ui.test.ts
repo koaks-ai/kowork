@@ -229,28 +229,9 @@ describe('reasoning timeline activity', () => {
     await waitFor(() => expect(writeText).toHaveBeenCalledWith('第一段过程\n第二段过程'))
   })
 
-  it('renders summary, raw reasoning, refusal, citations and expandable protocol traces', () => {
+  it('renders semantic model details', () => {
     const detailedEvents: RunEventDto[] = [
       started,
-      {
-        ...started,
-        sequence: 2,
-        id: 'provider-event',
-        type: 'run.provider-event',
-        payload: {
-          step: 0,
-          phase: 'normal',
-          event: {
-            type: 'provider_event',
-            providerId: 'openai-responses',
-            protocolId: 'openai-responses',
-            eventType: 'response.created',
-            source: 'sse',
-            payload: '{"type":"response.created"}'
-          }
-        },
-        createdAt: 2
-      },
       {
         ...started,
         sequence: 3,
@@ -309,12 +290,5 @@ describe('reasoning timeline activity', () => {
     expect(view.getByRole('link', { name: 'Example source' }).getAttribute('href')).toBe(
       'https://example.com/source'
     )
-
-    const traceToggle = view.getByRole('button', { name: /openai-responses/ })
-    expect(traceToggle.getAttribute('aria-expanded')).toBe('false')
-    fireEvent.click(traceToggle)
-    expect(traceToggle.getAttribute('aria-expanded')).toBe('true')
-    expect(view.getByText('response.created')).toBeTruthy()
-    expect(view.getByText(/"type": "response.created"/)).toBeTruthy()
   })
 })

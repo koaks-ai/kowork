@@ -23,9 +23,9 @@ API Key 由 Electron Main 使用 `safeStorage` 加密后持久化。SQLite 只�
 
 ## 模型事件流
 
-会话运行使用 Koaks `eventDetail: "lossless"`。Core 会将文本、summary/raw 推理、工具参数增量、拒绝、注解、模型生命周期以及每个 provider 原始逻辑事件写入 `run_events`，因此应用重启后仍可恢复完整事件轨迹。
+会话运行使用 Koaks `eventDetail: "lossless"`，以便 Core 准确提取文本、summary/raw 推理、工具参数增量、拒绝和注解等语义事件。这些用户可见事件会写入 `run_events`，应用重启后可以恢复会话内容。
 
-Timeline 保持正文和工具操作为主视图，并将高频 provider/lifecycle 事件按模型调用聚合为默认收起的协议轨迹。展开后可以查看协议、事件类型、序号、HTTP 状态和未裁剪 payload。lossless payload 可能包含模型文本、工具参数、原始推理、签名或加密内容，不会自动脱敏。
+原始 provider 事件和模型生命周期事件仅用于流式解码，不进入 KoWork 数据库，也不会显示在 Timeline 中。
 
 ## 开发与验证
 

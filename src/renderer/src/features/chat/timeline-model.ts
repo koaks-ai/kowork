@@ -45,22 +45,6 @@ export interface AnnotationActivity {
   annotations: Annotation[]
 }
 
-export interface ModelTraceEntry {
-  id: string
-  sequence: number
-  createdAt: number
-  event: ModelEvent
-}
-
-export interface ModelTraceActivity {
-  id: string
-  kind: 'trace'
-  step: number
-  phase: 'normal' | 'structured_finalization'
-  protocolIds: string[]
-  entries: ModelTraceEntry[]
-}
-
 export interface CompressionActivity {
   id: string
   kind: 'compression'
@@ -73,7 +57,6 @@ export type RunActivity =
   | ToolActivity
   | RefusalActivity
   | AnnotationActivity
-  | ModelTraceActivity
   | CompressionActivity
 export type RunStatus = 'completed' | 'failed' | 'cancelled' | 'interrupted'
 
@@ -95,10 +78,6 @@ function stringValue(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined
 }
 
-function numberValue(value: unknown, fallback = 0): number {
-  return typeof value === 'number' && Number.isInteger(value) ? value : fallback
-}
-
 function modelEventFrom(event: RunEventDto): ModelEvent | undefined {
   const value = event.payload.event
   if (!value || typeof value !== 'object' || typeof Reflect.get(value, 'type') !== 'string') {
@@ -107,48 +86,10 @@ function modelEventFrom(event: RunEventDto): ModelEvent | undefined {
   return value as ModelEvent
 }
 
-function phaseFrom(event: RunEventDto): 'normal' | 'structured_finalization' {
-  return event.payload.phase === 'structured_finalization' ? 'structured_finalization' : 'normal'
-}
-
 function findTool(item: RunTimelineItem, callId: string): ToolActivity | undefined {
   return item.activities.find(
     (activity): activity is ToolActivity => activity.kind === 'tool' && activity.callId === callId
   )
-}
-
-function traceFor(item: RunTimelineItem, event: RunEventDto): ModelTraceActivity {
-  const step = numberValue(event.payload.step)
-  const phase = phaseFrom(event)
-  const existing = item.activities.find(
-    (activity): activity is ModelTraceActivity =>
-      activity.kind === 'trace' && activity.step === step && activity.phase === phase
-  )
-  if (existing) return existing
-
-  const trace: ModelTraceActivity = {
-    id: `trace:${item.runId}:${phase}:${step}`,
-    kind: 'trace',
-    step,
-    phase,
-    protocolIds: [],
-    entries: []
-  }
-  item.activities.push(trace)
-  return trace
-}
-
-function appendTrace(item: RunTimelineItem, source: RunEventDto, modelEvent: ModelEvent): void {
-  const trace = traceFor(item, source)
-  if (modelEvent.type === 'provider_event' && !trace.protocolIds.includes(modelEvent.protocolId)) {
-    trace.protocolIds.push(modelEvent.protocolId)
-  }
-  trace.entries.push({
-    id: source.id,
-    sequence: source.sequence,
-    createdAt: source.createdAt,
-    event: modelEvent
-  })
 }
 
 export function collectTimeline(events: RunEventDto[]): RunTimelineItem[] {
@@ -337,10 +278,6 @@ export function collectTimeline(events: RunEventDto[]): RunTimelineItem[] {
           })
         }
       }
-    }
-    if (event.type === 'run.provider-event' || event.type === 'run.model-event') {
-      const detail = modelEventFrom(event)
-      if (detail) appendTrace(item, event, detail)
     }
     if (event.type === 'run.completed') {
       item.status = 'completed'

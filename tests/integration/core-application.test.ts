@@ -115,23 +115,8 @@ describe('Core application', () => {
         .map((event) => String(event.payload.text ?? ''))
         .join('')
       expect(text).toBe('beta5 handle response')
-      const providerEvents = events.filter((event) => event.type === 'run.provider-event')
-      expect(providerEvents.length).toBeGreaterThan(0)
-      expect(
-        providerEvents.some(
-          (event) =>
-            (event.payload.event as { protocolId?: string } | undefined)?.protocolId ===
-            'chat-completions'
-        )
-      ).toBe(true)
-      expect(
-        providerEvents.some((event) =>
-          String((event.payload.event as { payload?: string } | undefined)?.payload).includes(
-            'fixture-response'
-          )
-        )
-      ).toBe(true)
-      expect(events.some((event) => event.type === 'run.model-event')).toBe(true)
+      expect(events.map((event) => String(event.type))).not.toContain('run.provider-event')
+      expect(events.map((event) => String(event.type))).not.toContain('run.model-event')
       expect(events.some((event) => event.type === 'run.tool-call-delta')).toBe(true)
       const toolCall = events.find((event) => event.type === 'run.tool-call')
       const callId = (toolCall?.payload.call as { id?: string } | undefined)?.id

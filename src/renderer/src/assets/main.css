@@ -282,16 +282,14 @@ textarea,
     [data-run-content='reasoning'],
     [data-run-content='text'],
     [data-run-content='refusal'],
-    [data-run-content='annotations'],
-    [data-run-content='trace']
+    [data-run-content='annotations']
   )
   + :is(
     [data-run-content='tool'],
     [data-run-content='reasoning'],
     [data-run-content='text'],
     [data-run-content='refusal'],
-    [data-run-content='annotations'],
-    [data-run-content='trace']
+    [data-run-content='annotations']
   ) {
   margin-block-start: 0.75rem;
 }

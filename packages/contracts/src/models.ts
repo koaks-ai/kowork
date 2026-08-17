@@ -295,8 +295,6 @@ export const runEventTypeSchema = z.enum([
   'run.tool-call',
   'run.tool-call-delta',
   'run.tool-output',
-  'run.provider-event',
-  'run.model-event',
   'run.completed',
   'run.failed',
   'run.cancelled',

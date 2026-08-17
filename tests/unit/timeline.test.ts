@@ -117,27 +117,9 @@ describe('chat timeline', () => {
     })
   })
 
-  it('projects lossless model events without dropping payloads or merging reasoning kinds', () => {
-    const providerPayload = '{"type":"response.created","response":{"id":"resp-1"}}'
+  it('projects semantic model events without merging reasoning kinds', () => {
     const items = collectTimeline([
       event(1, 'run.started', { input: '检查来源' }),
-      event(2, 'run.provider-event', {
-        step: 0,
-        phase: 'normal',
-        event: {
-          type: 'provider_event',
-          providerId: 'openai-responses',
-          protocolId: 'openai-responses',
-          eventType: 'response.created',
-          source: 'sse',
-          payload: providerPayload
-        }
-      }),
-      event(3, 'run.model-event', {
-        step: 0,
-        phase: 'normal',
-        event: { type: 'started', responseId: 'resp-1' }
-      }),
       event(4, 'run.reasoning', {
         text: '摘要',
         kind: 'summary',
@@ -194,42 +176,15 @@ describe('chat timeline', () => {
           }
         }
       }),
-      event(11, 'run.model-event', {
-        step: 0,
-        phase: 'normal',
-        event: {
-          type: 'finished',
-          response: {
-            status: 'completed',
-            id: 'resp-1',
-            output: [],
-            usage: {
-              promptTokens: 1,
-              completionTokens: 1,
-              totalTokens: 2,
-              cachedInputTokens: 0,
-              reasoningOutputTokens: 1
-            }
-          }
-        }
-      }),
       event(12, 'run.completed', { finalText: '', finalStep: 2, usage: {} })
     ])
 
     const activities = items[0]?.activities ?? []
-    const trace = activities.find((activity) => activity.kind === 'trace')
     const reasoning = activities.filter((activity) => activity.kind === 'reasoning')
     const tool = activities.find((activity) => activity.kind === 'tool')
     const refusal = activities.find((activity) => activity.kind === 'refusal')
     const annotations = activities.find((activity) => activity.kind === 'annotations')
 
-    expect(trace).toMatchObject({
-      step: 0,
-      phase: 'normal',
-      protocolIds: ['openai-responses']
-    })
-    expect(trace?.entries).toHaveLength(3)
-    expect(trace?.entries[0]?.event).toMatchObject({ payload: providerPayload })
     expect(reasoning).toMatchObject([
       { reasoningKind: 'summary', itemRef: 'reason-1', text: '摘要' },
       { reasoningKind: 'raw', itemRef: 'reason-1', text: '原始推理' }

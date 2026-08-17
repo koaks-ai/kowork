@@ -141,25 +141,19 @@ test('runs through the real Electron, preload, main and Core process chain', asy
     await expect(
       reasoningActivities.nth(1).getByRole('button', { name: '原始推理' })
     ).toHaveAttribute('aria-expanded', 'false')
-    const traceActivity = page.locator('[data-run-content="trace"]').first()
-    const traceToggle = traceActivity.getByRole('button', { name: /openai-responses/ })
-    await expect(traceToggle).toHaveAttribute('aria-expanded', 'false')
-    await traceToggle.click()
-    await expect(traceToggle).toHaveAttribute('aria-expanded', 'true')
-    await expect(traceActivity.getByText('response.created').first()).toBeVisible()
     await expect(page.locator('[data-run-content="annotations"]')).toContainText('README.md')
     const orderedContent = page.locator('article').first().locator('[data-run-content]')
-    await expect(orderedContent).toHaveCount(7)
+    await expect(orderedContent).toHaveCount(6)
     expect(
       await orderedContent.evaluateAll((elements) =>
         elements.map((element) => element.getAttribute('data-run-content'))
       )
-    ).toEqual(['trace', 'text', 'reasoning', 'tool', 'reasoning', 'annotations', 'text'])
+    ).toEqual(['text', 'reasoning', 'tool', 'reasoning', 'annotations', 'text'])
     expect(
       await orderedContent.evaluateAll((elements) =>
         elements.map((element) => element.getAttribute('data-output-kind'))
       )
-    ).toEqual([null, 'process', null, null, null, null, 'final'])
+    ).toEqual(['process', null, null, null, null, 'final'])
     const copyAction = page.locator('[data-run-action="copy"]').first()
     await expect(copyAction).toHaveAttribute('aria-label', '复制最终回复', { timeout: 5_000 })
     await expect(page.getByRole('button', { name: '创建分支（暂不可用）' }).first()).toBeDisabled()
