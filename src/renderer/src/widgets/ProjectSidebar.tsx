@@ -215,7 +215,7 @@ export function ProjectSidebar({
       </div>
       <div className="px-3 py-3">
         <button
-          className="no-drag flex h-9 w-full items-center justify-center gap-2 rounded-md border border-neutral-200 bg-neutral-50 text-sm font-medium text-neutral-700 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-50"
+          className="kowork-hover-fill no-drag flex h-9 w-full items-center justify-center gap-2 rounded-md border border-neutral-200 bg-neutral-50 text-sm font-medium text-neutral-700 transition-colors hover:border-neutral-250 hover:text-neutral-900 disabled:opacity-50"
           onClick={() => projectId && createThread.mutate(projectId)}
           disabled={!projectId}
         >

@@ -1,5 +1,9 @@
 @import 'tailwindcss';
 
+@theme {
+  --color-neutral-250: #dddddd;
+}
+
 :root {
   color: #262626;
   background: transparent;
