@@ -206,11 +206,8 @@ export function ProjectSidebar({
       className="group/sidebar flex h-full w-full flex-col border-r border-neutral-200 bg-white data-[frosted]:border-black/10 data-[frosted]:bg-white/65"
     >
       <div
-        className={`app-brand app-drag flex shrink-0 justify-start border-b border-neutral-100 px-4 text-lg font-bold tracking-normal text-neutral-900 group-data-[frosted]/sidebar:border-black/5 ${isMacOS ? 'h-[88px] items-end pb-3' : 'h-14 items-center'}`}
+        className={`app-brand app-drag flex shrink-0 justify-start px-4 text-lg font-bold tracking-normal text-neutral-900 ${isMacOS ? 'h-[88px] items-end pb-3' : 'h-14 items-center'}`}
       >
-        <span className="mr-2.5 grid size-7 place-items-center rounded-md bg-blue-600 text-sm text-white">
-          K
-        </span>
         {t('brand')}
       </div>
       <div className="px-3 py-3">
