@@ -25,7 +25,7 @@
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
-    "@koaks/node": "file:vendor/koaks/koaks-node-0.0.1-beta4.tgz",
+    "@koaks/node": "file:vendor/koaks/koaks-node-0.0.1-beta5.tgz",
     "@kowork/contracts": "workspace:*",
     "@kowork/core": "workspace:*",
     "@radix-ui/react-dialog": "^1.1.23",

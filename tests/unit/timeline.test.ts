@@ -116,4 +116,134 @@ describe('chat timeline', () => {
       isError: false
     })
   })
+
+  it('projects lossless model events without dropping payloads or merging reasoning kinds', () => {
+    const providerPayload = '{"type":"response.created","response":{"id":"resp-1"}}'
+    const items = collectTimeline([
+      event(1, 'run.started', { input: '检查来源' }),
+      event(2, 'run.provider-event', {
+        step: 0,
+        phase: 'normal',
+        event: {
+          type: 'provider_event',
+          providerId: 'openai-responses',
+          protocolId: 'openai-responses',
+          eventType: 'response.created',
+          source: 'sse',
+          payload: providerPayload
+        }
+      }),
+      event(3, 'run.model-event', {
+        step: 0,
+        phase: 'normal',
+        event: { type: 'started', responseId: 'resp-1' }
+      }),
+      event(4, 'run.reasoning', {
+        text: '摘要',
+        kind: 'summary',
+        itemRef: 'reason-1'
+      }),
+      event(5, 'run.reasoning', {
+        text: '原始推理',
+        kind: 'raw',
+        itemRef: 'reason-1'
+      }),
+      event(6, 'run.tool-call-delta', {
+        step: 0,
+        phase: 'normal',
+        event: {
+          type: 'tool_call_delta',
+          id: 'call-1',
+          nameDelta: 'read_file',
+          argumentsDelta: '{"path":"',
+          itemRef: 'tool-1'
+        }
+      }),
+      event(7, 'run.tool-call-delta', {
+        step: 0,
+        phase: 'normal',
+        event: {
+          type: 'tool_call_delta',
+          id: 'call-1',
+          argumentsDelta: 'README.md"}',
+          itemRef: 'tool-1'
+        }
+      }),
+      event(8, 'run.tool-call', {
+        call: {
+          id: 'call-1',
+          name: 'read_file',
+          argumentsJson: '{"path":"README.md"}'
+        }
+      }),
+      event(9, 'run.refusal', {
+        step: 1,
+        phase: 'normal',
+        event: { type: 'refusal_delta', text: '无法执行该请求。', itemRef: 'message-1' }
+      }),
+      event(10, 'run.annotation', {
+        step: 1,
+        phase: 'normal',
+        event: {
+          type: 'annotation_added',
+          itemRef: 'message-1',
+          annotation: {
+            type: 'url_citation',
+            url: 'https://example.com/source',
+            title: 'Source'
+          }
+        }
+      }),
+      event(11, 'run.model-event', {
+        step: 0,
+        phase: 'normal',
+        event: {
+          type: 'finished',
+          response: {
+            status: 'completed',
+            id: 'resp-1',
+            output: [],
+            usage: {
+              promptTokens: 1,
+              completionTokens: 1,
+              totalTokens: 2,
+              cachedInputTokens: 0,
+              reasoningOutputTokens: 1
+            }
+          }
+        }
+      }),
+      event(12, 'run.completed', { finalText: '', finalStep: 2, usage: {} })
+    ])
+
+    const activities = items[0]?.activities ?? []
+    const trace = activities.find((activity) => activity.kind === 'trace')
+    const reasoning = activities.filter((activity) => activity.kind === 'reasoning')
+    const tool = activities.find((activity) => activity.kind === 'tool')
+    const refusal = activities.find((activity) => activity.kind === 'refusal')
+    const annotations = activities.find((activity) => activity.kind === 'annotations')
+
+    expect(trace).toMatchObject({
+      step: 0,
+      phase: 'normal',
+      protocolIds: ['openai-responses']
+    })
+    expect(trace?.entries).toHaveLength(3)
+    expect(trace?.entries[0]?.event).toMatchObject({ payload: providerPayload })
+    expect(reasoning).toMatchObject([
+      { reasoningKind: 'summary', itemRef: 'reason-1', text: '摘要' },
+      { reasoningKind: 'raw', itemRef: 'reason-1', text: '原始推理' }
+    ])
+    expect(tool).toMatchObject({
+      callId: 'call-1',
+      name: 'read_file',
+      argumentsJson: '{"path":"README.md"}',
+      requested: true
+    })
+    expect(refusal).toMatchObject({ text: '无法执行该请求。', itemRef: 'message-1' })
+    expect(annotations?.annotations).toEqual([
+      expect.objectContaining({ type: 'url_citation', title: 'Source' })
+    ])
+    expect(items[0]?.copyText).toBe('无法执行该请求。')
+  })
 })

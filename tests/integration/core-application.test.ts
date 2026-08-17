@@ -7,8 +7,8 @@ import { CoreApplication } from '@kowork/core'
 import type { RunEventDto } from '@kowork/contracts'
 
 describe('Core application', () => {
-  it('runs a request through the beta4 handle event API', async () => {
-    const dataPath = await mkdtemp(join(tmpdir(), 'kowork-koaks-beta4-'))
+  it('runs a request through the beta5 lossless handle event API', async () => {
+    const dataPath = await mkdtemp(join(tmpdir(), 'kowork-koaks-beta5-'))
     const projectPath = join(dataPath, 'project')
     await mkdir(projectPath)
     let titleRequestBody = ''
@@ -27,9 +27,9 @@ describe('Core application', () => {
             {
               index: 0,
               delta: titleRequest
-                ? { content: 'Beta4 API' }
+                ? { content: 'Beta5 API' }
                 : afterTool
-                  ? { content: 'beta4 handle response' }
+                  ? { content: 'beta5 handle response' }
                   : {
                       tool_calls: [
                         {
@@ -39,7 +39,7 @@ describe('Core application', () => {
                           function: {
                             name: 'run_command',
                             arguments: JSON.stringify({
-                              command: 'printf beta4-progress',
+                              command: 'printf beta5-progress',
                               cwd: projectPath
                             })
                           }
@@ -105,7 +105,7 @@ describe('Core application', () => {
         .toBe(true)
       await expect
         .poll(async () => (await core.handle('threads.list', { projectId: project.id }))[0]?.title)
-        .toBe('Beta4 API')
+        .toBe('Beta5 API')
       expect(titleRequestBody).toContain('at most 15 characters')
       expect(titleRequestBody).toContain('at most 7 words')
       expect(titleRequestBody).not.toContain('response_format')
@@ -114,7 +114,25 @@ describe('Core application', () => {
         .filter((event) => event.type === 'run.text')
         .map((event) => String(event.payload.text ?? ''))
         .join('')
-      expect(text).toBe('beta4 handle response')
+      expect(text).toBe('beta5 handle response')
+      const providerEvents = events.filter((event) => event.type === 'run.provider-event')
+      expect(providerEvents.length).toBeGreaterThan(0)
+      expect(
+        providerEvents.some(
+          (event) =>
+            (event.payload.event as { protocolId?: string } | undefined)?.protocolId ===
+            'chat-completions'
+        )
+      ).toBe(true)
+      expect(
+        providerEvents.some((event) =>
+          String((event.payload.event as { payload?: string } | undefined)?.payload).includes(
+            'fixture-response'
+          )
+        )
+      ).toBe(true)
+      expect(events.some((event) => event.type === 'run.model-event')).toBe(true)
+      expect(events.some((event) => event.type === 'run.tool-call-delta')).toBe(true)
       const toolCall = events.find((event) => event.type === 'run.tool-call')
       const callId = (toolCall?.payload.call as { id?: string } | undefined)?.id
       expect(callId).toBeTruthy()
@@ -123,7 +141,7 @@ describe('Core application', () => {
       expect(toolOutputs.every((event) => event.payload.callId === callId)).toBe(true)
       expect(
         toolOutputs.some(
-          (event) => event.payload.stream === 'stdout' && event.payload.text === 'beta4-progress'
+          (event) => event.payload.stream === 'stdout' && event.payload.text === 'beta5-progress'
         )
       ).toBe(true)
       expect((await core.handle('runs.list', { threadId: thread.id }))[0]).toMatchObject({
@@ -131,10 +149,38 @@ describe('Core application', () => {
         totalTokens: 7
       })
       expect(events.find((event) => event.type === 'run.completed')?.payload).toMatchObject({
-        finalText: 'beta4 handle response',
+        finalText: 'beta5 handle response',
         finalStep: 2
       })
 
+      const siblingCreated = await core.handle('threads.create', {
+        projectId: project.id,
+        title: 'Sibling thread'
+      })
+      const sibling = await core.handle('threads.update', {
+        threadId: siblingCreated.id,
+        modelProfileId: model.id,
+        permissionMode: 'yolo'
+      })
+      await core.handle('runs.enqueue', {
+        threadId: sibling.id,
+        input: 'Run with an independently owned agent'
+      })
+      await expect
+        .poll(async () => (await core.handle('runs.list', { threadId: sibling.id }))[0]?.status, {
+          timeout: 10_000
+        })
+        .toBe('completed')
+      const runtime = Reflect.get(core, 'runtime') as object
+      const agents = Reflect.get(runtime, 'agents') as Map<string, unknown>
+      expect([...agents.keys()]).toEqual(
+        expect.arrayContaining([expect.stringContaining(thread.id), expect.stringContaining(sibling.id)])
+      )
+
+      await core.handle('providers.update', {
+        providerId: provider.id,
+        name: 'Fixture OpenAI updated'
+      })
       const beforeDeniedRun = events.at(-1)?.sequence ?? 0
       await core.handle('runs.enqueue', { threadId: thread.id, input: 'Try the command again' })
       await expect

@@ -140,7 +140,10 @@ export function catalogOptionFromProvider(
   return kind
 }
 
-export function compareProviders<T extends { id: string; name: string }>(left: T, right: T): number {
+export function compareProviders<T extends { id: string; name: string }>(
+  left: T,
+  right: T
+): number {
   const leftBuiltin = BUILTIN_PROVIDER_IDS.indexOf(left.id as BuiltinProviderId)
   const rightBuiltin = BUILTIN_PROVIDER_IDS.indexOf(right.id as BuiltinProviderId)
   if (leftBuiltin !== -1 && rightBuiltin !== -1) return leftBuiltin - rightBuiltin
@@ -287,8 +290,13 @@ export const runEventTypeSchema = z.enum([
   'run.waiting',
   'run.text',
   'run.reasoning',
+  'run.refusal',
+  'run.annotation',
   'run.tool-call',
+  'run.tool-call-delta',
   'run.tool-output',
+  'run.provider-event',
+  'run.model-event',
   'run.completed',
   'run.failed',
   'run.cancelled',

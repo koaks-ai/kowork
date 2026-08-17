@@ -1,11 +1,16 @@
 import {
   Activity,
   Brain,
+  Braces,
   Check,
   ChevronDown,
   CircleAlert,
   Clock3,
   Copy,
+  Link2,
+  RadioTower,
+  ShieldAlert,
+  Sparkles,
   Split,
   TerminalSquare
 } from 'lucide-react'
@@ -15,7 +20,14 @@ import type { RunEventDto } from '@kowork/contracts'
 import { AnimatedDisclosure } from '../../shared/ui/AnimatedDisclosure'
 import { MarkdownContent } from '../../shared/ui/MarkdownContent'
 import { IconButton } from '../../shared/ui/IconButton'
-import { collectTimeline, type ReasoningActivity, type ToolActivity } from './timeline-model'
+import {
+  collectTimeline,
+  type AnnotationActivity,
+  type ModelTraceActivity,
+  type ReasoningActivity,
+  type RefusalActivity,
+  type ToolActivity
+} from './timeline-model'
 
 function prefersReducedMotion(): boolean {
   return (
@@ -190,13 +202,12 @@ function RunActions({ copyText }: { copyText?: string }): React.JSX.Element {
 
 function ReasoningActivityView({
   activity,
-  active,
-  label
+  active
 }: {
   activity: ReasoningActivity
   active: boolean
-  label: string
 }): React.JSX.Element {
+  const { t } = useTranslation()
   const [mode, setMode] = useState<'collapsed' | 'preview' | 'expanded'>(
     active ? 'preview' : 'collapsed'
   )
@@ -222,9 +233,19 @@ function ReasoningActivityView({
 
   const open = mode !== 'collapsed'
   const showOverflowRule = mode === 'preview' && overflowing
+  const label =
+    activity.reasoningKind === 'summary'
+      ? t('reasoningSummary')
+      : activity.reasoningKind === 'raw'
+        ? t('rawReasoning')
+        : t('reasoning')
 
   return (
-    <div data-run-content="reasoning" className="text-neutral-500">
+    <div
+      data-run-content="reasoning"
+      data-reasoning-kind={activity.reasoningKind}
+      className="text-neutral-500"
+    >
       <button
         type="button"
         aria-expanded={open}
@@ -236,7 +257,11 @@ function ReasoningActivityView({
         }
         className="flex items-center gap-2 text-sm font-[450] leading-6 transition-colors hover:text-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-2"
       >
-        <Brain size={14} className="shrink-0" />
+        {activity.reasoningKind === 'summary' ? (
+          <Sparkles size={14} className="shrink-0 text-blue-500" />
+        ) : (
+          <Brain size={14} className="shrink-0" />
+        )}
         <span>{label}</span>
         <ChevronDown
           size={13}
@@ -311,6 +336,7 @@ function ToolActivityView({ activity }: { activity: ToolActivity }): React.JSX.E
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const hasResult = activity.isError !== undefined
+  const pendingLabel = activity.requested ? t('toolRunning') : t('toolPreparing')
 
   return (
     <div data-run-content="tool" className="min-w-0">
@@ -340,7 +366,7 @@ function ToolActivityView({ activity }: { activity: ToolActivity }): React.JSX.E
             </span>
           )}
           <span className="ml-1.5 inline-flex shrink-0 items-center gap-1 align-middle">
-            {!hasResult ? <span className="text-neutral-400">{t('toolRunning')}</span> : null}
+            {!hasResult ? <span className="text-neutral-400">{pendingLabel}</span> : null}
             <ChevronDown
               size={13}
               className={`shrink-0 transition-[color,transform] duration-300 ease-out motion-reduce:transition-none group-hover/trigger:text-blue-600 ${
@@ -377,11 +403,156 @@ function ToolActivityView({ activity }: { activity: ToolActivity }): React.JSX.E
             ) : (
               <div className="flex items-center gap-2 text-xs text-neutral-400">
                 <Clock3 size={12} className="animate-pulse" />
-                {t('toolRunning')}
+                {pendingLabel}
               </div>
             )}
           </div>
         </div>
+      </AnimatedDisclosure>
+    </div>
+  )
+}
+
+function RefusalActivityView({ activity }: { activity: RefusalActivity }): React.JSX.Element {
+  const { t } = useTranslation()
+  return (
+    <div data-run-content="refusal" className="border-l-2 border-red-200 pl-3 text-red-800">
+      <div className="mb-1.5 flex items-center gap-2 text-sm font-medium">
+        <ShieldAlert size={14} className="shrink-0 text-red-500" />
+        <span>{t('modelRefusal')}</span>
+      </div>
+      <MarkdownContent content={activity.text} variant="compact" className="text-red-800" />
+    </div>
+  )
+}
+
+function annotationTitle(annotation: AnnotationActivity['annotations'][number]): string {
+  if (annotation.type === 'url_citation') return annotation.title || annotation.url
+  if (annotation.type === 'file_citation') return annotation.filename || annotation.fileId
+  return annotation.kind
+}
+
+function AnnotationActivityView({ activity }: { activity: AnnotationActivity }): React.JSX.Element {
+  const { t } = useTranslation()
+  return (
+    <div data-run-content="annotations" className="text-sm text-neutral-600">
+      <div className="mb-1.5 flex items-center gap-2 font-medium text-neutral-700">
+        <Link2 size={14} className="shrink-0 text-emerald-600" />
+        <span>{t('citationCount', { count: activity.annotations.length })}</span>
+      </div>
+      <div className="space-y-1 pl-[22px]">
+        {activity.annotations.map((annotation, index) =>
+          annotation.type === 'url_citation' ? (
+            <a
+              key={`${annotation.url}:${index}`}
+              href={annotation.url}
+              target="_blank"
+              rel="noreferrer"
+              className="block truncate text-blue-700 underline decoration-blue-200 underline-offset-2 hover:decoration-blue-500"
+            >
+              {annotationTitle(annotation)}
+            </a>
+          ) : (
+            <div key={`${annotationTitle(annotation)}:${index}`} className="truncate">
+              {annotationTitle(annotation)}
+            </div>
+          )
+        )}
+      </div>
+    </div>
+  )
+}
+
+function formatTraceValue(value: unknown): string {
+  if (typeof value === 'string') {
+    try {
+      return JSON.stringify(JSON.parse(value), null, 2)
+    } catch {
+      return value
+    }
+  }
+  return JSON.stringify(value, null, 2)
+}
+
+function traceEventLabel(entry: ModelTraceActivity['entries'][number]): string {
+  const event = entry.event
+  if (event.type === 'provider_event') return event.eventType
+  if (event.type === 'started') return 'model.started'
+  if (event.type === 'checkpoint_updated') return 'model.checkpoint'
+  if (event.type === 'item_added') return `model.item.${event.item.type}`
+  if (event.type === 'finished') return `model.finished.${event.response.status}`
+  return `model.${event.type}`
+}
+
+function traceEventMeta(entry: ModelTraceActivity['entries'][number]): string {
+  const event = entry.event
+  if (event.type !== 'provider_event') return ''
+  return [
+    event.source.toUpperCase(),
+    event.statusCode ? `HTTP ${event.statusCode}` : undefined,
+    event.sequenceNumber !== undefined ? `#${event.sequenceNumber}` : undefined
+  ]
+    .filter(Boolean)
+    .join(' · ')
+}
+
+function ModelTraceActivityView({ activity }: { activity: ModelTraceActivity }): React.JSX.Element {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+  const providerCount = activity.entries.filter(
+    (entry) => entry.event.type === 'provider_event'
+  ).length
+  const protocol = activity.protocolIds.join(', ') || t('modelLifecycle')
+  const phase =
+    activity.phase === 'structured_finalization' ? t('structuredFinalization') : t('modelStep')
+
+  return (
+    <div data-run-content="trace" className="min-w-0 text-neutral-500">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        className="group/trace flex w-full min-w-0 items-center gap-2 text-left text-xs leading-6 transition-colors hover:text-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-2"
+      >
+        <RadioTower size={14} className="shrink-0 text-violet-500" />
+        <span className="min-w-0 truncate font-medium text-neutral-600 group-hover/trace:text-neutral-800">
+          {protocol}
+        </span>
+        <span className="shrink-0 text-neutral-400">
+          {phase} {activity.step + 1} · {t('modelEventCount', { count: activity.entries.length })}
+          {providerCount > 0 ? ` · ${t('providerEventCount', { count: providerCount })}` : ''}
+        </span>
+        <ChevronDown
+          size={13}
+          className={`ml-auto shrink-0 transition-transform duration-300 ease-out motion-reduce:transition-none ${
+            open ? 'rotate-0' : '-rotate-90'
+          }`}
+        />
+      </button>
+      <AnimatedDisclosure open={open}>
+        {open ? (
+          <div className="mt-2 max-h-96 overflow-auto border-l border-neutral-200 pl-3">
+            {activity.entries.map((entry) => (
+              <details
+                key={entry.id}
+                className="border-b border-neutral-100 py-1.5 last:border-b-0"
+              >
+                <summary className="flex cursor-pointer items-center gap-2 font-mono text-[11px] text-neutral-600">
+                  <Braces size={12} className="shrink-0 text-neutral-400" />
+                  <span className="min-w-0 truncate">{traceEventLabel(entry)}</span>
+                  <span className="ml-auto shrink-0 text-[10px] text-neutral-400">
+                    {traceEventMeta(entry)}
+                  </span>
+                </summary>
+                <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-words rounded bg-neutral-50 px-2.5 py-2 font-mono text-[10px] leading-4 text-neutral-600 [overflow-wrap:anywhere]">
+                  {formatTraceValue(
+                    entry.event.type === 'provider_event' ? entry.event.payload : entry.event
+                  )}
+                </pre>
+              </details>
+            ))}
+          </div>
+        ) : null}
       </AnimatedDisclosure>
     </div>
   )
@@ -401,6 +572,9 @@ export function Timeline({ events }: { events: RunEventDto[] }): React.JSX.Eleme
           (activity) => activity.kind === 'reasoning'
         ).length
         const toolCount = item.activities.filter((activity) => activity.kind === 'tool').length
+        const traceCount = item.activities
+          .filter((activity): activity is ModelTraceActivity => activity.kind === 'trace')
+          .reduce((count, activity) => count + activity.entries.length, 0)
         const duration = formatDuration(
           Math.max(0, (item.finishedAt ?? item.lastEventAt) - item.startedAt),
           t
@@ -408,19 +582,14 @@ export function Timeline({ events }: { events: RunEventDto[] }): React.JSX.Eleme
         const summary = [
           item.status ? t('workedFor', { duration }) : t('workingFor', { duration }),
           toolCount > 0 ? t('toolCount', { count: toolCount }) : null,
-          reasoningCount > 0 ? t('reasoningCount', { count: reasoningCount }) : null
+          reasoningCount > 0 ? t('reasoningCount', { count: reasoningCount }) : null,
+          traceCount > 0 ? t('traceCount', { count: traceCount }) : null
         ].filter(Boolean)
         const lastActivity = item.activities.at(-1)
         const activeReasoningId =
-          !item.status &&
-          item.lastEventType === 'run.reasoning' &&
-          lastActivity?.kind === 'reasoning'
-            ? lastActivity.id
-            : undefined
+          !item.status && lastActivity?.kind === 'reasoning' ? lastActivity.id : undefined
         const activeTextId =
-          !item.status && item.lastEventType === 'run.text' && lastActivity?.kind === 'text'
-            ? lastActivity.id
-            : undefined
+          !item.status && lastActivity?.kind === 'text' ? lastActivity.id : undefined
 
         return (
           <article key={item.runId} className="space-y-6">
@@ -501,9 +670,20 @@ export function Timeline({ events }: { events: RunEventDto[] }): React.JSX.Eleme
                           key={activity.id}
                           activity={activity}
                           active={activity.id === activeReasoningId}
-                          label={t('reasoning')}
                         />
                       )
+                    }
+
+                    if (activity.kind === 'refusal') {
+                      return <RefusalActivityView key={activity.id} activity={activity} />
+                    }
+
+                    if (activity.kind === 'annotations') {
+                      return <AnnotationActivityView key={activity.id} activity={activity} />
+                    }
+
+                    if (activity.kind === 'trace') {
+                      return <ModelTraceActivityView key={activity.id} activity={activity} />
                     }
 
                     return <ToolActivityView key={activity.id} activity={activity} />

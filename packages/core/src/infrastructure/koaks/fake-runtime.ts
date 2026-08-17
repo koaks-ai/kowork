@@ -11,12 +11,48 @@ export class FakeAgentRuntime implements AgentRuntimePort {
   }
 
   async *stream(input: Parameters<AgentRuntimePort['stream']>[0]): AsyncIterable<AgentStreamEvent> {
-    yield { type: 'text_delta', text: '我先确认一下当前项目。' }
+    yield {
+      type: 'model',
+      step: 0,
+      phase: 'normal',
+      event: {
+        type: 'provider_event',
+        providerId: 'openai-responses',
+        protocolId: 'openai-responses',
+        eventType: 'response.created',
+        source: 'sse',
+        eventId: 'fake-event-1',
+        sequenceNumber: 1,
+        payload: '{"type":"response.created","response":{"id":"fake-response"}}'
+      }
+    }
+    yield {
+      type: 'model',
+      step: 0,
+      phase: 'normal',
+      event: { type: 'started', responseId: 'fake-response' }
+    }
+    yield { type: 'text_delta', text: '我先确认一下当前项目。', itemRef: 'message-process' }
     yield {
       type: 'reasoning_delta',
-      text: '我会先确认项目中的 **README** 文件，再读取内容检查当前状态。'
+      text: '我会先确认项目中的 **README** 文件，再读取内容检查当前状态。',
+      itemRef: 'reasoning-summary',
+      kind: 'summary'
     }
     await new Promise((resolve) => setTimeout(resolve, 500))
+    yield {
+      type: 'model',
+      step: 0,
+      phase: 'normal',
+      event: {
+        type: 'tool_call_delta',
+        id: `read-readme-${input.runId}`,
+        index: 0,
+        nameDelta: 'read_file',
+        argumentsDelta: JSON.stringify({ path: 'README.md', startLine: 1, endLine: 80 }),
+        itemRef: 'tool-readme'
+      }
+    }
     yield {
       type: 'tool_call_requested',
       call: {
@@ -35,13 +71,31 @@ export class FakeAgentRuntime implements AgentRuntimePort {
     }
     yield {
       type: 'reasoning_delta',
-      text: 'README 已成功读取。我会保留检查结果，并给出简洁的执行结论。'
+      text: 'README 已成功读取。我会保留检查结果，并给出简洁的执行结论。',
+      itemRef: 'reasoning-raw',
+      kind: 'raw'
+    }
+    yield {
+      type: 'model',
+      step: 1,
+      phase: 'normal',
+      event: {
+        type: 'annotation_added',
+        itemRef: 'message-final',
+        annotation: {
+          type: 'file_citation',
+          fileId: 'README.md',
+          filename: 'README.md',
+          startIndex: 0,
+          endIndex: 9
+        }
+      }
     }
     const response = `已收到任务：${input.request.input}\n\n### 检查结果\n\n- 已读取 \`README.md\`\n- 当前内容可正常访问\n\n这是 KoWork 测试运行时生成的**流式回复**。`
     for (const text of response.match(/.{1,8}/gs) ?? []) {
       if (input.signal.aborted) throw input.signal.reason
       await new Promise((resolve) => setTimeout(resolve, 20))
-      yield { type: 'text_delta', text }
+      yield { type: 'text_delta', text, itemRef: 'message-final' }
     }
     yield { type: 'step_completed', step: 2 }
     yield {

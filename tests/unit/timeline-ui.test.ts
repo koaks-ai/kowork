@@ -228,4 +228,93 @@ describe('reasoning timeline activity', () => {
     fireEvent.click(view.getByRole('button', { name: '复制最终回复' }))
     await waitFor(() => expect(writeText).toHaveBeenCalledWith('第一段过程\n第二段过程'))
   })
+
+  it('renders summary, raw reasoning, refusal, citations and expandable protocol traces', () => {
+    const detailedEvents: RunEventDto[] = [
+      started,
+      {
+        ...started,
+        sequence: 2,
+        id: 'provider-event',
+        type: 'run.provider-event',
+        payload: {
+          step: 0,
+          phase: 'normal',
+          event: {
+            type: 'provider_event',
+            providerId: 'openai-responses',
+            protocolId: 'openai-responses',
+            eventType: 'response.created',
+            source: 'sse',
+            payload: '{"type":"response.created"}'
+          }
+        },
+        createdAt: 2
+      },
+      {
+        ...started,
+        sequence: 3,
+        id: 'summary',
+        type: 'run.reasoning',
+        payload: { text: '这是摘要', kind: 'summary', itemRef: 'reason-1' },
+        createdAt: 3
+      },
+      {
+        ...started,
+        sequence: 4,
+        id: 'raw',
+        type: 'run.reasoning',
+        payload: { text: '这是原始推理', kind: 'raw', itemRef: 'reason-2' },
+        createdAt: 4
+      },
+      {
+        ...started,
+        sequence: 5,
+        id: 'refusal',
+        type: 'run.refusal',
+        payload: {
+          step: 0,
+          phase: 'normal',
+          event: { type: 'refusal_delta', text: '模型拒绝内容', itemRef: 'message-1' }
+        },
+        createdAt: 5
+      },
+      {
+        ...started,
+        sequence: 6,
+        id: 'annotation',
+        type: 'run.annotation',
+        payload: {
+          step: 0,
+          phase: 'normal',
+          event: {
+            type: 'annotation_added',
+            itemRef: 'message-1',
+            annotation: {
+              type: 'url_citation',
+              url: 'https://example.com/source',
+              title: 'Example source'
+            }
+          }
+        },
+        createdAt: 6
+      },
+      { ...completed, sequence: 7, createdAt: 7 }
+    ]
+    const view = render(timeline(detailedEvents))
+
+    expect(view.getByRole('button', { name: '思考摘要' })).toBeTruthy()
+    expect(view.getByRole('button', { name: '原始推理' })).toBeTruthy()
+    expect(view.getByText('模型拒绝内容')).toBeTruthy()
+    expect(view.getByRole('link', { name: 'Example source' }).getAttribute('href')).toBe(
+      'https://example.com/source'
+    )
+
+    const traceToggle = view.getByRole('button', { name: /openai-responses/ })
+    expect(traceToggle.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.click(traceToggle)
+    expect(traceToggle.getAttribute('aria-expanded')).toBe('true')
+    expect(view.getByText('response.created')).toBeTruthy()
+    expect(view.getByText(/"type": "response.created"/)).toBeTruthy()
+  })
 })

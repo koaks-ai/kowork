@@ -57,13 +57,22 @@ test('runs through the real Electron, preload, main and Core process chain', asy
     expect(brandBox!.x).toBe(0)
     expect(brandBox!.y).toBe(0)
     const logoPosition = await page.locator('.app-brand').evaluate((element) => {
-      const logo = element.firstElementChild?.getBoundingClientRect()
-      return { left: logo?.left ?? 0, top: logo?.top ?? 0 }
+      const range = document.createRange()
+      range.selectNodeContents(element)
+      const logo = range.getBoundingClientRect()
+      return { left: logo.left, top: logo.top }
     })
     expect(logoPosition.left).toBe(16)
     expect(logoPosition.top).toBeGreaterThanOrEqual(44)
     expect((await page.locator('main > header').boundingBox())?.y).toBe(0)
-    expect((await page.getByRole('tablist').boundingBox())?.y).toBe(0)
+    const inspectorHeaderBox = await page.getByRole('tablist').locator('..').boundingBox()
+    const tabListBox = await page.getByRole('tablist').boundingBox()
+    expect(inspectorHeaderBox).not.toBeNull()
+    expect(tabListBox).not.toBeNull()
+    expect(tabListBox!.y).toBeGreaterThanOrEqual(inspectorHeaderBox!.y)
+    expect(tabListBox!.y + tabListBox!.height).toBeLessThanOrEqual(
+      inspectorHeaderBox!.y + inspectorHeaderBox!.height
+    )
     await expect(
       page.evaluate(() => ({
         hasKoWork: Object.hasOwn(window, 'kowork'),
@@ -85,7 +94,7 @@ test('runs through the real Electron, preload, main and Core process chain', asy
       .first()
       .locator('[data-run-content="reasoning"]')
       .first()
-    const firstReasoningToggle = firstReasoning.getByRole('button', { name: '思考过程' })
+    const firstReasoningToggle = firstReasoning.getByRole('button', { name: '思考摘要' })
     const firstReasoningText = firstReasoning.locator('[data-reasoning-body]')
     const firstReasoningMarkdown = firstReasoning.locator('.kowork-markdown')
     await expect(firstReasoningToggle).toHaveAttribute('aria-expanded', 'true')
@@ -101,7 +110,8 @@ test('runs through the real Electron, preload, main and Core process chain', asy
     expect(reasoningAlignment.textLeft).toBe(reasoningAlignment.toggleLeft)
     await expect(firstReasoning.getByText(/我会先确认项目中的 README/)).toBeVisible()
     await expect(page.getByText(/已收到任务：检查 README/)).toBeVisible({ timeout: 5_000 })
-    await expect(page.getByText('思考过程').first()).toBeVisible()
+    await expect(page.getByText('思考摘要').first()).toBeVisible()
+    await expect(page.getByText('原始推理').first()).toBeVisible()
     await expect(page.getByText('read_file', { exact: true }).first()).toBeVisible()
     await expect(firstReasoningToggle).toHaveAttribute('aria-expanded', 'false')
     await firstReasoningToggle.click()
@@ -129,20 +139,27 @@ test('runs through the real Electron, preload, main and Core process chain', asy
       .locator('[data-run-content="reasoning"]')
     await expect(reasoningActivities).toHaveCount(2)
     await expect(
-      reasoningActivities.nth(1).getByRole('button', { name: '思考过程' })
+      reasoningActivities.nth(1).getByRole('button', { name: '原始推理' })
     ).toHaveAttribute('aria-expanded', 'false')
+    const traceActivity = page.locator('[data-run-content="trace"]').first()
+    const traceToggle = traceActivity.getByRole('button', { name: /openai-responses/ })
+    await expect(traceToggle).toHaveAttribute('aria-expanded', 'false')
+    await traceToggle.click()
+    await expect(traceToggle).toHaveAttribute('aria-expanded', 'true')
+    await expect(traceActivity.getByText('response.created').first()).toBeVisible()
+    await expect(page.locator('[data-run-content="annotations"]')).toContainText('README.md')
     const orderedContent = page.locator('article').first().locator('[data-run-content]')
-    await expect(orderedContent).toHaveCount(5)
+    await expect(orderedContent).toHaveCount(7)
     expect(
       await orderedContent.evaluateAll((elements) =>
         elements.map((element) => element.getAttribute('data-run-content'))
       )
-    ).toEqual(['text', 'reasoning', 'tool', 'reasoning', 'text'])
+    ).toEqual(['trace', 'text', 'reasoning', 'tool', 'reasoning', 'annotations', 'text'])
     expect(
       await orderedContent.evaluateAll((elements) =>
         elements.map((element) => element.getAttribute('data-output-kind'))
       )
-    ).toEqual(['process', null, null, null, 'final'])
+    ).toEqual([null, 'process', null, null, null, null, 'final'])
     const copyAction = page.locator('[data-run-action="copy"]').first()
     await expect(copyAction).toHaveAttribute('aria-label', '复制最终回复', { timeout: 5_000 })
     await expect(page.getByRole('button', { name: '创建分支（暂不可用）' }).first()).toBeDisabled()
@@ -213,11 +230,8 @@ test('runs through the real Electron, preload, main and Core process chain', asy
     expect(sendButtonRadius).toBeGreaterThanOrEqual(sendButtonBox!.width / 2)
     await page.screenshot({ path: testInfo.outputPath('conversation.png') })
 
-    await page.getByRole('tab', { name: '文件' }).click()
-    await page.getByRole('button', { name: 'README.md', exact: true }).click()
-    await expect(page.getByText(/Changed content/)).toBeVisible()
-
-    await page.getByRole('tab', { name: '改动' }).click()
+    await statusInformation.getByRole('button', { name: /变更/ }).click()
+    await expect(page.getByRole('tab', { name: '改动' })).toHaveAttribute('aria-selected', 'true')
     await page.getByRole('button', { name: 'README.md M', exact: true }).click()
     await expect(page.getByText(/diff --git a\/README\.md b\/README\.md/)).toBeVisible()
     await page.screenshot({ path: testInfo.outputPath('desktop.png') })
@@ -346,7 +360,9 @@ test('stores provider credentials securely and restores them after restart', asy
     const restored = await page.evaluate(async () => {
       const api = Reflect.get(window, 'kowork') as KoWorkApi
       const bootstrapAfterRestart = await api.bootstrap()
-      return bootstrapAfterRestart.providers.find((item) => item.name === 'E2E Anthropic Compatible')
+      return bootstrapAfterRestart.providers.find(
+        (item) => item.name === 'E2E Anthropic Compatible'
+      )
     })
     expect(restored).toMatchObject({ credentialConfigured: true, available: true })
   } finally {

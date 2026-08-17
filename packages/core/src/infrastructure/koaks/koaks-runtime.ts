@@ -103,7 +103,9 @@ export class KoaksAgentRuntime implements AgentRuntimePort {
   private runtime?: KoaksRuntime
   private runtimePromise?: Promise<KoaksRuntime>
   private readonly agents = new Map<string, KoaksAgent>()
+  private readonly agentCreations = new Map<string, Promise<KoaksAgent>>()
   private readonly summarizers = new Map<string, KoaksAgent>()
+  private readonly summarizerCreations = new Map<string, Promise<KoaksAgent>>()
   private readonly titleGenerators = new Map<string, KoaksAgent>()
   private readonly titleGeneratorCreations = new Map<string, Promise<KoaksAgent>>()
   private readonly toolLocks = new ProjectToolLocks()
@@ -139,44 +141,64 @@ export class KoaksAgentRuntime implements AgentRuntimePort {
     }
   }
 
-  private async getAgent(project: ProjectDto, profile: ModelProfileDto): Promise<KoaksAgent> {
+  private async getAgent(
+    project: ProjectDto,
+    threadId: string,
+    profile: ModelProfileDto
+  ): Promise<KoaksAgent> {
     const provider = this.database.getProvider(profile.providerId)
-    const key = `${project.id}:${profile.id}:${profile.updatedAt}:${provider.updatedAt}`
+    const key = `${project.id}:${threadId}:${profile.id}:${profile.updatedAt}:${provider.updatedAt}`
     const existing = this.agents.get(key)
     if (existing) return existing
-    const runtime = await this.getRuntime()
-    const registry = new ToolRegistry(
-      coreToolSpecs(),
-      { project, files: this.files, commands: this.commands, git: this.git },
-      this.database,
-      this.approvals,
-      this.toolLocks
-    )
-    const config: AgentConfig = {
-      id: `coding-${project.id}-${profile.id}`,
-      name: 'KoWork Coding Agent',
-      instructions: [
-        {
-          type: 'static',
-          text: codingAgentInstructions(project)
-        }
-      ],
-      model: await providerFor(profile, provider, this.credentials),
-      memory: {
-        type: 'custom',
-        id: 'kowork-sqlite-memory-v1',
-        open: (threadId) => new PersistentThreadMemory(threadId, this.database)
-      },
-      tools: registry.definitions(),
-      hooks: [registry.hook()],
-      termination: { maxSteps: 1024 },
-      runBudget: { maxTotalSteps: 4096 },
-      errorPolicy: { type: 'retry_retriable', maxRetries: 2, delayMs: 800 }
+    const creating = this.agentCreations.get(key)
+    if (creating) return await creating
+
+    const creation = (async () => {
+      const runtime = await this.getRuntime()
+      const registry = new ToolRegistry(
+        coreToolSpecs(),
+        { project, files: this.files, commands: this.commands, git: this.git },
+        this.database,
+        this.approvals,
+        this.toolLocks
+      )
+      const config: AgentConfig = {
+        id: `coding-${project.id}-${threadId}-${profile.id}-${profile.updatedAt}-${provider.updatedAt}`,
+        name: 'KoWork Coding Agent',
+        instructions: [
+          {
+            type: 'static',
+            text: codingAgentInstructions(project)
+          }
+        ],
+        model: await providerFor(profile, provider, this.credentials),
+        memory: {
+          type: 'custom',
+          id: 'kowork-sqlite-memory-v1',
+          open: (threadId) => new PersistentThreadMemory(threadId, this.database)
+        },
+        tools: registry.definitions(),
+        hooks: [registry.hook()],
+        termination: { maxSteps: 1024 },
+        runBudget: { maxTotalSteps: 4096 },
+        errorPolicy: { type: 'retry_retriable', maxRetries: 2, delayMs: 800 }
+      }
+      const agent = await runtime.createAgent(config)
+      try {
+        await agent.prepare()
+      } catch (error) {
+        await agent.close().catch(() => undefined)
+        throw error
+      }
+      this.agents.set(key, agent)
+      return agent
+    })()
+    this.agentCreations.set(key, creation)
+    try {
+      return await creation
+    } finally {
+      this.agentCreations.delete(key)
     }
-    const agent = await runtime.createAgent(config)
-    await agent.prepare()
-    this.agents.set(key, agent)
-    return agent
   }
 
   private async getSummarizer(profile: ModelProfileDto): Promise<KoaksAgent> {
@@ -184,18 +206,29 @@ export class KoaksAgentRuntime implements AgentRuntimePort {
     const key = `${profile.id}:${profile.updatedAt}:${provider.updatedAt}`
     const existing = this.summarizers.get(key)
     if (existing) return existing
-    const runtime = await this.getRuntime()
-    const agent = await runtime.createAgent({
-      id: `summarizer-${profile.id}`,
-      name: 'KoWork Context Summarizer',
-      instructions:
-        'Create a compact, factual coding-session summary. Preserve user goals, architectural decisions, file changes, command outcomes, unresolved errors, and exact identifiers. Do not add advice.',
-      model: await providerFor(profile, provider, this.credentials),
-      memory: { type: 'none' },
-      termination: { maxSteps: 4 }
-    })
-    this.summarizers.set(key, agent)
-    return agent
+    const creating = this.summarizerCreations.get(key)
+    if (creating) return await creating
+
+    const creation = (async () => {
+      const runtime = await this.getRuntime()
+      const agent = await runtime.createAgent({
+        id: `summarizer-${profile.id}-${profile.updatedAt}-${provider.updatedAt}`,
+        name: 'KoWork Context Summarizer',
+        instructions:
+          'Create a compact, factual coding-session summary. Preserve user goals, architectural decisions, file changes, command outcomes, unresolved errors, and exact identifiers. Do not add advice.',
+        model: await providerFor(profile, provider, this.credentials),
+        memory: { type: 'none' },
+        termination: { maxSteps: 4 }
+      })
+      this.summarizers.set(key, agent)
+      return agent
+    })()
+    this.summarizerCreations.set(key, creation)
+    try {
+      return await creation
+    } finally {
+      this.summarizerCreations.delete(key)
+    }
   }
 
   private async getTitleGenerator(profile: ModelProfileDto): Promise<KoaksAgent> {
@@ -329,15 +362,16 @@ export class KoaksAgentRuntime implements AgentRuntimePort {
     signal: AbortSignal
   }): AsyncIterable<AgentStreamEvent> {
     const profile = this.database.getProfile(input.request.modelProfileId)
-    const agent = await this.getAgent(input.project, profile)
+    const agent = await this.getAgent(input.project, input.thread.id, profile)
     const handle = await agent.spawn(input.request.input, {
       threadId: input.thread.id,
       signal: input.signal,
-      correlationId: input.runId
+      correlationId: input.runId,
+      eventDetail: 'lossless'
     })
     let terminal: AgentEvent | undefined
     try {
-      for await (const envelope of handle.events({ signal: input.signal, highWaterMark: 128 })) {
+      for await (const envelope of handle.events({ signal: input.signal, highWaterMark: 1_024 })) {
         if (envelope.kind === 'history_gap') {
           throw new CoreError(
             'run_event_history_gap',
@@ -389,7 +423,9 @@ export class KoaksAgentRuntime implements AgentRuntimePort {
       )
     )
     this.agents.clear()
+    this.agentCreations.clear()
     this.summarizers.clear()
+    this.summarizerCreations.clear()
     this.titleGenerators.clear()
     this.titleGeneratorCreations.clear()
     await runtime?.close()

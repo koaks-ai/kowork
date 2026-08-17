@@ -1,8 +1,11 @@
+import type { Annotation, ModelEvent } from '@koaks/node'
 import type { RunEventDto } from '@kowork/contracts'
 
 export interface ReasoningActivity {
   id: string
   kind: 'reasoning'
+  reasoningKind: 'legacy' | 'summary' | 'raw'
+  itemRef?: string
   text: string
 }
 
@@ -12,17 +15,50 @@ export interface TextActivity {
   role: 'process' | 'final'
   text: string
   step?: number
+  itemRef?: string
 }
 
 export interface ToolActivity {
   id: string
   kind: 'tool'
   callId: string
+  itemRef?: string
   name: string
   argumentsJson: string
   output: string
+  requested: boolean
   isError?: boolean
   hasStreamedOutput?: boolean
+}
+
+export interface RefusalActivity {
+  id: string
+  kind: 'refusal'
+  itemRef?: string
+  text: string
+}
+
+export interface AnnotationActivity {
+  id: string
+  kind: 'annotations'
+  itemRef?: string
+  annotations: Annotation[]
+}
+
+export interface ModelTraceEntry {
+  id: string
+  sequence: number
+  createdAt: number
+  event: ModelEvent
+}
+
+export interface ModelTraceActivity {
+  id: string
+  kind: 'trace'
+  step: number
+  phase: 'normal' | 'structured_finalization'
+  protocolIds: string[]
+  entries: ModelTraceEntry[]
 }
 
 export interface CompressionActivity {
@@ -31,7 +67,14 @@ export interface CompressionActivity {
   summary: string
 }
 
-export type RunActivity = TextActivity | ReasoningActivity | ToolActivity | CompressionActivity
+export type RunActivity =
+  | TextActivity
+  | ReasoningActivity
+  | ToolActivity
+  | RefusalActivity
+  | AnnotationActivity
+  | ModelTraceActivity
+  | CompressionActivity
 export type RunStatus = 'completed' | 'failed' | 'cancelled' | 'interrupted'
 
 export interface RunTimelineItem {
@@ -46,6 +89,66 @@ export interface RunTimelineItem {
   finishedAt?: number
   lastEventAt: number
   lastEventType?: RunEventDto['type']
+}
+
+function stringValue(value: unknown): string | undefined {
+  return typeof value === 'string' && value.length > 0 ? value : undefined
+}
+
+function numberValue(value: unknown, fallback = 0): number {
+  return typeof value === 'number' && Number.isInteger(value) ? value : fallback
+}
+
+function modelEventFrom(event: RunEventDto): ModelEvent | undefined {
+  const value = event.payload.event
+  if (!value || typeof value !== 'object' || typeof Reflect.get(value, 'type') !== 'string') {
+    return undefined
+  }
+  return value as ModelEvent
+}
+
+function phaseFrom(event: RunEventDto): 'normal' | 'structured_finalization' {
+  return event.payload.phase === 'structured_finalization' ? 'structured_finalization' : 'normal'
+}
+
+function findTool(item: RunTimelineItem, callId: string): ToolActivity | undefined {
+  return item.activities.find(
+    (activity): activity is ToolActivity => activity.kind === 'tool' && activity.callId === callId
+  )
+}
+
+function traceFor(item: RunTimelineItem, event: RunEventDto): ModelTraceActivity {
+  const step = numberValue(event.payload.step)
+  const phase = phaseFrom(event)
+  const existing = item.activities.find(
+    (activity): activity is ModelTraceActivity =>
+      activity.kind === 'trace' && activity.step === step && activity.phase === phase
+  )
+  if (existing) return existing
+
+  const trace: ModelTraceActivity = {
+    id: `trace:${item.runId}:${phase}:${step}`,
+    kind: 'trace',
+    step,
+    phase,
+    protocolIds: [],
+    entries: []
+  }
+  item.activities.push(trace)
+  return trace
+}
+
+function appendTrace(item: RunTimelineItem, source: RunEventDto, modelEvent: ModelEvent): void {
+  const trace = traceFor(item, source)
+  if (modelEvent.type === 'provider_event' && !trace.protocolIds.includes(modelEvent.protocolId)) {
+    trace.protocolIds.push(modelEvent.protocolId)
+  }
+  trace.entries.push({
+    id: source.id,
+    sequence: source.sequence,
+    createdAt: source.createdAt,
+    event: modelEvent
+  })
 }
 
 export function collectTimeline(events: RunEventDto[]): RunTimelineItem[] {
@@ -80,37 +183,75 @@ export function collectTimeline(events: RunEventDto[]): RunTimelineItem[] {
         typeof event.payload.step === 'number' && Number.isInteger(event.payload.step)
           ? event.payload.step
           : undefined
+      const itemRef = stringValue(event.payload.itemRef)
       const previous = item.activities.at(-1)
-      if (
-        item.lastEventType === 'run.text' &&
-        previous?.kind === 'text' &&
-        previous.step === step
-      ) {
+      if (previous?.kind === 'text' && previous.step === step && previous.itemRef === itemRef) {
         previous.text += text
       } else {
-        item.activities.push({ id: event.id, kind: 'text', role: 'process', text, step })
+        item.activities.push({
+          id: event.id,
+          kind: 'text',
+          role: 'process',
+          text,
+          step,
+          itemRef
+        })
       }
     }
     if (event.type === 'run.reasoning') {
       const text = String(event.payload.text ?? '')
+      const itemRef = stringValue(event.payload.itemRef)
+      const reasoningKind =
+        event.payload.kind === 'summary'
+          ? 'summary'
+          : event.payload.kind === 'raw'
+            ? 'raw'
+            : 'legacy'
       const previous = item.activities.at(-1)
-      if (item.lastEventType === 'run.reasoning' && previous?.kind === 'reasoning') {
+      if (
+        previous?.kind === 'reasoning' &&
+        previous.reasoningKind === reasoningKind &&
+        previous.itemRef === itemRef
+      ) {
         previous.text += text
       } else {
-        item.activities.push({ id: event.id, kind: 'reasoning', text })
+        item.activities.push({
+          id: event.id,
+          kind: 'reasoning',
+          reasoningKind,
+          itemRef,
+          text
+        })
+      }
+    }
+    if (event.type === 'run.tool-call-delta') {
+      const detail = modelEventFrom(event)
+      if (detail?.type === 'tool_call_delta') {
+        const tool = findTool(item, detail.id) ?? {
+          id: `tool:${detail.id}`,
+          kind: 'tool' as const,
+          callId: detail.id,
+          itemRef: detail.itemRef,
+          name: '',
+          argumentsJson: '',
+          output: '',
+          requested: false
+        }
+        if (!findTool(item, detail.id)) item.activities.push(tool)
+        tool.itemRef ??= detail.itemRef
+        tool.name += detail.nameDelta ?? ''
+        tool.argumentsJson += detail.argumentsDelta ?? ''
       }
     }
     if (event.type === 'run.tool-call') {
       const call = event.payload.call as
         { id?: string; name?: string; argumentsJson?: string } | undefined
       const callId = call?.id ?? event.id
-      const existing = item.activities.find(
-        (activity): activity is ToolActivity =>
-          activity.kind === 'tool' && activity.callId === callId
-      )
+      const existing = findTool(item, callId)
       if (existing) {
         existing.name = call?.name ?? existing.name
         existing.argumentsJson = call?.argumentsJson ?? existing.argumentsJson
+        existing.requested = true
       } else {
         item.activities.push({
           id: `tool:${callId}`,
@@ -118,18 +259,14 @@ export function collectTimeline(events: RunEventDto[]): RunTimelineItem[] {
           callId,
           name: call?.name ?? '',
           argumentsJson: call?.argumentsJson ?? '',
-          output: ''
+          output: '',
+          requested: true
         })
       }
     }
     if (event.type === 'run.tool-output') {
-      const callId = typeof event.payload.callId === 'string' ? event.payload.callId : undefined
-      let tool = callId
-        ? item.activities.find(
-            (activity): activity is ToolActivity =>
-              activity.kind === 'tool' && activity.callId === callId
-          )
-        : undefined
+      const callId = stringValue(event.payload.callId)
+      let tool = callId ? findTool(item, callId) : undefined
 
       if (!tool && callId) {
         tool = {
@@ -138,7 +275,8 @@ export function collectTimeline(events: RunEventDto[]): RunTimelineItem[] {
           callId,
           name: '',
           argumentsJson: '',
-          output: ''
+          output: '',
+          requested: true
         }
         item.activities.push(tool)
       }
@@ -162,10 +300,55 @@ export function collectTimeline(events: RunEventDto[]): RunTimelineItem[] {
         }
       }
     }
+    if (event.type === 'run.refusal') {
+      const detail = modelEventFrom(event)
+      if (detail?.type === 'refusal_delta') {
+        const existing = [...item.activities]
+          .reverse()
+          .find(
+            (activity): activity is RefusalActivity =>
+              activity.kind === 'refusal' && activity.itemRef === detail.itemRef
+          )
+        if (existing) existing.text += detail.text
+        else {
+          item.activities.push({
+            id: event.id,
+            kind: 'refusal',
+            itemRef: detail.itemRef,
+            text: detail.text
+          })
+        }
+      }
+    }
+    if (event.type === 'run.annotation') {
+      const detail = modelEventFrom(event)
+      if (detail?.type === 'annotation_added') {
+        const existing = item.activities.find(
+          (activity): activity is AnnotationActivity =>
+            activity.kind === 'annotations' && activity.itemRef === detail.itemRef
+        )
+        if (existing) existing.annotations.push(detail.annotation)
+        else {
+          item.activities.push({
+            id: event.id,
+            kind: 'annotations',
+            itemRef: detail.itemRef,
+            annotations: [detail.annotation]
+          })
+        }
+      }
+    }
+    if (event.type === 'run.provider-event' || event.type === 'run.model-event') {
+      const detail = modelEventFrom(event)
+      if (detail) appendTrace(item, event, detail)
+    }
     if (event.type === 'run.completed') {
       item.status = 'completed'
       const textActivities = item.activities.filter(
         (activity): activity is TextActivity => activity.kind === 'text'
+      )
+      const refusalActivities = item.activities.filter(
+        (activity): activity is RefusalActivity => activity.kind === 'refusal'
       )
       const finalText =
         typeof event.payload.finalText === 'string' ? event.payload.finalText : undefined
@@ -201,7 +384,9 @@ export function collectTimeline(events: RunEventDto[]): RunTimelineItem[] {
       }
       item.copyText = hasFinalText
         ? finalText
-        : textActivities.map((activity) => activity.text).join('') || undefined
+        : textActivities.map((activity) => activity.text).join('') ||
+          refusalActivities.map((activity) => activity.text).join('\n') ||
+          undefined
     }
     if (event.type === 'run.failed') {
       item.status = 'failed'
