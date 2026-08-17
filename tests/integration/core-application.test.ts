@@ -174,7 +174,10 @@ describe('Core application', () => {
       const runtime = Reflect.get(core, 'runtime') as object
       const agents = Reflect.get(runtime, 'agents') as Map<string, unknown>
       expect([...agents.keys()]).toEqual(
-        expect.arrayContaining([expect.stringContaining(thread.id), expect.stringContaining(sibling.id)])
+        expect.arrayContaining([
+          expect.stringContaining(thread.id),
+          expect.stringContaining(sibling.id)
+        ])
       )
 
       await core.handle('providers.update', {
