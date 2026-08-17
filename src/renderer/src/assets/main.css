@@ -105,6 +105,16 @@ body {
   z-index: 1;
 }
 
+/* Compact controls (icon buttons): same tokens, full-bleed fill, no sliding rail. */
+.kowork-hover-fill:hover:not(:disabled):not([data-selected]):not([aria-pressed='true']) {
+  background: var(--kowork-select-hover);
+}
+
+.kowork-hover-fill[data-selected],
+.kowork-hover-fill[aria-pressed='true'] {
+  background: var(--kowork-select-active);
+}
+
 textarea,
 input,
 pre {

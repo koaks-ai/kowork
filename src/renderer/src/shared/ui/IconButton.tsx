@@ -33,8 +33,10 @@ export function IconButton({
     >
       <Tooltip.Trigger asChild>
         <button
-          className={`no-drag inline-flex size-8 shrink-0 items-center justify-center rounded-md text-neutral-500 transition-colors hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-40 ${active ? 'bg-blue-50 text-blue-700' : ''} ${className}`}
+          className={`kowork-hover-fill no-drag inline-flex size-8 shrink-0 items-center justify-center rounded-md text-neutral-500 transition-colors hover:text-neutral-800 disabled:cursor-not-allowed disabled:opacity-40 ${active ? 'text-neutral-800' : ''} ${className}`}
           aria-label={label}
+          aria-pressed={active}
+          data-selected={active ? true : undefined}
           {...props}
           ref={triggerRef}
         >

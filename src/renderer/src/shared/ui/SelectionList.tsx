@@ -11,7 +11,7 @@ interface SelectionListProps {
   className?: string
 }
 
-/** Sliding selected pill. Pair items with `kowork-select-item`; use `kowork-select-item-fill` when selected should paint without a rail. */
+/** Sliding selected pill. Pair items with `kowork-select-item`; use `kowork-select-item-fill` when selected should paint without a rail. Icon buttons use `kowork-hover-fill` (same tokens, no rail). */
 
 export function SelectionList({
   index,
