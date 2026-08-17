@@ -2,7 +2,7 @@
 
 :root {
   color: #262626;
-  background: #ffffff;
+  background: transparent;
   font-family:
     Inter,
     ui-sans-serif,
@@ -27,6 +27,13 @@ body,
   height: 100%;
   margin: 0;
   overflow: hidden;
+  background: transparent;
+}
+
+html[data-system-backdrop='none'],
+html[data-system-backdrop='none'] body,
+html[data-system-backdrop='none'] #root {
+  background: #ffffff;
 }
 
 html.kowork-panel-resizing,

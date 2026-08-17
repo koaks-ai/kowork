@@ -1,6 +1,7 @@
 import { join } from 'node:path'
-import { BrowserWindow, shell } from 'electron'
+import { BrowserWindow, shell, type BrowserWindowConstructorOptions } from 'electron'
 import { is } from '@electron-toolkit/utils'
+import { resolveSystemBackdrop } from '@kowork/contracts'
 import icon from '../../../resources/icon.png?asset'
 
 function isAllowedExternalUrl(value: string): boolean {
@@ -10,6 +11,27 @@ function isAllowedExternalUrl(value: string): boolean {
   } catch {
     return false
   }
+}
+
+function windowMaterialOptions(): Pick<
+  BrowserWindowConstructorOptions,
+  'backgroundColor' | 'backgroundMaterial' | 'vibrancy' | 'visualEffectState'
+> {
+  const backdrop = resolveSystemBackdrop(process.platform, process.getSystemVersion())
+  if (backdrop === 'vibrancy') {
+    return {
+      backgroundColor: '#00000000',
+      vibrancy: 'sidebar',
+      visualEffectState: 'followWindow'
+    }
+  }
+  if (backdrop === 'mica') {
+    return {
+      backgroundColor: '#00000000',
+      backgroundMaterial: 'mica'
+    }
+  }
+  return { backgroundColor: '#ffffff' }
 }
 
 export function createMainWindow(): BrowserWindow {
@@ -22,6 +44,7 @@ export function createMainWindow(): BrowserWindow {
     autoHideMenuBar: true,
     title: 'KoWork',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
+    ...windowMaterialOptions(),
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),

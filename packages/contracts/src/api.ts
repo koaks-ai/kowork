@@ -18,8 +18,10 @@ import type {
   RunEventDto,
   ThreadDto
 } from './models'
+import type { HostPlatformInfo } from './platform'
 
 export interface KoWorkApi {
+  platform: HostPlatformInfo
   bootstrap(): Promise<AppBootstrapDto>
   projects: {
     list(includeDeleted?: boolean): Promise<ProjectDto[]>

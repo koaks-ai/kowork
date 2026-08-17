@@ -1,11 +1,19 @@
 import { ipcRenderer } from 'electron'
-import type { KoWorkApi, RpcInput, RpcMethod, RpcOutput, RunEventDto } from '@kowork/contracts'
+import {
+  resolveHostPlatform,
+  type KoWorkApi,
+  type RpcInput,
+  type RpcMethod,
+  type RpcOutput,
+  type RunEventDto
+} from '@kowork/contracts'
 
 async function invoke<M extends RpcMethod>(method: M, payload: RpcInput<M>): Promise<RpcOutput<M>> {
   return await ipcRenderer.invoke('kowork:rpc', method, payload)
 }
 
 export const koWorkApi: KoWorkApi = {
+  platform: resolveHostPlatform(process.platform, process.getSystemVersion()),
   bootstrap: () => invoke('app.bootstrap', {}),
   projects: {
     list: (includeDeleted = false) => invoke('projects.list', { includeDeleted }),

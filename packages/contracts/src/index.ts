@@ -1,4 +1,5 @@
 export * from './api'
 export * from './models'
+export * from './platform'
 export * from './protocol'
 export * from './transport'

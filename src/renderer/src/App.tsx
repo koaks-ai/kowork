@@ -9,7 +9,8 @@ import { StatusBar } from './widgets/StatusBar'
 function App(): React.JSX.Element {
   const { t } = useTranslation()
   const bootstrap = useQuery({ queryKey: ['bootstrap'], queryFn: () => window.kowork.bootstrap() })
-  const isMacOS = navigator.userAgent.includes('Macintosh')
+  const isMacOS = window.kowork.platform.os === 'darwin'
+  const frosted = window.kowork.platform.backdrop !== 'none'
   if (bootstrap.isLoading)
     return (
       <div className="grid h-screen place-items-center bg-white text-sm text-neutral-500">
@@ -23,32 +24,34 @@ function App(): React.JSX.Element {
       </div>
     )
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-white">
-      <div className="flex min-h-0 flex-1">
-        <ResizablePanel
-          side="left"
-          defaultWidth={264}
-          minWidth={220}
-          maxWidth={420}
-          storageKey="kowork:left-sidebar-width"
-          resizeLabel={t('resizeProjectSidebar')}
-        >
-          <ProjectSidebar bootstrap={bootstrap.data} isMacOS={isMacOS} />
-        </ResizablePanel>
-        <ConversationWorkspace bootstrap={bootstrap.data} />
-        <ResizablePanel
-          side="right"
-          defaultWidth={332}
-          minWidth={280}
-          maxWidth={520}
-          storageKey="kowork:right-sidebar-width"
-          resizeLabel={t('resizeInspectorPanel')}
-          className="hidden xl:block"
-        >
-          <InspectorPanel bootstrap={bootstrap.data} />
-        </ResizablePanel>
+    <div className="flex h-screen overflow-hidden bg-transparent">
+      <ResizablePanel
+        side="left"
+        defaultWidth={264}
+        minWidth={220}
+        maxWidth={420}
+        storageKey="kowork:left-sidebar-width"
+        resizeLabel={t('resizeProjectSidebar')}
+      >
+        <ProjectSidebar bootstrap={bootstrap.data} isMacOS={isMacOS} frosted={frosted} />
+      </ResizablePanel>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-white">
+        <div className="flex min-h-0 flex-1">
+          <ConversationWorkspace bootstrap={bootstrap.data} />
+          <ResizablePanel
+            side="right"
+            defaultWidth={332}
+            minWidth={280}
+            maxWidth={520}
+            storageKey="kowork:right-sidebar-width"
+            resizeLabel={t('resizeInspectorPanel')}
+            className="hidden xl:block"
+          >
+            <InspectorPanel bootstrap={bootstrap.data} />
+          </ResizablePanel>
+        </div>
+        <StatusBar bootstrap={bootstrap.data} />
       </div>
-      <StatusBar bootstrap={bootstrap.data} />
     </div>
   )
 }

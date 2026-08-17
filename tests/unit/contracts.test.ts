@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseRpcInput, rpcRequestEnvelopeSchema } from '@kowork/contracts'
+import { parseRpcInput, resolveSystemBackdrop, rpcRequestEnvelopeSchema } from '@kowork/contracts'
 
 describe('RPC contracts', () => {
   it('validates method payloads at the process boundary', () => {
@@ -50,5 +50,15 @@ describe('RPC contracts', () => {
     expect(() =>
       parseRpcInput('settings.update', { defaultPermissionMode: 'unrestricted' })
     ).toThrow()
+  })
+})
+
+describe('system backdrop', () => {
+  it('uses macOS vibrancy and Windows 11 mica, otherwise none', () => {
+    expect(resolveSystemBackdrop('darwin', '15.6.0')).toBe('vibrancy')
+    expect(resolveSystemBackdrop('win32', '10.0.22621')).toBe('mica')
+    expect(resolveSystemBackdrop('win32', '10.0.26100')).toBe('mica')
+    expect(resolveSystemBackdrop('win32', '10.0.19045')).toBe('none')
+    expect(resolveSystemBackdrop('linux', '6.8.0')).toBe('none')
   })
 })

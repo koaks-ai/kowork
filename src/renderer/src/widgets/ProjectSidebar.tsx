@@ -23,6 +23,7 @@ import { InlineRenameInput } from '../shared/ui/InlineRenameInput'
 interface ProjectSidebarProps {
   bootstrap: AppBootstrapDto
   isMacOS: boolean
+  frosted?: boolean
 }
 
 const EMPTY_THREADS: ThreadDto[] = []
@@ -61,13 +62,13 @@ function ProjectThreadList({
       <span
         aria-hidden="true"
         data-thread-selection-highlight
-        className={`pointer-events-none absolute inset-x-0 top-0.5 h-[30px] rounded-lg bg-neutral-200/70 transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${selectedIndex >= 0 ? 'opacity-100' : 'opacity-0'}`}
+        className={`pointer-events-none absolute inset-x-0 top-0.5 h-[30px] rounded-lg bg-neutral-200/70 transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none group-data-[frosted]/sidebar:bg-black/10 ${selectedIndex >= 0 ? 'opacity-100' : 'opacity-0'}`}
         style={{ transform: `translateY(${highlightedIndex * 34}px)` }}
       />
       {threads.map((thread) => (
         <div
           key={thread.id}
-          className={`relative z-10 flex h-[34px] items-center rounded-lg ${thread.id === selectedThreadId ? 'text-neutral-900' : 'text-neutral-700 hover:bg-neutral-50'}`}
+          className={`relative z-10 flex h-[34px] items-center rounded-lg ${thread.id === selectedThreadId ? 'text-neutral-900' : 'text-neutral-700 hover:bg-neutral-50 group-data-[frosted]/sidebar:hover:bg-black/[0.04]'}`}
           onContextMenu={(event) => {
             event.preventDefault()
             event.stopPropagation()
@@ -124,7 +125,11 @@ function ProjectThreadList({
   )
 }
 
-export function ProjectSidebar({ bootstrap, isMacOS }: ProjectSidebarProps): React.JSX.Element {
+export function ProjectSidebar({
+  bootstrap,
+  isMacOS,
+  frosted = false
+}: ProjectSidebarProps): React.JSX.Element {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const { projectId, threadId, setProject, setThread } = useWorkbenchStore()
@@ -195,9 +200,12 @@ export function ProjectSidebar({ bootstrap, isMacOS }: ProjectSidebarProps): Rea
   })
 
   return (
-    <aside className="flex h-full w-full flex-col border-r border-neutral-200 bg-white">
+    <aside
+      data-frosted={frosted || undefined}
+      className="group/sidebar flex h-full w-full flex-col border-r border-neutral-200 bg-white data-[frosted]:border-black/10 data-[frosted]:bg-white/65"
+    >
       <div
-        className={`app-brand app-drag flex shrink-0 justify-start border-b border-neutral-100 px-4 text-lg font-bold tracking-normal text-neutral-900 ${isMacOS ? 'h-[88px] items-end pb-3' : 'h-14 items-center'}`}
+        className={`app-brand app-drag flex shrink-0 justify-start border-b border-neutral-100 px-4 text-lg font-bold tracking-normal text-neutral-900 group-data-[frosted]/sidebar:border-black/5 ${isMacOS ? 'h-[88px] items-end pb-3' : 'h-14 items-center'}`}
       >
         <span className="mr-2.5 grid size-7 place-items-center rounded-md bg-blue-600 text-sm text-white">
           K
@@ -239,7 +247,7 @@ export function ProjectSidebar({ bootstrap, isMacOS }: ProjectSidebarProps): Rea
                   type="button"
                   aria-controls={disclosureId}
                   aria-expanded={expanded}
-                  className={`group flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-sm font-medium ${selected ? 'bg-neutral-100 text-neutral-900' : 'text-neutral-700 hover:bg-neutral-50'}`}
+                  className={`flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-sm font-medium ${selected ? 'bg-neutral-100 text-neutral-900 group-data-[frosted]/sidebar:bg-black/[0.08]' : 'text-neutral-700 hover:bg-neutral-50 group-data-[frosted]/sidebar:hover:bg-black/[0.04]'}`}
                   onClick={() => {
                     setExpandedProjectIds((current) => {
                       const next = new Set(current)
@@ -277,7 +285,7 @@ export function ProjectSidebar({ bootstrap, isMacOS }: ProjectSidebarProps): Rea
           })
         )}
       </div>
-      <div className="flex h-12 items-center justify-between border-t border-neutral-200 px-3">
+      <div className="flex h-12 items-center justify-between border-t border-neutral-200 px-3 group-data-[frosted]/sidebar:border-black/10">
         <IconButton label={t('archive')}>
           <Archive size={16} />
         </IconButton>

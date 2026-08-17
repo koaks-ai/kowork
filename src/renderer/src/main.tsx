@@ -9,6 +9,9 @@ import { installBrowserPreviewApi } from './shared/api/browser-preview'
 
 installBrowserPreviewApi()
 
+document.documentElement.dataset.platform = window.kowork.platform.os
+document.documentElement.dataset.systemBackdrop = window.kowork.platform.backdrop
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AppProviders>

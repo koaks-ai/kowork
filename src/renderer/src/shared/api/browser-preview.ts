@@ -11,6 +11,12 @@ import type {
   ThreadDto
 } from '@kowork/contracts'
 
+function previewHostOs(): string {
+  if (navigator.userAgent.includes('Mac')) return 'darwin'
+  if (navigator.userAgent.includes('Windows')) return 'win32'
+  return 'linux'
+}
+
 function createFallbackThreadTitle(message: string): string {
   const value = message.replace(/\s+/gu, ' ').trim()
   const characters = Array.from(value || '新的会话')
@@ -126,6 +132,7 @@ function emit(
 export function installBrowserPreviewApi(): void {
   if (!import.meta.env.DEV || window.kowork) return
   const api: KoWorkApi = {
+    platform: { os: previewHostOs(), backdrop: 'none' },
     bootstrap: async () => ({
       projects: [project],
       providers,
