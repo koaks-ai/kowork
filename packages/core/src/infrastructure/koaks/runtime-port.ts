@@ -10,6 +10,7 @@ export type AgentStreamEvent =
 export interface AgentRuntimePort {
   generateTitle(input: {
     message: string
+    threadId: string
     profile: ModelProfileDto
     signal: AbortSignal
   }): Promise<string>

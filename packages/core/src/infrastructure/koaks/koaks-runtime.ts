@@ -14,6 +14,7 @@ import type {
   ThreadDto
 } from '@kowork/contracts'
 import { CoreError } from '../../domain/errors'
+import { createId } from '../../domain/ids'
 import { selectRecentTurnCount, shouldCompress } from '../../domain/compression-policy'
 import {
   createFallbackThreadTitle,
@@ -104,10 +105,6 @@ export class KoaksAgentRuntime implements AgentRuntimePort {
   private runtimePromise?: Promise<KoaksRuntime>
   private readonly agents = new Map<string, KoaksAgent>()
   private readonly agentCreations = new Map<string, Promise<KoaksAgent>>()
-  private readonly summarizers = new Map<string, KoaksAgent>()
-  private readonly summarizerCreations = new Map<string, Promise<KoaksAgent>>()
-  private readonly titleGenerators = new Map<string, KoaksAgent>()
-  private readonly titleGeneratorCreations = new Map<string, Promise<KoaksAgent>>()
   private readonly toolLocks = new ProjectToolLocks()
 
   constructor(
@@ -201,48 +198,31 @@ export class KoaksAgentRuntime implements AgentRuntimePort {
     }
   }
 
-  private async getSummarizer(profile: ModelProfileDto): Promise<KoaksAgent> {
-    const provider = this.database.getProvider(profile.providerId)
-    const key = `${profile.id}:${profile.updatedAt}:${provider.updatedAt}`
-    const existing = this.summarizers.get(key)
-    if (existing) return existing
-    const creating = this.summarizerCreations.get(key)
-    if (creating) return await creating
-
-    const creation = (async () => {
-      const runtime = await this.getRuntime()
-      const agent = await runtime.createAgent({
-        id: `summarizer-${profile.id}-${profile.updatedAt}-${provider.updatedAt}`,
-        name: 'KoWork Context Summarizer',
-        instructions:
-          'Create a compact, factual coding-session summary. Preserve user goals, architectural decisions, file changes, command outcomes, unresolved errors, and exact identifiers. Do not add advice.',
-        model: await providerFor(profile, provider, this.credentials),
-        memory: { type: 'none' },
-        termination: { maxSteps: 4 }
-      })
-      this.summarizers.set(key, agent)
-      return agent
-    })()
-    this.summarizerCreations.set(key, creation)
+  private async withEphemeralAgent<T>(
+    config: AgentConfig,
+    run: (agent: KoaksAgent) => Promise<T>
+  ): Promise<T> {
+    const runtime = await this.getRuntime()
+    const agent = await runtime.createAgent(config)
     try {
-      return await creation
+      return await run(agent)
     } finally {
-      this.summarizerCreations.delete(key)
+      await agent.close().catch(() => undefined)
     }
   }
 
-  private async getTitleGenerator(profile: ModelProfileDto): Promise<KoaksAgent> {
-    const provider = this.database.getProvider(profile.providerId)
-    const key = `${profile.id}:${profile.updatedAt}:${provider.updatedAt}`
-    const existing = this.titleGenerators.get(key)
-    if (existing) return existing
-    const creating = this.titleGeneratorCreations.get(key)
-    if (creating) return await creating
-
-    const creation = (async () => {
-      const runtime = await this.getRuntime()
-      const agent = await runtime.createAgent({
-        id: `title-${profile.id}-${profile.updatedAt}-${provider.updatedAt}`,
+  async generateTitle(input: {
+    message: string
+    threadId: string
+    profile: ModelProfileDto
+    signal: AbortSignal
+  }): Promise<string> {
+    const fallback = createFallbackThreadTitle(input.message)
+    const provider = this.database.getProvider(input.profile.providerId)
+    const source = Array.from(input.message).slice(0, 8_000).join('')
+    const result = await this.withEphemeralAgent(
+      {
+        id: createId('title'),
         name: 'KoWork Conversation Title Generator',
         instructions: [
           'Create a concise, specific conversation title from the first user message.',
@@ -258,33 +238,15 @@ export class KoaksAgentRuntime implements AgentRuntimePort {
           '- Drop filler words and trailing punctuation.',
           '- Output only the title text: no quotes, no Markdown, no JSON, no commentary.'
         ].join('\n'),
-        model: await providerFor(profile, provider, this.credentials),
+        model: await providerFor(input.profile, provider, this.credentials),
         memory: { type: 'none' },
-        termination: { maxSteps: 2 },
-        runBudget: { maxTotalSteps: 2 }
-      })
-      this.titleGenerators.set(key, agent)
-      return agent
-    })()
-    this.titleGeneratorCreations.set(key, creation)
-    try {
-      return await creation
-    } finally {
-      this.titleGeneratorCreations.delete(key)
-    }
-  }
-
-  async generateTitle(input: {
-    message: string
-    profile: ModelProfileDto
-    signal: AbortSignal
-  }): Promise<string> {
-    const fallback = createFallbackThreadTitle(input.message)
-    const agent = await this.getTitleGenerator(input.profile)
-    const source = Array.from(input.message).slice(0, 8_000).join('')
-    const result = await agent.run(
-      `Generate the title from this first user message:\n${JSON.stringify(source)}`,
-      { signal: input.signal }
+        termination: { maxSteps: 2 }
+      },
+      (agent) =>
+        agent.run(`Generate the title from this first user message:\n${JSON.stringify(source)}`, {
+          threadId: `title:${input.threadId}`,
+          signal: input.signal
+        })
     )
     if (result.status !== 'completed') return fallback
     return normalizeGeneratedThreadTitle(result.text, input.message)
@@ -328,10 +290,23 @@ export class KoaksAgentRuntime implements AgentRuntimePort {
     ]
       .filter(Boolean)
       .join('\n\n')
-    const summarizer = await this.getSummarizer(input.profile)
-    const result = await summarizer.run(`Summarize this conversation state:\n\n${source}`, {
-      signal: input.signal
-    })
+    const provider = this.database.getProvider(input.profile.providerId)
+    const result = await this.withEphemeralAgent(
+      {
+        id: createId('summarizer'),
+        name: 'KoWork Context Summarizer',
+        instructions:
+          'Create a compact, factual coding-session summary. Preserve user goals, architectural decisions, file changes, command outcomes, unresolved errors, and exact identifiers. Do not add advice.',
+        model: await providerFor(input.profile, provider, this.credentials),
+        memory: { type: 'none' },
+        termination: { maxSteps: 4 }
+      },
+      (agent) =>
+        agent.run(`Summarize this conversation state:\n\n${source}`, {
+          threadId: `summarizer:${input.thread.id}`,
+          signal: input.signal
+        })
+    )
     if (result.status !== 'completed' || !result.text.trim()) {
       throw new CoreError(
         'compression_failed',
@@ -418,16 +393,10 @@ export class KoaksAgentRuntime implements AgentRuntimePort {
   async close(): Promise<void> {
     const runtime = this.runtime ?? (await this.runtimePromise?.catch(() => undefined))
     await Promise.all(
-      [...this.agents.values(), ...this.summarizers.values(), ...this.titleGenerators.values()].map(
-        (agent) => agent.close().catch(() => undefined)
-      )
+      [...this.agents.values()].map((agent) => agent.close().catch(() => undefined))
     )
     this.agents.clear()
     this.agentCreations.clear()
-    this.summarizers.clear()
-    this.summarizerCreations.clear()
-    this.titleGenerators.clear()
-    this.titleGeneratorCreations.clear()
     await runtime?.close()
     this.runtime = undefined
     this.runtimePromise = undefined

@@ -247,7 +247,12 @@ export class RunCoordinator {
     const task = (async () => {
       let title = createFallbackThreadTitle(request.input)
       try {
-        title = await this.runtime.generateTitle({ message: request.input, profile, signal })
+        title = await this.runtime.generateTitle({
+          message: request.input,
+          threadId: thread.id,
+          profile,
+          signal
+        })
       } catch {
         // A title is optional metadata; the first chat run must continue on model failure.
       }

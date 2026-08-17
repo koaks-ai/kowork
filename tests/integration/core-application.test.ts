@@ -139,8 +139,7 @@ describe('Core application', () => {
       })
 
       const siblingCreated = await core.handle('threads.create', {
-        projectId: project.id,
-        title: 'Sibling thread'
+        projectId: project.id
       })
       const sibling = await core.handle('threads.update', {
         threadId: siblingCreated.id,
@@ -156,6 +155,18 @@ describe('Core application', () => {
           timeout: 10_000
         })
         .toBe('completed')
+      await expect
+        .poll(
+          async () => {
+            const threads = await core.handle('threads.list', { projectId: project.id })
+            return [
+              threads.find((item) => item.id === thread.id)?.title,
+              threads.find((item) => item.id === sibling.id)?.title
+            ]
+          },
+          { timeout: 10_000 }
+        )
+        .toEqual(['Beta5 API', 'Beta5 API'])
       const runtime = Reflect.get(core, 'runtime') as object
       const agents = Reflect.get(runtime, 'agents') as Map<string, unknown>
       expect([...agents.keys()]).toEqual(
@@ -242,7 +253,7 @@ describe('Core application', () => {
         server.close((error) => (error ? reject(error) : resolve()))
       )
     }
-  })
+  }, 20_000)
 
   it('runs a persisted fake-agent request end to end', async () => {
     const dataPath = await mkdtemp(join(tmpdir(), 'kowork-core-'))
