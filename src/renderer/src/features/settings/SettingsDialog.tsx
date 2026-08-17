@@ -11,13 +11,17 @@ import type {
 } from '@kowork/contracts'
 import { BlurReveal } from '../../shared/ui/BlurReveal'
 import { IconButton } from '../../shared/ui/IconButton'
+import { SelectionList } from '../../shared/ui/SelectionList'
 import { GeneralSettingsPane } from './GeneralSettingsPane'
 import { ModelSettingsPane } from './ModelSettingsPane'
 
 type SettingsSection = 'general' | 'model'
 
-const navItemClassName =
-  'flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm text-neutral-600 outline-none transition-colors duration-150 hover:bg-blue-50 hover:text-neutral-900 aria-[current=page]:bg-blue-50 aria-[current=page]:text-neutral-900'
+const SETTINGS_NAV_ITEM_HEIGHT = 36
+const SETTINGS_NAV = [
+  { id: 'general', icon: SlidersHorizontal, labelKey: 'settingsGeneral' },
+  { id: 'model', icon: Cpu, labelKey: 'settingsModel' }
+] as const
 
 export function SettingsDialog({
   providers,
@@ -49,7 +53,7 @@ export function SettingsDialog({
       <Dialog.Portal>
         <Dialog.Overlay className="kowork-settings-overlay fixed inset-0 z-40" />
         <Dialog.Content className="kowork-settings-dialog fixed inset-0 z-50 flex items-center justify-center p-4 outline-none">
-          <div className="pointer-events-auto flex h-[min(780px,calc(100vh-32px))] w-[min(1040px,calc(100vw-32px))] flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-2xl">
+          <div className="pointer-events-auto flex h-[min(780px,calc(100vh-32px))] w-[min(1040px,calc(100vw-32px))] flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-neutral-200 px-5 py-3">
               <Dialog.Title className="text-base font-semibold text-neutral-900">
                 {t('settings')}
@@ -67,26 +71,31 @@ export function SettingsDialog({
             <div className="flex min-h-0 flex-1">
               <nav
                 aria-label={t('settings')}
-                className="flex w-[220px] shrink-0 flex-col gap-1 border-r border-neutral-200 bg-neutral-50/70 p-3"
+                className="w-[220px] shrink-0 border-r border-neutral-200 bg-neutral-50/70 p-3"
               >
-                <button
-                  type="button"
-                  aria-current={section === 'general' ? 'page' : undefined}
-                  className={navItemClassName}
-                  onClick={() => setSection('general')}
+                <SelectionList
+                  index={SETTINGS_NAV.findIndex((item) => item.id === section)}
+                  itemHeight={SETTINGS_NAV_ITEM_HEIGHT}
                 >
-                  <SlidersHorizontal size={16} className="shrink-0" />
-                  <span className="min-w-0 flex-1 font-medium">{t('settingsGeneral')}</span>
-                </button>
-                <button
-                  type="button"
-                  aria-current={section === 'model' ? 'page' : undefined}
-                  className={navItemClassName}
-                  onClick={() => setSection('model')}
-                >
-                  <Cpu size={16} className="shrink-0" />
-                  <span className="min-w-0 flex-1 font-medium">{t('settingsModel')}</span>
-                </button>
+                  {SETTINGS_NAV.map((item) => {
+                    const selected = section === item.id
+                    const Icon = item.icon
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        aria-current={selected ? 'page' : undefined}
+                        className={`kowork-select-item flex h-9 w-full items-center gap-2.5 rounded-md px-2.5 text-left text-sm outline-none ${
+                          selected ? 'text-neutral-900' : 'text-neutral-600 hover:text-neutral-900'
+                        }`}
+                        onClick={() => setSection(item.id)}
+                      >
+                        <Icon size={16} className="shrink-0" />
+                        <span className="min-w-0 flex-1 font-medium">{t(item.labelKey)}</span>
+                      </button>
+                    )
+                  })}
+                </SelectionList>
               </nav>
 
               <div className="relative min-h-0 flex-1 overflow-hidden">
