@@ -19,6 +19,7 @@ import { BlurSwapText } from '../shared/ui/BlurSwapText'
 import { ContextMenu } from '../shared/ui/ContextMenu'
 import { IconButton } from '../shared/ui/IconButton'
 import { InlineRenameInput } from '../shared/ui/InlineRenameInput'
+import { SelectionList } from '../shared/ui/SelectionList'
 
 interface ProjectSidebarProps {
   bootstrap: AppBootstrapDto
@@ -58,17 +59,17 @@ function ProjectThreadList({
   const menuThread = menu ? threads.find((thread) => thread.id === menu.threadId) : undefined
 
   return (
-    <div className="relative">
-      <span
-        aria-hidden="true"
-        data-thread-selection-highlight
-        className={`pointer-events-none absolute inset-x-0 top-0.5 h-[30px] rounded-lg bg-neutral-200/70 transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none group-data-[frosted]/sidebar:bg-black/10 ${selectedIndex >= 0 ? 'opacity-100' : 'opacity-0'}`}
-        style={{ transform: `translateY(${highlightedIndex * 34}px)` }}
-      />
+    <SelectionList
+      index={highlightedIndex}
+      visible={selectedIndex >= 0}
+      itemHeight={34}
+      radius="lg"
+    >
       {threads.map((thread) => (
         <div
           key={thread.id}
-          className={`relative z-10 flex h-[34px] items-center rounded-lg ${thread.id === selectedThreadId ? 'text-neutral-900' : 'text-neutral-700 hover:bg-neutral-50 group-data-[frosted]/sidebar:hover:bg-black/[0.04]'}`}
+          data-selected={thread.id === selectedThreadId || undefined}
+          className={`kowork-select-item flex h-[34px] items-center rounded-lg ${thread.id === selectedThreadId ? 'text-neutral-900' : 'text-neutral-700'}`}
           onContextMenu={(event) => {
             event.preventDefault()
             event.stopPropagation()
@@ -121,7 +122,7 @@ function ProjectThreadList({
           ]}
         />
       ) : null}
-    </div>
+    </SelectionList>
   )
 }
 
@@ -247,7 +248,8 @@ export function ProjectSidebar({
                   type="button"
                   aria-controls={disclosureId}
                   aria-expanded={expanded}
-                  className={`flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-sm font-medium ${selected ? 'bg-neutral-100 text-neutral-900 group-data-[frosted]/sidebar:bg-black/[0.08]' : 'text-neutral-700 hover:bg-neutral-50 group-data-[frosted]/sidebar:hover:bg-black/[0.04]'}`}
+                  data-selected={selected || undefined}
+                  className={`kowork-select-item kowork-select-item-fill flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-sm font-medium ${selected ? 'text-neutral-900' : 'text-neutral-700'}`}
                   onClick={() => {
                     setExpandedProjectIds((current) => {
                       const next = new Set(current)

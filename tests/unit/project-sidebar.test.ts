@@ -137,7 +137,7 @@ describe('ProjectSidebar', () => {
     await waitFor(() => expect(view.getByText('Alpha follow-up')).not.toBeNull())
     const alphaDisclosure = view.container.querySelector('#project-threads-project-a')!
     const highlight = alphaDisclosure.querySelector(
-      '[data-thread-selection-highlight]'
+      '[data-selection-highlight]'
     ) as HTMLElement
     expect(highlight.style.transform).toBe('translateY(0px)')
 
