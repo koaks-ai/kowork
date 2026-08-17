@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Bot, Pencil, Play } from 'lucide-react'
+import { Pencil, Play } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -15,13 +15,6 @@ import { BlurSwapText } from '../shared/ui/BlurSwapText'
 import { BlurReveal } from '../shared/ui/BlurReveal'
 import { IconButton } from '../shared/ui/IconButton'
 import { InlineRenameInput } from '../shared/ui/InlineRenameInput'
-
-const suggestions = [
-  'suggestionArchitecture',
-  'suggestionGit',
-  'suggestionLoop',
-  'suggestionBug'
-] as const
 
 const AUTO_SCROLL_THRESHOLD_PX = 80
 
@@ -239,23 +232,8 @@ export function ConversationWorkspace({
               {hasConversation ? (
                 <Timeline events={eventsQuery.data ?? []} />
               ) : (
-                <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center px-6 py-12">
-                  <div className="mb-5 grid size-12 place-items-center rounded-lg bg-blue-600 text-white">
-                    <Bot size={24} />
-                  </div>
-                  <h1 className="text-2xl font-semibold text-neutral-900">{t('codingAgent')}</h1>
-                  <p className="mt-2 text-sm text-neutral-500">{t('emptyConversation')}</p>
-                  <div className="mt-8 grid w-full grid-cols-2 gap-3">
-                    {suggestions.map((key) => (
-                      <button
-                        key={key}
-                        className="rounded-lg border border-neutral-200 bg-white p-4 text-left text-sm text-neutral-700 hover:border-blue-400 hover:text-blue-700"
-                        onClick={() => window.kowork.runs.enqueue(thread.id, t(key))}
-                      >
-                        {t(key)}
-                      </button>
-                    ))}
-                  </div>
+                <div className="flex flex-1 items-center justify-center px-6">
+                  <p className="text-sm text-neutral-500">{t('emptyConversation')}</p>
                 </div>
               )}
             </div>
