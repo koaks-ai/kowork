@@ -4,6 +4,7 @@
 @source '../../../../packages/design-system/src';
 
 :root {
+  --kowork-scrollbar-size: 10px;
   color: var(--kw-color-text-primary);
   background: transparent;
   font-family:
@@ -86,8 +87,8 @@ textarea,
 }
 
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: var(--kowork-scrollbar-size);
+  height: var(--kowork-scrollbar-size);
 }
 
 ::-webkit-scrollbar-thumb {
@@ -95,6 +96,14 @@ textarea,
   border-radius: var(--kw-radius-md);
   background: var(--kw-color-scrollbar);
   background-clip: padding-box;
+}
+
+[data-chat-scroll] {
+  scrollbar-gutter: stable both-edges;
+}
+
+[data-chat-composer-overlay] {
+  inset-inline: var(--kowork-scrollbar-size);
 }
 
 .kw-run-activities > [data-run-content] + [data-run-content] {

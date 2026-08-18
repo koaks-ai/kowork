@@ -183,10 +183,16 @@ test('runs through the real Electron, preload, main and Core process chain', asy
       )
     const conversationMainBox = await page.locator('main').boundingBox()
     const composerBox = await page.locator('[data-chat-composer]').boundingBox()
+    const composerFrameBox = await page.locator('[data-chat-composer-frame]').boundingBox()
+    const contentFrameBox = await page.locator('[data-chat-content]').boundingBox()
     const chatScrollBox = await page.locator('[data-chat-scroll]').boundingBox()
     expect(conversationMainBox).not.toBeNull()
     expect(composerBox).not.toBeNull()
+    expect(composerFrameBox).not.toBeNull()
+    expect(contentFrameBox).not.toBeNull()
     expect(chatScrollBox).not.toBeNull()
+    expect(Math.abs(composerFrameBox!.x - contentFrameBox!.x)).toBeLessThanOrEqual(1)
+    expect(Math.abs(composerFrameBox!.width - contentFrameBox!.width)).toBeLessThanOrEqual(1)
     expect(
       Math.abs(
         composerBox!.x -
