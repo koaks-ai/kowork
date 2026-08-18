@@ -2,9 +2,9 @@
 name: KoWork 架构重构
 overview: 把 KoWork 从「Electron 内嵌 TS core + Koaks JS」重构为「纯客户端 + 可本地/远程部署的 Kotlin/Native Agent Server」，同时统一设计系统与动画、引入主题体系、并把右侧栏与 Koaks 四个 hook 全面插件化。分 7 个阶段，先做协议与设计基线，再做 Kotlin 服务端，最后硬切换并插件化。
 todos:
-  - id: phase0-protocol [已完成]
+  - id: phase0-protocol [completed]
     content: 阶段 0：定义 KAP v1 协议（Kotlin @Serializable 真源 + TS Zod 镜像 + conformance fixtures），补齐所有事件 payload schema，预留 server.info / auth / fs.browse / files.upload / plugins 命名空间，改版本字面量为区间协商，重写 docs/architecture.md 与决策记录
-    status: pending
+    status: completed
   - id: phase1-design-system
     content: 阶段 1：建立 packages/design-system，统一圆角为 4 级 token（映射现有 56 处），抽出 Reveal 与 Disclosure 两个唯一动画原语，统一选中/悬停为单一 SelectableList（基准=左侧栏会话），新增 Surface 原语，建立 Inspector 卡片注册表，导出版本化 PluginUiKit
     status: pending
