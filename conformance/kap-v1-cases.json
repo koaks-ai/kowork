@@ -1,0 +1,1227 @@
+{
+  "protocolVersion": 1,
+  "description": "KAP v1 跨语言一致性用例。TS 侧见 tests/unit/protocol-conformance.test.ts，Kotlin 侧见 agent/protocol 的 ConformanceTest。两侧必须对每个用例得出相同的 accept/reject 结论。",
+  "cases": [
+    {
+      "name": "frame/hello",
+      "schema": "clientFrame",
+      "expect": "accept",
+      "value": {
+        "kind": "hello",
+        "minVersion": 1,
+        "maxVersion": 1,
+        "token": "kap_live_7f3a9c1d",
+        "client": { "name": "KoWork", "version": "1.0.0", "os": "darwin" }
+      }
+    },
+    {
+      "name": "frame/request",
+      "schema": "clientFrame",
+      "expect": "accept",
+      "value": {
+        "kind": "request",
+        "id": "rq_1",
+        "method": "projects.list",
+        "params": { "includeDeleted": false }
+      }
+    },
+    {
+      "name": "frame/request-null-params",
+      "schema": "clientFrame",
+      "expect": "accept",
+      "note": "params 在帧层是 unknown，允许 null；内容由方法表校验",
+      "value": { "kind": "request", "id": "rq_2", "method": "server.info", "params": null }
+    },
+    {
+      "name": "frame/cancel",
+      "schema": "clientFrame",
+      "expect": "accept",
+      "value": { "kind": "cancel", "id": "rq_1" }
+    },
+    {
+      "name": "frame/unknown-kind",
+      "schema": "clientFrame",
+      "expect": "reject",
+      "note": "未知帧类型必须被拒绝，不能静默忽略",
+      "value": { "kind": "subscribe", "id": "rq_3" }
+    },
+    {
+      "name": "frame/hello-missing-token",
+      "schema": "clientFrame",
+      "expect": "reject",
+      "value": {
+        "kind": "hello",
+        "minVersion": 1,
+        "maxVersion": 1,
+        "client": { "name": "KoWork", "version": "1.0.0", "os": "darwin" }
+      }
+    },
+    {
+      "name": "frame/hello-zero-version",
+      "schema": "clientFrame",
+      "expect": "reject",
+      "note": "版本号必须为正整数",
+      "value": {
+        "kind": "hello",
+        "minVersion": 0,
+        "maxVersion": 1,
+        "token": "t",
+        "client": { "name": "KoWork", "version": "1.0.0", "os": "darwin" }
+      }
+    },
+    {
+      "name": "frame/welcome",
+      "schema": "serverFrame",
+      "expect": "accept",
+      "value": {
+        "kind": "welcome",
+        "server": {
+          "protocolVersion": 1,
+          "minProtocolVersion": 1,
+          "maxProtocolVersion": 1,
+          "serverVersion": "1.0.0",
+          "runtime": "native",
+          "os": "linux",
+          "arch": "x86_64",
+          "capabilities": ["fs.browse", "files.upload"],
+          "startedAt": 1755400000000
+        }
+      }
+    },
+    {
+      "name": "frame/result",
+      "schema": "serverFrame",
+      "expect": "accept",
+      "value": { "kind": "result", "id": "rq_1", "value": [] }
+    },
+    {
+      "name": "frame/error",
+      "schema": "serverFrame",
+      "expect": "accept",
+      "value": {
+        "kind": "error",
+        "id": "rq_1",
+        "error": {
+          "code": "thread_archived",
+          "message": "会话已归档",
+          "details": { "threadId": "thr_01" }
+        }
+      }
+    },
+    {
+      "name": "frame/error-unknown-code",
+      "schema": "serverFrame",
+      "expect": "reject",
+      "note": "错误码是封闭枚举，未知码在解析期就要暴露出来",
+      "value": {
+        "kind": "error",
+        "id": "rq_1",
+        "error": { "code": "teapot", "message": "?" }
+      }
+    },
+    {
+      "name": "frame/fatal",
+      "schema": "serverFrame",
+      "expect": "accept",
+      "value": {
+        "kind": "fatal",
+        "error": { "code": "unsupported_protocol_version", "message": "server 只支持 v1" }
+      }
+    },
+    {
+      "name": "frame/event",
+      "schema": "serverFrame",
+      "expect": "accept",
+      "value": {
+        "kind": "event",
+        "event": {
+          "sequence": 42,
+          "id": "evt_42",
+          "projectId": "prj_01",
+          "threadId": "thr_01",
+          "runId": "run_01",
+          "createdAt": 1755400000000,
+          "type": "run.text",
+          "payload": { "text": "好的，", "step": 1, "itemRef": "item_1" }
+        }
+      }
+    },
+
+    {
+      "name": "event/request.queued",
+      "schema": "event",
+      "expect": "accept",
+      "value": {
+        "sequence": 1,
+        "id": "evt_1",
+        "projectId": "prj_01",
+        "threadId": "thr_01",
+        "runId": null,
+        "createdAt": 1755400000000,
+        "type": "request.queued",
+        "payload": { "requestId": "req_01", "input": "重构协议层", "position": 0 }
+      }
+    },
+    {
+      "name": "event/queue.paused",
+      "schema": "event",
+      "expect": "accept",
+      "value": {
+        "sequence": 2,
+        "id": "evt_2",
+        "projectId": "prj_01",
+        "threadId": "thr_01",
+        "runId": "run_01",
+        "createdAt": 1755400000000,
+        "type": "queue.paused",
+        "payload": { "reason": "failed" }
+      }
+    },
+    {
+      "name": "event/queue.paused-bad-reason",
+      "schema": "event",
+      "expect": "reject",
+      "value": {
+        "sequence": 2,
+        "id": "evt_2",
+        "projectId": "prj_01",
+        "threadId": "thr_01",
+        "runId": null,
+        "createdAt": 1755400000000,
+        "type": "queue.paused",
+        "payload": { "reason": "because" }
+      }
+    },
+    {
+      "name": "event/queue.resumed",
+      "schema": "event",
+      "expect": "accept",
+      "value": {
+        "sequence": 3,
+        "id": "evt_3",
+        "projectId": "prj_01",
+        "threadId": "thr_01",
+        "runId": null,
+        "createdAt": 1755400000000,
+        "type": "queue.resumed",
+        "payload": {}
+      }
+    },
+    {
+      "name": "event/run.started",
+      "schema": "event",
+      "expect": "accept",
+      "value": {
+        "sequence": 4,
+        "id": "evt_4",
+        "projectId": "prj_01",
+        "threadId": "thr_01",
+        "runId": "run_01",
+        "createdAt": 1755400000000,
+        "type": "run.started",
+        "payload": {
+          "requestId": "req_01",
+          "input": "重构协议层",
+          "modelProfileId": "mp_openai_gpt5"
+        }
+      }
+    },
+    {
+      "name": "event/run.waiting",
+      "schema": "event",
+      "expect": "accept",
+      "value": {
+        "sequence": 5,
+        "id": "evt_5",
+        "projectId": "prj_01",
+        "threadId": "thr_01",
+        "runId": "run_01",
+        "createdAt": 1755400000000,
+        "type": "run.waiting",
+        "payload": { "reason": "等待用户审批 Shell 命令" }
+      }
+    },
+    {
+      "name": "event/run.text",
+      "schema": "event",
+      "expect": "accept",
+      "value": {
+        "sequence": 6,
+        "id": "evt_6",
+        "projectId": "prj_01",
+        "threadId": "thr_01",
+        "runId": "run_01",
+        "createdAt": 1755400000000,
+        "type": "run.text",
+        "payload": { "text": "我先看一下现有协议。", "step": 1, "itemRef": "item_1" }
+      }
+    },
+    {
+      "name": "event/run.text-no-itemref",
+      "schema": "event",
+      "expect": "accept",
+      "note": "itemRef 可选",
+      "value": {
+        "sequence": 7,
+        "id": "evt_7",
+        "projectId": "prj_01",
+        "threadId": "thr_01",
+        "runId": "run_01",
+        "createdAt": 1755400000000,
+        "type": "run.text",
+        "payload": { "text": "继续。", "step": 2 }
+      }
+    },
+    {
+      "name": "event/run.text-missing-step",
+      "schema": "event",
+      "expect": "reject",
+      "note": "step 是必填：客户端靠它区分过程文本与最终答复",
+      "value": {
+        "sequence": 8,
+        "id": "evt_8",
+        "projectId": "prj_01",
+        "threadId": "thr_01",
+        "runId": "run_01",
+        "createdAt": 1755400000000,
+        "type": "run.text",
+        "payload": { "text": "缺 step" }
+      }
+    },
+    {
+      "name": "event/run.reasoning",
+      "schema": "event",
+      "expect": "accept",
+      "value": {
+        "sequence": 9,
+        "id": "evt_9",
+        "projectId": "prj_01",
+        "threadId": "thr_01",
+        "runId": "run_01",
+        "createdAt": 1755400000000,
+        "type": "run.reasoning",
+        "payload": { "text": "先确认边界。", "kind": "raw", "itemRef": "item_2" }
+      }
+    },
+    {
+      "name": "event/run.reasoning-legacy-kind",
+      "schema": "event",
+      "expect": "accept",
+      "note": "legacy 表示供应商未区分推理种类",
+      "value": {
+        "sequence": 10,
+        "id": "evt_10",
+        "projectId": "prj_01",
+        "threadId": "thr_01",
+        "runId": "run_01",
+        "createdAt": 1755400000000,
+        "type": "run.reasoning",
+        "payload": { "text": "…", "kind": "legacy" }
+      }
+    },
+    {
+      "name": "event/run.reasoning-bad-kind",
+      "schema": "event",
+      "expect": "reject",
+      "value": {
+        "sequence": 11,
+        "id": "evt_11",
+        "projectId": "prj_01",
+        "threadId": "thr_01",
+        "runId": "run_01",
+        "createdAt": 1755400000000,
+        "type": "run.reasoning",
+        "payload": { "text": "…", "kind": "thinking" }
+      }
+    },
+    {
+      "name": "event/run.refusal",
+      "schema": "event",
+      "expect": "accept",
+      "value": {
+        "sequence": 12,
+        "id": "evt_12",
+        "projectId": "prj_01",
+        "threadId": "thr_01",
+        "runId": "run_01",
+        "createdAt": 1755400000000,
+        "type": "run.refusal",
+        "payload": { "text": "我不能这么做。", "itemRef": "item_3", "step": 1, "phase": "normal" }
+      }
+    },
+    {
+      "name": "event/run.annotation-url",
+      "schema": "event",
+      "expect": "accept",
+      "value": {
+        "sequence": 13,
+        "id": "evt_13",
+        "projectId": "prj_01",
+        "threadId": "thr_01",
+        "runId": "run_01",
+        "createdAt": 1755400000000,
+        "type": "run.annotation",
+        "payload": {
+          "annotation": {
+            "type": "url_citation",
+            "url": "https://ktor.io/docs/server-native.html",
+            "title": "Native server",
+            "startIndex": 10,
+            "endIndex": 42
+          },
+          "itemRef": "item_3",
+          "step": 1,
+          "phase": "normal"
+        }
+      }
+    },
+    {
+      "name": "event/run.annotation-generic",
+      "schema": "event",
+      "expect": "accept",
+      "value": {
+        "sequence": 14,
+        "id": "evt_14",
+        "projectId": "prj_01",
+        "threadId": "thr_01",
+        "runId": "run_01",
+        "createdAt": 1755400000000,
+        "type": "run.annotation",
+        "payload": {
+          "annotation": { "type": "generic", "kind": "vendor_meta", "payload": "{\"a\":1}" },
+          "step": 2,
+          "phase": "structured_finalization"
+        }
+      }
+    },
+    {
+      "name": "event/run.annotation-bad-type",
+      "schema": "event",
+      "expect": "reject",
+      "value": {
+        "sequence": 15,
+        "id": "evt_15",
+        "projectId": "prj_01",
+        "threadId": "thr_01",
+        "runId": "run_01",
+        "createdAt": 1755400000000,
+        "type": "run.annotation",
+        "payload": {
+          "annotation": { "type": "book_citation", "isbn": "123" },
+          "step": 1,
+          "phase": "normal"
+        }
+      }
+    },
+    {
+      "name": "event/run.toolCall",
+      "schema": "event",
+      "expect": "accept",
+      "value": {
+        "sequence": 16,
+        "id": "evt_16",
+        "projectId": "prj_01",
+        "threadId": "thr_01",
+        "runId": "run_01",
+        "createdAt": 1755400000000,
+        "type": "run.toolCall",
+        "payload": {
+          "callId": "call_1",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"src/index.ts\"}",
+          "itemRef": "item_4"
+        }
+      }
+    },
+    {
+      "name": "event/run.toolCallDelta",
+      "schema": "event",
+      "expect": "accept",
+      "value": {
+        "sequence": 17,
+        "id": "evt_17",
+        "projectId": "prj_01",
+        "threadId": "thr_01",
+        "runId": "run_01",
+        "createdAt": 1755400000000,
+        "type": "run.toolCallDelta",
+        "payload": {
+          "callId": "call_1",
+          "index": 0,
+          "nameDelta": "read_",
+          "argumentsDelta": "{\"pa",
+          "itemRef": "item_4",
+          "step": 1,
+          "phase": "normal"
+        }
+      }
+    },
+    {
+      "name": "event/run.toolOutput-final",
+      "schema": "event",
+      "expect": "accept",
+      "value": {
+        "sequence": 18,
+        "id": "evt_18",
+        "projectId": "prj_01",
+        "threadId": "thr_01",
+        "runId": "run_01",
+        "createdAt": 1755400000000,
+        "type": "run.toolOutput",
+        "payload": {
+          "channel": "final",
+          "callId": "call_1",
+          "text": "export const a = 1\n",
+          "isError": false,
+          "truncated": false
+        }
+      }
+    },
+    {
+      "name": "event/run.toolOutput-stdout",
+      "schema": "event",
+      "expect": "accept",
+      "value": {
+        "sequence": 19,
+        "id": "evt_19",
+        "projectId": "prj_01",
+        "threadId": "thr_01",
+        "runId": "run_01",
+        "createdAt": 1755400000000,
+        "type": "run.toolOutput",
+        "payload": { "channel": "stdout", "callId": "call_2", "text": "added 1 package\n" }
+      }
+    },
+    {
+      "name": "event/run.toolOutput-status",
+      "schema": "event",
+      "expect": "accept",
+      "value": {
+        "sequence": 20,
+        "id": "evt_20",
+        "projectId": "prj_01",
+        "threadId": "thr_01",
+        "runId": "run_01",
+        "createdAt": 1755400000000,
+        "type": "run.toolOutput",
+        "payload": { "channel": "status", "callId": "call_2", "text": "正在安装依赖" }
+      }
+    },
+    {
+      "name": "event/run.toolOutput-custom",
+      "schema": "event",
+      "expect": "accept",
+      "value": {
+        "sequence": 21,
+        "id": "evt_21",
+        "projectId": "prj_01",
+        "threadId": "thr_01",
+        "runId": "run_01",
+        "createdAt": 1755400000000,
+        "type": "run.toolOutput",
+        "payload": {
+          "channel": "custom",
+          "callId": "call_3",
+          "kind": "search_progress",
+          "dataJson": "{\"scanned\":128}",
+          "text": "已扫描 128 个文件"
+        }
+      }
+    },
+    {
+      "name": "event/run.toolOutput-bad-channel",
+      "schema": "event",
+      "expect": "reject",
+      "value": {
+        "sequence": 22,
+        "id": "evt_22",
+        "projectId": "prj_01",
+        "threadId": "thr_01",
+        "runId": "run_01",
+        "createdAt": 1755400000000,
+        "type": "run.toolOutput",
+        "payload": { "channel": "stdin", "callId": "call_3", "text": "?" }
+      }
+    },
+    {
+      "name": "event/run.toolOutput-final-missing-truncated",
+      "schema": "event",
+      "expect": "reject",
+      "note": "final 通道必须明确标注是否被截断",
+      "value": {
+        "sequence": 23,
+        "id": "evt_23",
+        "projectId": "prj_01",
+        "threadId": "thr_01",
+        "runId": "run_01",
+        "createdAt": 1755400000000,
+        "type": "run.toolOutput",
+        "payload": { "channel": "final", "callId": "call_1", "text": "x", "isError": false }
+      }
+    },
+    {
+      "name": "event/run.completed",
+      "schema": "event",
+      "expect": "accept",
+      "value": {
+        "sequence": 24,
+        "id": "evt_24",
+        "projectId": "prj_01",
+        "threadId": "thr_01",
+        "runId": "run_01",
+        "createdAt": 1755400000000,
+        "type": "run.completed",
+        "payload": {
+          "usage": {
+            "promptTokens": 1200,
+            "completionTokens": 340,
+            "totalTokens": 1540,
+            "cachedInputTokens": 128,
+            "reasoningOutputTokens": 64
+          },
+          "finalText": "协议层已经改好了。",
+          "finalStep": 3
+        }
+      }
+    },
+    {
+      "name": "event/run.failed",
+      "schema": "event",
+      "expect": "accept",
+      "value": {
+        "sequence": 25,
+        "id": "evt_25",
+        "projectId": "prj_01",
+        "threadId": "thr_01",
+        "runId": "run_01",
+        "createdAt": 1755400000000,
+        "type": "run.failed",
+        "payload": {
+          "kind": "tool_error",
+          "message": "read_file 超时",
+          "usage": {
+            "promptTokens": 10,
+            "completionTokens": 0,
+            "totalTokens": 10,
+            "cachedInputTokens": 0,
+            "reasoningOutputTokens": 0
+          },
+          "retriable": true
+        }
+      }
+    },
+    {
+      "name": "event/run.failed-bad-kind",
+      "schema": "event",
+      "expect": "reject",
+      "note": "run 失败类别是领域枚举，不能塞任意字符串",
+      "value": {
+        "sequence": 26,
+        "id": "evt_26",
+        "projectId": "prj_01",
+        "threadId": "thr_01",
+        "runId": "run_01",
+        "createdAt": 1755400000000,
+        "type": "run.failed",
+        "payload": {
+          "kind": "oops",
+          "message": "x",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0,
+            "totalTokens": 0,
+            "cachedInputTokens": 0,
+            "reasoningOutputTokens": 0
+          },
+          "retriable": false
+        }
+      }
+    },
+    {
+      "name": "event/run.cancelled",
+      "schema": "event",
+      "expect": "accept",
+      "value": {
+        "sequence": 27,
+        "id": "evt_27",
+        "projectId": "prj_01",
+        "threadId": "thr_01",
+        "runId": "run_01",
+        "createdAt": 1755400000000,
+        "type": "run.cancelled",
+        "payload": {
+          "reason": "用户取消",
+          "usage": {
+            "promptTokens": 5,
+            "completionTokens": 0,
+            "totalTokens": 5,
+            "cachedInputTokens": 0,
+            "reasoningOutputTokens": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "event/run.interrupted",
+      "schema": "event",
+      "expect": "accept",
+      "value": {
+        "sequence": 28,
+        "id": "evt_28",
+        "projectId": "prj_01",
+        "threadId": "thr_01",
+        "runId": "run_01",
+        "createdAt": 1755400000000,
+        "type": "run.interrupted",
+        "payload": { "reason": "server_restarted" }
+      }
+    },
+    {
+      "name": "event/approval.requested",
+      "schema": "event",
+      "expect": "accept",
+      "value": {
+        "sequence": 29,
+        "id": "evt_29",
+        "projectId": "prj_01",
+        "threadId": "thr_01",
+        "runId": "run_01",
+        "createdAt": 1755400000000,
+        "type": "approval.requested",
+        "payload": {
+          "approval": {
+            "id": "apr_01",
+            "projectId": "prj_01",
+            "threadId": "thr_01",
+            "runId": "run_01",
+            "kind": "shell",
+            "title": "运行命令",
+            "detail": "pnpm install",
+            "status": "pending",
+            "requestedPath": null,
+            "requestedAccess": null,
+            "createdAt": 1755400000000,
+            "resolvedAt": null
+          }
+        }
+      }
+    },
+    {
+      "name": "event/approval.resolved",
+      "schema": "event",
+      "expect": "accept",
+      "value": {
+        "sequence": 30,
+        "id": "evt_30",
+        "projectId": "prj_01",
+        "threadId": "thr_01",
+        "runId": "run_01",
+        "createdAt": 1755400000000,
+        "type": "approval.resolved",
+        "payload": {
+          "approval": {
+            "id": "apr_02",
+            "projectId": "prj_01",
+            "threadId": "thr_01",
+            "runId": "run_01",
+            "kind": "external_path",
+            "title": "读取项目外目录",
+            "detail": "/etc/hosts",
+            "status": "allowed",
+            "requestedPath": "/etc/hosts",
+            "requestedAccess": "read",
+            "createdAt": 1755400000000,
+            "resolvedAt": 1755400001000
+          }
+        }
+      }
+    },
+    {
+      "name": "event/thread.updated",
+      "schema": "event",
+      "expect": "accept",
+      "value": {
+        "sequence": 31,
+        "id": "evt_31",
+        "projectId": "prj_01",
+        "threadId": "thr_01",
+        "runId": null,
+        "createdAt": 1755400000000,
+        "type": "thread.updated",
+        "payload": {
+          "thread": {
+            "id": "thr_01",
+            "projectId": "prj_01",
+            "title": "重构协议层",
+            "modelProfileId": "mp_openai_gpt5",
+            "permissionMode": "ask",
+            "contextWindowTokens": null,
+            "queuePaused": false,
+            "createdAt": 1755400000000,
+            "updatedAt": 1755400002000,
+            "deletedAt": null
+          },
+          "source": "first_message"
+        }
+      }
+    },
+    {
+      "name": "event/memory.compressed",
+      "schema": "event",
+      "expect": "accept",
+      "value": {
+        "sequence": 32,
+        "id": "evt_32",
+        "projectId": "prj_01",
+        "threadId": "thr_01",
+        "runId": null,
+        "createdAt": 1755400000000,
+        "type": "memory.compressed",
+        "payload": {
+          "summary": "此前讨论了协议分层与事件命名。",
+          "coveredThroughOrdinal": 12,
+          "estimatedTokens": 800
+        }
+      }
+    },
+    {
+      "name": "event/plugin.stateChanged",
+      "schema": "event",
+      "expect": "accept",
+      "value": {
+        "sequence": 33,
+        "id": "evt_33",
+        "projectId": null,
+        "threadId": null,
+        "runId": null,
+        "createdAt": 1755400000000,
+        "pluginId": "com.example.usage",
+        "type": "plugin.stateChanged",
+        "payload": { "pluginId": "com.example.usage", "status": "enabled", "generation": 7 }
+      }
+    },
+    {
+      "name": "event/plugin.log",
+      "schema": "event",
+      "expect": "accept",
+      "value": {
+        "sequence": 34,
+        "id": "evt_34",
+        "projectId": null,
+        "threadId": null,
+        "runId": null,
+        "createdAt": 1755400000000,
+        "pluginId": "com.example.usage",
+        "type": "plugin.log",
+        "payload": {
+          "pluginId": "com.example.usage",
+          "level": "warn",
+          "message": "缺少 read:runs 权限"
+        }
+      }
+    },
+    {
+      "name": "event/unknown-type",
+      "schema": "event",
+      "expect": "reject",
+      "note": "core.recovered 是旧协议里从未被 publish 的死枚举，KAP 已移除",
+      "value": {
+        "sequence": 35,
+        "id": "evt_35",
+        "projectId": null,
+        "threadId": null,
+        "runId": null,
+        "createdAt": 1755400000000,
+        "type": "core.recovered",
+        "payload": {}
+      }
+    },
+    {
+      "name": "event/negative-sequence",
+      "schema": "event",
+      "expect": "reject",
+      "note": "sequence 是补发游标，必须非负",
+      "value": {
+        "sequence": -1,
+        "id": "evt_36",
+        "projectId": null,
+        "threadId": "thr_01",
+        "runId": "run_01",
+        "createdAt": 1755400000000,
+        "type": "run.text",
+        "payload": { "text": "x", "step": 1 }
+      }
+    },
+    {
+      "name": "event/blank-id",
+      "schema": "event",
+      "expect": "reject",
+      "value": {
+        "sequence": 37,
+        "id": "",
+        "projectId": null,
+        "threadId": "thr_01",
+        "runId": "run_01",
+        "createdAt": 1755400000000,
+        "type": "run.text",
+        "payload": { "text": "x", "step": 1 }
+      }
+    },
+
+    {
+      "name": "method/app.bootstrap-output",
+      "schema": "methodOutput",
+      "method": "app.bootstrap",
+      "expect": "accept",
+      "value": {
+        "server": {
+          "protocolVersion": 1,
+          "minProtocolVersion": 1,
+          "maxProtocolVersion": 1,
+          "serverVersion": "1.0.0",
+          "runtime": "native",
+          "os": "linux",
+          "arch": "aarch64",
+          "capabilities": ["fs.browse", "files.upload", "plugins", "plugins.agentHost"],
+          "startedAt": 1755400000000
+        },
+        "projects": [
+          {
+            "id": "prj_01",
+            "name": "kowork",
+            "rootPath": "/srv/work/kowork",
+            "createdAt": 1755400000000,
+            "updatedAt": 1755400000000,
+            "deletedAt": null
+          }
+        ],
+        "providers": [
+          {
+            "id": "provider-openai-chat",
+            "name": "OpenAI",
+            "kind": "openai",
+            "protocol": "openai-chat",
+            "baseUrl": "https://api.openai.com",
+            "credentialConfigured": true,
+            "enabled": true,
+            "available": true,
+            "builtin": true,
+            "defaultContextWindowTokens": 1000000,
+            "createdAt": 1755400000000,
+            "updatedAt": 1755400000000
+          }
+        ],
+        "modelProfiles": [
+          {
+            "id": "mp_openai_gpt5",
+            "providerId": "provider-openai-chat",
+            "name": "GPT-5",
+            "model": "gpt-5",
+            "contextWindowTokens": 400000,
+            "source": "remote",
+            "enabled": true,
+            "available": true,
+            "createdAt": 1755400000000,
+            "updatedAt": 1755400000000
+          }
+        ],
+        "settings": {
+          "defaultModelProfileId": "mp_openai_gpt5",
+          "defaultPermissionMode": "ask"
+        },
+        "activeRuns": [],
+        "pendingApprovals": [],
+        "plugins": [],
+        "pluginGeneration": 0,
+        "lastEventSequence": 34
+      }
+    },
+    {
+      "name": "method/providers.create-input-with-key",
+      "schema": "methodInput",
+      "method": "providers.create",
+      "expect": "accept",
+      "note": "KAP 起 API Key 随协议上行，由 server 加密落盘",
+      "value": {
+        "name": "自建 OpenAI 兼容",
+        "kind": "custom",
+        "protocol": "openai-chat",
+        "baseUrl": "https://llm.internal.example.com",
+        "defaultContextWindowTokens": 128000,
+        "apiKey": "sk-abc123"
+      }
+    },
+    {
+      "name": "method/providers.create-input-without-key",
+      "schema": "methodInput",
+      "method": "providers.create",
+      "expect": "accept",
+      "value": {
+        "name": "自建",
+        "kind": "custom",
+        "protocol": "anthropic",
+        "baseUrl": "http://127.0.0.1:8000",
+        "defaultContextWindowTokens": 200000
+      }
+    },
+    {
+      "name": "method/providers.create-input-bad-scheme",
+      "schema": "methodInput",
+      "method": "providers.create",
+      "expect": "reject",
+      "note": "baseUrl 只接受 http/https",
+      "value": {
+        "name": "坏的",
+        "kind": "custom",
+        "protocol": "openai-chat",
+        "baseUrl": "ftp://example.com",
+        "defaultContextWindowTokens": 1000
+      }
+    },
+    {
+      "name": "method/providers.setCredential-clear",
+      "schema": "methodInput",
+      "method": "providers.setCredential",
+      "expect": "accept",
+      "note": "apiKey 为 null 表示清除 server 上的密钥；凭据改动是独立操作，便于审计",
+      "value": { "providerId": "provider-qwen", "apiKey": null }
+    },
+    {
+      "name": "method/providers.setCredential-set",
+      "schema": "methodInput",
+      "method": "providers.setCredential",
+      "expect": "accept",
+      "value": { "providerId": "provider-qwen", "apiKey": "sk-xyz" }
+    },
+    {
+      "name": "method/providers.setCredential-missing-key",
+      "schema": "methodInput",
+      "method": "providers.setCredential",
+      "expect": "reject",
+      "note": "apiKey 必须显式给出（字符串或 null），不允许缺省 —— 缺省会退化成三态",
+      "value": { "providerId": "provider-qwen" }
+    },
+    {
+      "name": "method/providers.update-no-credential-field",
+      "schema": "methodInput",
+      "method": "providers.update",
+      "expect": "accept",
+      "note": "非凭据字段的部分更新，缺省即不改",
+      "value": { "providerId": "provider-qwen", "enabled": false }
+    },
+    {
+      "name": "method/events.list-output",
+      "schema": "methodOutput",
+      "method": "events.list",
+      "expect": "accept",
+      "value": {
+        "events": [
+          {
+            "sequence": 1,
+            "id": "evt_1",
+            "projectId": "prj_01",
+            "threadId": "thr_01",
+            "runId": null,
+            "createdAt": 1755400000000,
+            "type": "request.queued",
+            "payload": { "requestId": "req_01", "input": "hi", "position": 0 }
+          }
+        ],
+        "hasMore": false
+      }
+    },
+    {
+      "name": "method/events.list-input-limit-too-large",
+      "schema": "methodInput",
+      "method": "events.list",
+      "expect": "reject",
+      "note": "单页上限 2000",
+      "value": { "threadId": "thr_01", "limit": 5000 }
+    },
+    {
+      "name": "method/fs.browse-output",
+      "schema": "methodOutput",
+      "method": "fs.browse",
+      "expect": "accept",
+      "value": {
+        "path": "/srv/work",
+        "parentPath": "/srv",
+        "entries": [
+          { "name": "kowork", "path": "/srv/work/kowork", "kind": "directory", "inaccessible": false },
+          { "name": "private", "path": "/srv/work/private", "kind": "directory", "inaccessible": true }
+        ],
+        "roots": [{ "label": "主目录", "path": "/root" }],
+        "isGitRepository": false
+      }
+    },
+    {
+      "name": "method/threads.update-inherit-window",
+      "schema": "methodInput",
+      "method": "threads.update",
+      "expect": "accept",
+      "note": "显式判别联合取代了 number|null|undefined 三态",
+      "value": {
+        "threadId": "thr_01",
+        "permissionMode": "yolo",
+        "contextWindowOverride": { "mode": "inherit" }
+      }
+    },
+    {
+      "name": "method/threads.update-override-window",
+      "schema": "methodInput",
+      "method": "threads.update",
+      "expect": "accept",
+      "value": {
+        "threadId": "thr_01",
+        "contextWindowOverride": { "mode": "override", "tokens": 200000 }
+      }
+    },
+    {
+      "name": "method/threads.update-override-missing-tokens",
+      "schema": "methodInput",
+      "method": "threads.update",
+      "expect": "reject",
+      "value": { "threadId": "thr_01", "contextWindowOverride": { "mode": "override" } }
+    },
+    {
+      "name": "method/threads.update-unchanged-window",
+      "schema": "methodInput",
+      "method": "threads.update",
+      "expect": "accept",
+      "note": "整个字段缺省表示不改动上下文窗口",
+      "value": { "threadId": "thr_01", "title": "新标题" }
+    },
+    {
+      "name": "method/threads.update-input-bad-mode",
+      "schema": "methodInput",
+      "method": "threads.update",
+      "expect": "reject",
+      "value": { "threadId": "thr_01", "permissionMode": "god" }
+    },
+    {
+      "name": "method/settings.replace-input",
+      "schema": "methodInput",
+      "method": "settings.replace",
+      "expect": "accept",
+      "note": "整体替换语义；settings 只承载 ServerSettings，主题等设备级偏好不进协议",
+      "value": { "defaultModelProfileId": null, "defaultPermissionMode": "auto" }
+    },
+    {
+      "name": "method/settings.replace-input-partial",
+      "schema": "methodInput",
+      "method": "settings.replace",
+      "expect": "reject",
+      "note": "整体替换要求字段齐全，缺一个就拒绝",
+      "value": { "defaultPermissionMode": "auto" }
+    },
+    {
+      "name": "method/files.upload-input",
+      "schema": "methodInput",
+      "method": "files.upload",
+      "expect": "accept",
+      "value": {
+        "projectId": "prj_01",
+        "relativePath": "docs/spec.pdf",
+        "contentBase64": "JVBERi0xLjQK",
+        "overwrite": true
+      }
+    },
+    {
+      "name": "method/plugins.list-output",
+      "schema": "methodOutput",
+      "method": "plugins.list",
+      "expect": "accept",
+      "value": [
+        {
+          "manifest": {
+            "id": "com.example.usage",
+            "name": "Token Usage",
+            "version": "1.0.0",
+            "apiVersion": 1,
+            "description": "展示 token 用量",
+            "ui": {
+              "entry": "ui.js",
+              "surfaces": [{ "type": "inspector.card", "id": "usage", "title": "用量", "order": 10 }]
+            },
+            "agent": {
+              "entry": "agent.js",
+              "hooks": ["beforeToolCall", "afterToolCall"],
+              "tools": ["usage_report"]
+            },
+            "permissions": ["read:runs", "hook:tool", "tool:register"]
+          },
+          "status": "enabled",
+          "installPath": "/srv/work/.kowork/plugins/com.example.usage",
+          "loadError": null,
+          "agentLoaded": true,
+          "installedAt": 1755400000000,
+          "updatedAt": 1755400000000
+        }
+      ]
+    },
+    {
+      "name": "method/plugins.list-output-bad-plugin-id",
+      "schema": "methodOutput",
+      "method": "plugins.list",
+      "expect": "reject",
+      "note": "插件 id 必须是小写反向域名风格",
+      "value": [
+        {
+          "manifest": {
+            "id": "Com.Example.Usage",
+            "name": "Token Usage",
+            "version": "1.0.0",
+            "apiVersion": 1,
+            "permissions": []
+          },
+          "status": "enabled",
+          "installPath": "/p",
+          "loadError": null,
+          "agentLoaded": false,
+          "installedAt": 1755400000000,
+          "updatedAt": 1755400000000
+        }
+      ]
+    },
+    {
+      "name": "method/plugins.list-output-bad-tool-name",
+      "schema": "methodOutput",
+      "method": "plugins.list",
+      "expect": "reject",
+      "note": "工具名必须匹配 ^[a-z][a-z0-9_]*$",
+      "value": [
+        {
+          "manifest": {
+            "id": "com.example.usage",
+            "name": "Token Usage",
+            "version": "1.0.0",
+            "apiVersion": 1,
+            "agent": { "entry": "agent.js", "hooks": [], "tools": ["UsageReport"] },
+            "permissions": []
+          },
+          "status": "enabled",
+          "installPath": "/p",
+          "loadError": null,
+          "agentLoaded": false,
+          "installedAt": 1755400000000,
+          "updatedAt": 1755400000000
+        }
+      ]
+    },
+    {
+      "name": "method/runs.enqueue-input-blank",
+      "schema": "methodInput",
+      "method": "runs.enqueue",
+      "expect": "reject",
+      "note": "空白输入不允许入队",
+      "value": { "threadId": "thr_01", "input": "   " }
+    },
+    {
+      "name": "method/approvals.respond-input",
+      "schema": "methodInput",
+      "method": "approvals.respond",
+      "expect": "accept",
+      "value": { "approvalId": "apr_01", "decision": "deny" }
+    }
+  ]
+}

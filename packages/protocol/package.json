@@ -1,0 +1,13 @@
+{
+  "name": "@kowork/protocol",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "KoWork Agent Protocol (KAP) v1 — TypeScript mirror of agent/protocol",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
+  }
+}

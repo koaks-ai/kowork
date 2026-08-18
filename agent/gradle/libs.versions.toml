@@ -1,0 +1,41 @@
+[versions]
+# 与 koaks 对齐。两侧版本必须一致，否则阶段 3 引入 koaks 依赖时会出现
+# Kotlin metadata / serialization 运行时不兼容。
+kotlin = "2.1.21"
+serialization = "1.8.1"
+coroutines = "1.10.2"
+ktor = "3.2.3"
+okio = "3.15.0"
+datetime = "0.6.2"
+# 阶段 3c 的子进程实现。选它的原因：同时覆盖 JVM 与 Native(linux/macos/mingw)，
+# 提供 posix_spawn、stdout/stderr 流式 feed 与 destroySignal，正好满足 run_command
+# 的流式输出与进程组终止需求。
+kmpProcess = "0.3.0"
+# 阶段 3b 的持久化。native-driver 底层是 SQLiter，支持 linuxX64。
+sqldelight = "2.1.0"
+
+[libraries]
+kotlin-gradlePlugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+kotlin-serializationPlugin = { module = "org.jetbrains.kotlin:kotlin-serialization", version.ref = "kotlin" }
+
+serialization-core = { module = "org.jetbrains.kotlinx:kotlinx-serialization-core", version.ref = "serialization" }
+serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
+coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
+okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
+datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "datetime" }
+
+# —— 以下在阶段 3 才会被用到，先登记以免各模块各写一份版本号 ——
+ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor" }
+ktor-server-cio = { module = "io.ktor:ktor-server-cio", version.ref = "ktor" }
+ktor-server-websockets = { module = "io.ktor:ktor-server-websockets", version.ref = "ktor" }
+ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
+ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
+kmp-process = { module = "io.matthewnelson.kmp-process:process", version.ref = "kmpProcess" }
+sqldelight-runtime = { module = "app.cash.sqldelight:runtime", version.ref = "sqldelight" }
+sqldelight-nativeDriver = { module = "app.cash.sqldelight:native-driver", version.ref = "sqldelight" }
+sqldelight-jvmDriver = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqldelight" }
+
+[plugins]
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }

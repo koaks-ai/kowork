@@ -6,6 +6,7 @@
     "src/core/**/*",
     "src/preload/**/*",
     "packages/contracts/src/**/*",
+    "packages/protocol/src/**/*",
     "packages/core/src/**/*",
     "tests/unit/**/*",
     "tests/integration/**/*",
