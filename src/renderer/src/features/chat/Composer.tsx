@@ -125,7 +125,7 @@ export function Composer({
           <Surface asChild variant="card">
             <div
               data-chat-composer
-              className="pointer-events-auto relative rounded-xl border-kw-border-strong bg-kw-surface shadow-sm focus-within:border-kw-border-strong focus-within:ring-1 focus-within:ring-kw-focus-ring"
+              className="pointer-events-auto relative rounded-xl border-kw-border-default/80 bg-kw-surface shadow-kw-composer focus-within:border-kw-border-default"
             >
               <textarea
                 ref={textarea}
