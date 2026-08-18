@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Pencil, Play } from 'lucide-react'
+import { PanelRightClose, PanelRightOpen, Pencil, Play } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -23,9 +23,13 @@ function mergeEvents(...groups: RunEventDto[][]): RunEventDto[] {
 }
 
 export function ConversationWorkspace({
-  bootstrap
+  bootstrap,
+  inspectorOpen = false,
+  onInspectorToggle
 }: {
   bootstrap: AppBootstrapDto
+  inspectorOpen?: boolean
+  onInspectorToggle?(): void
 }): React.JSX.Element {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
@@ -200,15 +204,26 @@ export function ConversationWorkspace({
             </>
           )}
         </div>
-        {thread.queuePaused && (
-          <Button
-            className="no-drag h-8 border-kw-warning bg-kw-warning-subtle text-kw-warning"
-            onClick={() => resumeQueue.mutate()}
-          >
-            <Play size={13} />
-            {t('resumeQueue')}
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {thread.queuePaused && (
+            <Button
+              className="no-drag h-8 border-kw-warning bg-kw-warning-subtle text-kw-warning"
+              onClick={() => resumeQueue.mutate()}
+            >
+              <Play size={13} />
+              {t('resumeQueue')}
+            </Button>
+          )}
+          {onInspectorToggle ? (
+            <IconButton
+              label={inspectorOpen ? t('hideInspector') : t('showInspector')}
+              active={inspectorOpen}
+              onClick={onInspectorToggle}
+            >
+              {inspectorOpen ? <PanelRightClose size={17} /> : <PanelRightOpen size={17} />}
+            </IconButton>
+          ) : null}
+        </div>
       </header>
       <div className="relative min-h-0 flex-1 overflow-hidden">
         <div
@@ -223,10 +238,7 @@ export function ConversationWorkspace({
           }}
         >
           <Reveal contentKey={threadId} className="flex min-h-full flex-1 flex-col">
-            <div
-              className="flex flex-1 flex-col pt-12"
-              style={{ paddingBottom: composerHeight }}
-            >
+            <div className="flex flex-1 flex-col pt-12" style={{ paddingBottom: composerHeight }}>
               {hasConversation ? (
                 <Timeline events={eventsQuery.data ?? []} />
               ) : (

@@ -14,6 +14,7 @@ interface ResizablePanelProps {
   maxWidth: number
   storageKey: string
   resizeLabel: string
+  collapsed?: boolean
   className?: string
   children: ReactNode
 }
@@ -53,6 +54,7 @@ export function ResizablePanel({
   maxWidth,
   storageKey,
   resizeLabel,
+  collapsed = false,
   className = '',
   children
 }: ResizablePanelProps): React.JSX.Element {
@@ -99,8 +101,16 @@ export function ResizablePanel({
   }
 
   return (
-    <div className={`relative h-full shrink-0 ${className}`} style={{ width }}>
-      {children}
+    <div
+      aria-hidden={collapsed || undefined}
+      data-collapsed={collapsed || undefined}
+      data-resizing={dragging || undefined}
+      className={`kw-panel-visibility relative h-full shrink-0 ${className}`}
+      style={{ width: collapsed ? 0 : width }}
+    >
+      <div className="kw-panel-visibility__content" style={{ width }}>
+        {children}
+      </div>
       <div
         role="separator"
         aria-label={resizeLabel}

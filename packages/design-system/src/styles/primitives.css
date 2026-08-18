@@ -74,6 +74,32 @@ select:focus-visible {
     border-color var(--kw-motion-focus-duration) var(--kw-motion-ease-standard),
     box-shadow var(--kw-motion-focus-duration) var(--kw-motion-ease-standard);
 }
+.kw-panel-visibility {
+  min-width: 0;
+  overflow: hidden;
+  transition: width var(--kw-motion-selection-duration) var(--kw-motion-ease-standard);
+}
+.kw-panel-visibility[data-collapsed='true'] {
+  pointer-events: none;
+}
+.kw-panel-visibility__content {
+  height: 100%;
+  flex: 0 0 auto;
+  filter: none;
+  transform: translateX(0);
+  transition:
+    transform var(--kw-motion-selection-duration) var(--kw-motion-ease-standard),
+    filter var(--kw-motion-reveal-enter-blur) var(--kw-motion-ease-standard);
+  will-change: transform, filter;
+}
+.kw-panel-visibility[data-collapsed='true'] .kw-panel-visibility__content {
+  filter: blur(var(--kw-motion-blur));
+  transform: translateX(-14px);
+}
+.kw-panel-visibility[data-resizing='true'],
+.kw-panel-visibility[data-resizing='true'] .kw-panel-visibility__content {
+  transition: none;
+}
 .kw-surface-card { border: 1px solid var(--kw-color-border-default); border-radius: var(--kw-radius-lg); }
 .kw-surface-panel { border: 1px solid var(--kw-color-border-default); }
 .kw-surface-popover { border: 1px solid var(--kw-color-border-default); border-radius: var(--kw-radius-lg); box-shadow: var(--kw-shadow-popover); }
@@ -128,6 +154,8 @@ select:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .kw-selectable-highlight,
   .kw-selectable-item::before,
+  .kw-panel-visibility,
+  .kw-panel-visibility__content,
   .kw-surface,
   .kw-button,
   .kw-icon-button { transition: none; }

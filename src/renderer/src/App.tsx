@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { useState } from 'react'
 import { ResizablePanel } from './shared/ui/ResizablePanel'
 import { ConversationWorkspace } from './widgets/ConversationWorkspace'
 import { InspectorPanel } from './features/inspector'
@@ -8,6 +9,7 @@ import { StatusBar } from './widgets/StatusBar'
 
 function App(): React.JSX.Element {
   const { t } = useTranslation()
+  const [inspectorOpen, setInspectorOpen] = useState(false)
   const bootstrap = useQuery({ queryKey: ['bootstrap'], queryFn: () => window.kowork.bootstrap() })
   const isMacOS = window.kowork.platform.os === 'darwin'
   const frosted = window.kowork.platform.backdrop !== 'none'
@@ -37,7 +39,13 @@ function App(): React.JSX.Element {
       </ResizablePanel>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-kw-surface">
         <div className="flex min-h-0 flex-1">
-          <ConversationWorkspace bootstrap={bootstrap.data} />
+          <ConversationWorkspace
+            bootstrap={bootstrap.data}
+            inspectorOpen={inspectorOpen}
+            onInspectorToggle={() => {
+              setInspectorOpen((open) => !open)
+            }}
+          />
           <ResizablePanel
             side="right"
             defaultWidth={332}
@@ -45,7 +53,7 @@ function App(): React.JSX.Element {
             maxWidth={520}
             storageKey="kowork:right-sidebar-width"
             resizeLabel={t('resizeInspectorPanel')}
-            className="hidden xl:block"
+            collapsed={!inspectorOpen}
           >
             <InspectorPanel bootstrap={bootstrap.data} />
           </ResizablePanel>

@@ -53,6 +53,8 @@ const zhCN = {
   approvalExternalPathWritePrompt: '是否允许 KoWork 修改此项目外路径？',
   approvalResponseFailed: '未能提交审批结果，请重试。',
   settings: '设置',
+  showInspector: '显示详情侧栏',
+  hideInspector: '隐藏详情侧栏',
   settingsDescription: '管理新会话默认值和模型连接。',
   settingsGeneral: '通用',
   settingsGeneralDescription: '新会话的默认权限。',

@@ -7,7 +7,7 @@ export function StatusInformationCard({ context }: InspectorCardProps): React.JS
   const { t } = useTranslation()
   return (
     <Surface asChild variant="card">
-      <section data-status-information className="p-4">
+      <section data-status-information className="p-4 shadow-kw-card">
         <h2 className="text-sm font-semibold text-kw-text-primary">{t('statusInformation')}</h2>
         <ul className="mt-4 space-y-3.5 text-sm text-kw-text-secondary">
           <li className="-mx-2">

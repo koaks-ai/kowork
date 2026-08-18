@@ -25,6 +25,7 @@
   --kw-color-danger-subtle: #fef2f2;
   --kw-color-success: #059669;
   --kw-color-success-subtle: #ecfdf5;
+  --kw-color-success-subtle-strong: #dcfce7;
   --kw-color-warning: #b45309;
   --kw-color-warning-subtle: #fffbeb;
   --kw-color-info: #2563eb;
@@ -46,6 +47,7 @@
   --kw-shadow-popover: 0 20px 45px rgb(0 0 0 / 0.12);
   --kw-shadow-dialog: 0 24px 60px rgb(0 0 0 / 0.16);
   --kw-shadow-tooltip: 0 8px 20px rgb(0 0 0 / 0.16);
+  --kw-shadow-card: 0 4px 16px rgb(0 0 0 / 0.04);
   --kw-shadow-composer: 0 4px 14px rgb(0 0 0 / 0.08);
   --kw-radius-sm: 0.375rem;
   --kw-radius-md: 0.5rem;
@@ -111,6 +113,7 @@
   --color-kw-danger-subtle: var(--kw-color-danger-subtle);
   --color-kw-success: var(--kw-color-success);
   --color-kw-success-subtle: var(--kw-color-success-subtle);
+  --color-kw-success-subtle-strong: var(--kw-color-success-subtle-strong);
   --color-kw-warning: var(--kw-color-warning);
   --color-kw-warning-subtle: var(--kw-color-warning-subtle);
   --color-kw-info: var(--kw-color-info);
@@ -121,5 +124,6 @@
   --radius-lg: var(--kw-radius-lg);
   --radius-xl: var(--kw-radius-xl);
   --radius-full: var(--kw-radius-full);
+  --shadow-kw-card: var(--kw-shadow-card);
   --shadow-kw-composer: var(--kw-shadow-composer);
 }

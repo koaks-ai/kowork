@@ -64,6 +64,22 @@ describe('design-system boundary', () => {
     )
   })
 
+  it('uses continuous width motion for collapsible panels', () => {
+    const primitivesCss = readFileSync(join(designSystemRoot, 'styles/primitives.css'), 'utf8')
+    expect(primitivesCss).toMatch(
+      /\.kw-panel-visibility\s*\{[^}]*transition:[^}]*width var\(--kw-motion-selection-duration\)/s
+    )
+    expect(primitivesCss).toMatch(
+      /\.kw-panel-visibility__content\s*\{[^}]*transition:[^}]*transform var\(--kw-motion-selection-duration\)/s
+    )
+    expect(primitivesCss).toMatch(
+      /\.kw-panel-visibility\[data-collapsed='true'\]\s+\.kw-panel-visibility__content\s*\{[^}]*transform:\s*translateX\(-14px\)/s
+    )
+    expect(primitivesCss).not.toMatch(
+      /\.kw-panel-visibility(?:__content)?[^}]*opacity\s*:/s
+    )
+  })
+
   it('uses the full item bounds for selectable hover and fill backgrounds', () => {
     const primitivesCss = readFileSync(join(designSystemRoot, 'styles/primitives.css'), 'utf8')
     expect(primitivesCss).toMatch(
