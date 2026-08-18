@@ -181,23 +181,21 @@ test('runs through the real Electron, preload, main and Core process chain', asy
       .toBe(
         '已收到任务：检查 README\n\n### 检查结果\n\n- 已读取 `README.md`\n- 当前内容可正常访问\n\n这是 KoWork 测试运行时生成的**流式回复**。'
       )
-    const chatContentBox = await page.locator('[data-chat-content]').evaluate((element) => {
-      const bounds = element.getBoundingClientRect()
-      const style = getComputedStyle(element)
-      const paddingLeft = Number.parseFloat(style.paddingLeft)
-      const paddingRight = Number.parseFloat(style.paddingRight)
-      return {
-        x: bounds.x + paddingLeft,
-        width: bounds.width - paddingLeft - paddingRight
-      }
-    })
+    const conversationMainBox = await page.locator('main').boundingBox()
     const composerBox = await page.locator('[data-chat-composer]').boundingBox()
     const chatScrollBox = await page.locator('[data-chat-scroll]').boundingBox()
+    expect(conversationMainBox).not.toBeNull()
     expect(composerBox).not.toBeNull()
     expect(chatScrollBox).not.toBeNull()
-    expect(Math.abs(chatContentBox.x - composerBox!.x)).toBeLessThanOrEqual(1)
     expect(
-      Math.abs(chatContentBox.x + chatContentBox.width - (composerBox!.x + composerBox!.width))
+      Math.abs(
+        composerBox!.x -
+          conversationMainBox!.x -
+          (conversationMainBox!.x +
+            conversationMainBox!.width -
+            composerBox!.x -
+            composerBox!.width)
+      )
     ).toBeLessThanOrEqual(1)
     expect(chatScrollBox!.y + chatScrollBox!.height).toBeGreaterThan(
       composerBox!.y + composerBox!.height

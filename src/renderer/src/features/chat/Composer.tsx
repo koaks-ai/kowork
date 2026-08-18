@@ -112,7 +112,7 @@ export function Composer({
     <div
       ref={container}
       data-chat-composer-overlay
-      className="pointer-events-none absolute bottom-0 left-0 right-[10px] z-10"
+      className="pointer-events-none absolute inset-x-0 bottom-0 z-10"
     >
       <div className="mx-auto w-full max-w-[860px] px-5 pb-2.5 sm:px-8">
         <ApprovalBanner threadId={thread.id} />
