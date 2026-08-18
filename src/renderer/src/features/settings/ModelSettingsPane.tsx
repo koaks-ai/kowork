@@ -1,7 +1,8 @@
 import * as Tabs from '@radix-ui/react-tabs'
 import type { AppSettingsDto, ModelProfileDto, ProviderDto } from '@kowork/contracts'
+import { Reveal, SelectableItem, SelectableList, Surface } from '@kowork/design-system'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { BlurReveal } from '../../shared/ui/BlurReveal'
 import { ProviderSettings } from './ProviderSettings'
 import { SettingsPaneHeader, SettingsRow, settingsControlClassName } from './SettingsRow'
 
@@ -17,34 +18,37 @@ export function ModelSettingsPane({
   onUpdate(changes: Partial<AppSettingsDto>): void
 }): React.JSX.Element {
   const { t } = useTranslation()
+  const [tab, setTab] = useState('use')
 
   return (
-    <Tabs.Root defaultValue="use" className="flex min-h-0 flex-1 flex-col">
+    <Tabs.Root value={tab} onValueChange={setTab} className="flex min-h-0 flex-1 flex-col">
       <div className="shrink-0 px-6 pt-6">
         <SettingsPaneHeader
           title={t('settingsModel')}
           description={t('settingsModelDescription')}
         />
-        <Tabs.List className="flex h-10 items-end gap-5 border-b border-neutral-200">
+        <Tabs.List asChild>
+          <SelectableList value={tab} orientation="horizontal" selectionStyle="sliding" className="flex h-10 items-end gap-5 border-b border-kw-border-default">
           <Tabs.Trigger
             value="use"
-            className="h-full border-b-2 border-transparent px-1 text-sm text-neutral-500 transition-[color,border-color] duration-150 data-[state=active]:border-blue-600 data-[state=active]:font-medium data-[state=active]:text-blue-700"
+            asChild
           >
-            {t('settingsModelUse')}
+            <SelectableItem value="use" asChild><button className="mb-2 inline-flex h-8 items-center rounded-lg px-3 text-sm text-kw-text-muted data-[state=active]:font-medium data-[state=active]:text-kw-text-primary">{t('settingsModelUse')}</button></SelectableItem>
           </Tabs.Trigger>
           <Tabs.Trigger
             value="access"
-            className="h-full border-b-2 border-transparent px-1 text-sm text-neutral-500 transition-[color,border-color] duration-150 data-[state=active]:border-blue-600 data-[state=active]:font-medium data-[state=active]:text-blue-700"
+            asChild
           >
-            {t('settingsModelAccess')}
+            <SelectableItem value="access" asChild><button className="mb-2 inline-flex h-8 items-center rounded-lg px-3 text-sm text-kw-text-muted data-[state=active]:font-medium data-[state=active]:text-kw-text-primary">{t('settingsModelAccess')}</button></SelectableItem>
           </Tabs.Trigger>
+          </SelectableList>
         </Tabs.List>
       </div>
 
       <div className="relative min-h-0 flex-1 overflow-hidden">
         <Tabs.Content value="use" className="h-full overflow-y-auto p-6">
-          <BlurReveal>
-            <section className="divide-y divide-neutral-100 overflow-hidden rounded-lg border border-neutral-200 px-5">
+          <Reveal>
+            <Surface variant="card" className="divide-y divide-kw-border-subtle overflow-hidden px-5">
               <SettingsRow
                 label={t('defaultModel')}
                 description={t('defaultModelDescription')}
@@ -66,14 +70,14 @@ export function ModelSettingsPane({
                   ))}
                 </select>
               </SettingsRow>
-            </section>
-          </BlurReveal>
+            </Surface>
+          </Reveal>
         </Tabs.Content>
 
         <Tabs.Content value="access" className="flex h-full min-h-0 flex-col">
-          <BlurReveal className="flex min-h-0 flex-1 flex-col">
+          <Reveal className="flex min-h-0 flex-1 flex-col">
             <ProviderSettings providers={providers} profiles={profiles} />
-          </BlurReveal>
+          </Reveal>
         </Tabs.Content>
       </div>
     </Tabs.Root>

@@ -63,8 +63,8 @@ describe('reasoning timeline activity', () => {
 
     expect(text.querySelector('strong')?.textContent).toBe('literal markdown')
     expect(markdown?.getAttribute('data-tone')).toBe('muted')
-    expect(markdown?.className).toContain('text-neutral-500')
-    expect(text.querySelector('h3, h2, h1, strong')?.className).toContain('text-neutral-500')
+    expect(markdown?.className).toContain('text-kw-text-muted')
+    expect(text.querySelector('h3, h2, h1, strong')?.className).toContain('text-kw-text-muted')
     expect(text.querySelector('pre code')?.classList.contains('hljs')).toBe(true)
     expect(text.querySelector('.hljs-keyword')?.textContent).toBe('const')
     expect(text.classList).toContain('max-h-60')

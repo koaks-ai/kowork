@@ -145,7 +145,7 @@ export function ResizablePanel({
         onPointerCancel={finishResize}
         onLostPointerCapture={finishResize}
       >
-        <span className="pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-neutral-200 transition-[width,background-color] duration-150 group-hover:w-[3px] group-hover:bg-neutral-400 group-focus-visible:w-[3px] group-focus-visible:bg-blue-500 group-data-[dragging=true]:w-[3px] group-data-[dragging=true]:bg-blue-500 motion-reduce:transition-none" />
+        <span className="kw-resize-handle pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-kw-border-default group-hover:w-[3px] group-hover:bg-kw-border-strong group-focus-visible:w-[3px] group-focus-visible:bg-kw-accent group-data-[dragging=true]:w-[3px] group-data-[dragging=true]:bg-kw-accent" />
       </div>
     </div>
   )

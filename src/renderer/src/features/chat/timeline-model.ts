@@ -168,17 +168,21 @@ export function collectTimeline(events: RunEventDto[]): RunTimelineItem[] {
     if (event.type === 'run.tool-call-delta') {
       const detail = modelEventFrom(event)
       if (detail?.type === 'tool_call_delta') {
-        const tool = findTool(item, detail.id) ?? {
-          id: `tool:${detail.id}`,
+        // Koaks emits the provider-native id on the delta and the canonical KoWork
+        // call id as itemRef. Use the canonical id so the finalized call can update
+        // the same activity instead of creating a duplicate row.
+        const callId = detail.itemRef ?? detail.id
+        const tool = findTool(item, callId) ?? {
+          id: `tool:${callId}`,
           kind: 'tool' as const,
-          callId: detail.id,
+          callId,
           itemRef: detail.itemRef,
           name: '',
           argumentsJson: '',
           output: '',
           requested: false
         }
-        if (!findTool(item, detail.id)) item.activities.push(tool)
+        if (!findTool(item, callId)) item.activities.push(tool)
         tool.itemRef ??= detail.itemRef
         tool.name += detail.nameDelta ?? ''
         tool.argumentsJson += detail.argumentsDelta ?? ''

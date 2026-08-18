@@ -1,0 +1,39 @@
+.kw-markdown .hljs-comment,
+.kw-markdown .hljs-quote { color: var(--kw-color-markdown-comment); font-style: italic; }
+.kw-markdown .hljs-keyword,
+.kw-markdown .hljs-selector-tag,
+.kw-markdown .hljs-subst { color: var(--kw-color-markdown-keyword); }
+.kw-markdown .hljs-number,
+.kw-markdown .hljs-literal,
+.kw-markdown .hljs-variable,
+.kw-markdown .hljs-template-variable,
+.kw-markdown .hljs-attr,
+.kw-markdown .hljs-tag { color: var(--kw-color-markdown-number); }
+.kw-markdown .hljs-string,
+.kw-markdown .hljs-regexp,
+.kw-markdown .hljs-doctag,
+.kw-markdown .hljs-attribute { color: var(--kw-color-markdown-string); }
+.kw-markdown .hljs-title,
+.kw-markdown .hljs-section,
+.kw-markdown .hljs-name,
+.kw-markdown .hljs-selector-id,
+.kw-markdown .hljs-selector-class { color: var(--kw-color-markdown-title); }
+.kw-markdown .hljs-type,
+.kw-markdown .hljs-built_in,
+.kw-markdown .hljs-symbol,
+.kw-markdown .hljs-bullet { color: var(--kw-color-markdown-type); }
+.kw-markdown .hljs-meta { color: var(--kw-color-markdown-meta); }
+.kw-markdown .hljs-deletion { color: var(--kw-color-markdown-delete); background: var(--kw-color-markdown-delete-bg); }
+.kw-markdown .hljs-addition { color: var(--kw-color-markdown-add); background: var(--kw-color-markdown-add-bg); }
+.kw-markdown .hljs-emphasis { font-style: italic; }
+.kw-markdown .hljs-strong { font-weight: 600; }
+.kw-markdown[data-tone='muted'] { filter: grayscale(1); }
+.kw-markdown[data-tone='muted'] pre { position: relative; }
+.kw-markdown[data-tone='muted'] pre::after {
+  content: '';
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--kw-color-markdown-muted-overlay);
+}

@@ -4,7 +4,7 @@
 > [§9 迁移状态](#9-迁移状态)。已完成的部分以本文为准；未完成的部分，当前代码仍是旧架构
 > （Electron 内嵌 Core），请以 git 历史里的旧版本理解现状。
 >
-> 相关文档：[协议规范](protocol/kap-v1.md) · [架构决策记录](decisions/README.md)
+> 相关文档：[协议规范](protocol/kap-v1.md) · [架构决策记录](decisions/README.md) · [设计系统开发规范](design-system.md)
 
 ## 1. 核心思想
 
@@ -96,7 +96,7 @@ src/
     shared/                     纯展示与工具
 
 conformance/kap-v1-cases.json   ★ 两侧共用的协议一致性用例
-docs/                           架构、协议、决策记录
+docs/                           架构、设计系统、协议、决策记录
 tests/                          unit / integration / e2e
 ```
 
@@ -167,7 +167,8 @@ Shell 以 server 进程的系统用户权限运行，**不是 OS 级沙箱** —
 
 ## 8. 设计系统与插件
 
-**设计系统**（`packages/design-system`）是视觉一致性的唯一来源：
+**设计系统**（`packages/design-system`）是视觉一致性的唯一来源，日常使用规则见
+[`design-system.md`](design-system.md)：
 
 - 圆角收敛为 4 级令牌，取代散落各处的 `rounded-*`
 - 只有两个动画原语：`Reveal`（模糊进出，用于页面切换与卡片弹出）与
@@ -191,7 +192,7 @@ UI 插件的信任模型（同 realm 执行，权限是告知性而非强制沙�
 | 阶段 | 内容 | 状态 |
 | --- | --- | --- |
 | 0 | KAP v1 协议：Kotlin 真源 + TS 镜像 + 一致性用例 + 文档 | 已完成 |
-| 1 | 设计系统：令牌、两个动画原语、SelectableList、Inspector 注册表 | 未开始 |
+| 1 | 设计系统：令牌、两个动画原语、SelectableList、Inspector 注册表 | 已完成 |
 | 2 | 主题体系 | 未开始 |
 | 3a | koaks 仓库增加 Linux 目标与事件序列化 | 未开始 |
 | 3 spike | 单个 linux native 二进制里验证 Ktor WS + 子进程 + SQLDelight + koaks 共存 | 未开始 |
@@ -216,4 +217,6 @@ UI 插件的信任模型（同 realm 执行，权限是告知性而非强制沙�
 - 数据库变更：同时更新 SQLDelight schema 与可审阅的迁移脚本。
 - 新增视觉元素：必须用设计系统的令牌与原语。出现新的圆角值、新的悬停样式或第三个动画原语，
   都应视为设计系统有缺口，先补原语再用。
+- 设计系统的目录边界、插件 UI 约束和新增视觉需求流程见
+  [`docs/design-system.md`](design-system.md)。
 - Skills、MCP、多 Agent、签名与自动更新保留独立扩展点，不侵入运行主链路。

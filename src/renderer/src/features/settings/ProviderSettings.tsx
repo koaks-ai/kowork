@@ -22,8 +22,13 @@ import {
   type ProviderDto,
   type ProviderProtocol
 } from '@kowork/contracts'
-import { BlurReveal } from '../../shared/ui/BlurReveal'
-import { IconButton } from '../../shared/ui/IconButton'
+import {
+  Button,
+  IconButton,
+  Reveal,
+  SelectableItem,
+  SelectableList
+} from '@kowork/design-system'
 import { ResizablePanel } from '../../shared/ui/ResizablePanel'
 
 interface ProviderDraft {
@@ -49,12 +54,12 @@ function draftFromProvider(provider: ProviderDto): ProviderDraft {
   }
 }
 
-function draftKind(option: ProviderCatalogOption) {
+function draftKind(option: ProviderCatalogOption): ProviderDto['kind'] {
   return providerCatalogDefaults[option].kind
 }
 
 const fieldClassName =
-  'mt-1.5 h-9 w-full rounded-md border border-neutral-200 bg-white px-2.5 text-sm text-neutral-800 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/20'
+  'mt-1.5 h-9 w-full rounded-md border border-kw-border-default bg-kw-surface px-2.5 text-sm text-kw-text-secondary outline-none focus-visible:border-kw-accent focus-visible:ring-1 focus-visible:ring-kw-focus-ring'
 
 export function ProviderSettings({
   providers,
@@ -214,25 +219,27 @@ export function ProviderSettings({
     const selected = provider.id === selectedProviderId && !creating
     const subtitle = providerSubtitle(provider)
     return (
+      <SelectableItem value={provider.id} selected={selected} asChild>
       <button
         key={provider.id}
         type="button"
         data-selected={selected || undefined}
         onClick={() => chooseProvider(provider)}
-        className={`kowork-select-item kowork-select-item-fill mb-1 flex w-full items-center gap-2 rounded-md px-2.5 py-2.5 text-left ${
-          selected ? 'text-neutral-900' : 'text-neutral-700'
+        className={`mb-1 flex w-full items-center gap-2 rounded-md px-2.5 py-2.5 text-left ${
+          selected ? 'text-kw-text-primary' : 'text-kw-text-secondary'
         }`}
       >
         <span
-          className={`size-2 shrink-0 rounded-full ${provider.available ? 'bg-emerald-500' : 'bg-neutral-300'}`}
+          className={`size-2 shrink-0 rounded-full ${provider.available ? 'bg-kw-success' : 'bg-kw-border-strong'}`}
         />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-medium">{provider.name}</span>
           {subtitle && (
-            <span className="block truncate text-[11px] text-neutral-500">{subtitle}</span>
+            <span className="block truncate text-[11px] text-kw-text-muted">{subtitle}</span>
           )}
         </span>
       </button>
+      </SelectableItem>
     )
   }
 
@@ -246,48 +253,49 @@ export function ProviderSettings({
         storageKey="kowork:settings-provider-list-width"
         resizeLabel={t('resizeProviderList')}
       >
-        <aside className="flex h-full w-full flex-col border-r border-neutral-200 bg-neutral-50/70">
-          <div className="flex h-12 items-center border-b border-neutral-200 px-3">
-            <span className="truncate text-xs font-semibold text-neutral-600">
+        <aside className="flex h-full w-full flex-col border-r border-kw-border-default bg-kw-surface-subtle">
+          <div className="flex h-12 items-center border-b border-kw-border-default px-3">
+            <span className="truncate text-xs font-semibold text-kw-text-secondary">
               {t('modelProviders')}
             </span>
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto p-2">
+          <SelectableList value={creating ? '__new__' : selectedProviderId} selectionStyle="sliding" className="min-h-0 flex-1 overflow-y-auto p-2">
             {builtinProviders.map(renderProviderButton)}
             {addedProviders.map(renderProviderButton)}
+            <SelectableItem value="__new__" selected={creating} asChild>
             <button
               type="button"
-              data-selected={creating || undefined}
               onClick={beginCreate}
-              className={`kowork-select-item kowork-select-item-fill mt-1 flex w-full items-center gap-2 rounded-md px-2.5 py-2.5 text-left ${
-                creating ? 'text-neutral-900' : 'text-neutral-700'
+              className={`mt-1 flex w-full items-center gap-2 rounded-md px-2.5 py-2.5 text-left ${
+                creating ? 'text-kw-text-primary' : 'text-kw-text-secondary'
               }`}
             >
               <Plus size={15} className="shrink-0" />
               <span className="truncate text-sm font-medium">{t('addProvider')}</span>
             </button>
+            </SelectableItem>
             {providers.length === 0 && !creating && (
-              <div className="px-3 py-8 text-center text-xs text-neutral-500">
+              <div className="px-3 py-8 text-center text-xs text-kw-text-muted">
                 {t('noProviders')}
               </div>
             )}
-          </div>
+          </SelectableList>
         </aside>
       </ResizablePanel>
 
       <div className="min-w-0 flex-1 overflow-y-auto">
         {draft ? (
-          <BlurReveal contentKey={creating ? 'creating' : selectedProviderId} className="p-5">
+          <Reveal contentKey={creating ? 'creating' : selectedProviderId} className="p-5">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-base font-semibold text-neutral-900">
+                <h3 className="text-base font-semibold text-kw-text-primary">
                   {creating ? t('addProvider') : draft.name}
                 </h3>
-                <div className="mt-1 flex items-center gap-1.5 text-xs text-neutral-500">
+                <div className="mt-1 flex items-center gap-1.5 text-xs text-kw-text-muted">
                   {selectedProvider?.available ? (
-                    <CheckCircle2 size={14} className="text-emerald-600" />
+                    <CheckCircle2 size={14} className="text-kw-success" />
                   ) : (
-                    <XCircle size={14} className="text-neutral-400" />
+                    <XCircle size={14} className="text-kw-text-faint" />
                   )}
                   {selectedProvider?.available ? t('available') : t('providerNotReady')}
                 </div>
@@ -295,7 +303,7 @@ export function ProviderSettings({
               <div className="flex items-center gap-2">
                 {!creating && selectedProviderId && !selectedProvider?.builtin && (
                   <button
-                    className="flex h-8 items-center gap-1.5 rounded-md border border-neutral-200 px-2.5 text-xs text-neutral-600 hover:border-red-200 hover:text-red-700"
+                    className="kw-button kw-button-danger h-8"
                     onClick={() => {
                       if (window.confirm(t('removeProviderConfirm'))) {
                         archiveProvider.mutate(selectedProviderId)
@@ -305,25 +313,26 @@ export function ProviderSettings({
                     <Trash2 size={14} /> {t('remove')}
                   </button>
                 )}
-                <button
-                  className="flex h-8 items-center gap-1.5 rounded-md bg-blue-600 px-3 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                <Button
+                    variant="primary"
+                    className="h-8"
                   disabled={saveProvider.isPending || !draft.name || !draft.baseUrl}
                   onClick={() => saveProvider.mutate()}
                 >
                   {saveProvider.isPending ? (
-                    <LoaderCircle size={14} className="animate-spin" />
+                    <LoaderCircle size={14} className="kw-spinner" />
                   ) : (
                     <Save size={14} />
                   )}
                   {t('save')}
-                </button>
+                </Button>
               </div>
             </div>
 
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               {showIdentityFields && (
                 <>
-                  <label className="text-xs font-medium text-neutral-600">
+                  <label className="text-xs font-medium text-kw-text-secondary">
                     {t('provider')}
                     <select
                       className={fieldClassName}
@@ -339,7 +348,7 @@ export function ProviderSettings({
                       ))}
                     </select>
                   </label>
-                  <label className="text-xs font-medium text-neutral-600">
+                  <label className="text-xs font-medium text-kw-text-secondary">
                     {t('providerName')}
                     <input
                       className={fieldClassName}
@@ -354,7 +363,7 @@ export function ProviderSettings({
                 </>
               )}
               {showProtocol && (
-                <label className="text-xs font-medium text-neutral-600">
+                <label className="text-xs font-medium text-kw-text-secondary">
                   {t('providerProtocol')}
                   <select
                     className={fieldClassName}
@@ -378,7 +387,7 @@ export function ProviderSettings({
                   </select>
                 </label>
               )}
-              <label className="text-xs font-medium text-neutral-600">
+              <label className="text-xs font-medium text-kw-text-secondary">
                 {t('contextWindowTokens')}
                 <input
                   className={fieldClassName}
@@ -397,7 +406,7 @@ export function ProviderSettings({
                   }
                 />
               </label>
-              <label className="text-xs font-medium text-neutral-600 sm:col-span-2">
+              <label className="text-xs font-medium text-kw-text-secondary sm:col-span-2">
                 {t('baseUrl')}
                 <input
                   className={fieldClassName}
@@ -410,11 +419,11 @@ export function ProviderSettings({
                   }
                 />
               </label>
-              <label className="text-xs font-medium text-neutral-600 sm:col-span-2">
+              <label className="text-xs font-medium text-kw-text-secondary sm:col-span-2">
                 <span className="flex items-center justify-between">
                   <span>{t('apiKey')}</span>
                   {selectedProvider?.credentialConfigured && !draft.removeApiKey && (
-                    <span className="flex items-center gap-1 font-normal text-emerald-700">
+                    <span className="flex items-center gap-1 font-normal text-kw-success">
                       <KeyRound size={12} /> {t('apiKeyStored')}
                     </span>
                   )}
@@ -437,7 +446,7 @@ export function ProviderSettings({
                   }
                 />
                 {selectedProvider?.credentialConfigured && (
-                  <label className="mt-2 flex items-center gap-2 text-xs font-normal text-neutral-500">
+                  <label className="mt-2 flex items-center gap-2 text-xs font-normal text-kw-text-muted">
                     <input
                       type="checkbox"
                       checked={draft.removeApiKey}
@@ -460,76 +469,75 @@ export function ProviderSettings({
             </div>
 
             {saveProvider.error && (
-              <p className="mt-3 text-xs text-red-700">
+              <p className="mt-3 text-xs text-kw-danger">
                 {saveProvider.error instanceof Error ? saveProvider.error.message : t('error')}
               </p>
             )}
 
             {!creating && selectedProviderId && (
-              <section className="mt-6 border-t border-neutral-200 pt-5">
+              <section className="mt-6 border-t border-kw-border-default pt-5">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <h4 className="text-sm font-semibold text-neutral-900">
+                    <h4 className="text-sm font-semibold text-kw-text-primary">
                       {t('providerModels')}
                     </h4>
-                    <p className="mt-1 text-xs text-neutral-500">
+                    <p className="mt-1 text-xs text-kw-text-muted">
                       {t('providerModelsDescription')}
                     </p>
                   </div>
-                  <button
-                    className="flex h-8 items-center gap-1.5 rounded-md border border-neutral-200 px-2.5 text-xs text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+                  <Button
+                    size="sm"
                     disabled={refreshModels.isPending}
                     onClick={() => refreshModels.mutate(selectedProviderId)}
                   >
                     <RefreshCw
                       size={14}
-                      className={refreshModels.isPending ? 'animate-spin' : ''}
+                      className={refreshModels.isPending ? 'kw-spinner' : ''}
                     />
                     {t('refreshModels')}
-                  </button>
+                  </Button>
                 </div>
 
                 <div className="mt-3 flex gap-2">
                   <input
-                    className="h-9 min-w-0 flex-1 rounded-md border border-neutral-200 px-2.5 text-sm outline-none focus:border-blue-600"
+                    className="h-9 min-w-0 flex-1 rounded-md border border-kw-border-default bg-kw-surface px-2.5 text-sm outline-none focus-visible:border-kw-accent"
                     placeholder={t('manualModelPlaceholder')}
                     value={manualModel}
                     onChange={(event) => setManualModel(event.target.value)}
                   />
                   <input
                     aria-label={t('contextWindowTokens')}
-                    className="h-9 w-32 rounded-md border border-neutral-200 px-2.5 text-sm outline-none focus:border-blue-600"
+                    className="h-9 w-32 rounded-md border border-kw-border-default bg-kw-surface px-2.5 text-sm outline-none focus-visible:border-kw-accent"
                     type="number"
                     min={1}
                     value={manualContext}
                     onChange={(event) => setManualContext(Number(event.target.value))}
                   />
-                  <button
-                    className="flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-neutral-200 px-3 text-xs text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+                  <Button
                     disabled={!manualModel.trim() || addModel.isPending}
                     onClick={() => addModel.mutate()}
                   >
                     <Plus size={14} /> {t('addModel')}
-                  </button>
+                  </Button>
                 </div>
 
                 {(refreshModels.error || addModel.error) && (
-                  <p className="mt-3 text-xs text-red-700">
+                  <p className="mt-3 text-xs text-kw-danger">
                     {(refreshModels.error ?? addModel.error) instanceof Error
                       ? (refreshModels.error ?? (addModel.error as Error)).message
                       : t('error')}
                   </p>
                 )}
 
-                <div className="mt-3 divide-y divide-neutral-100 border-y border-neutral-100">
+                <div className="mt-3 divide-y divide-kw-border-subtle border-y border-kw-border-subtle">
                   {selectedModels.map((profile) => (
                     <div
                       key={profile.id}
                       className="flex min-h-11 items-center justify-between gap-3 py-2"
                     >
                       <div className="min-w-0">
-                        <div className="truncate text-sm text-neutral-800">{profile.name}</div>
-                        <div className="truncate font-mono text-[11px] text-neutral-500">
+                        <div className="truncate text-sm text-kw-text-secondary">{profile.name}</div>
+                        <div className="truncate font-mono text-[11px] text-kw-text-muted">
                           {profile.model} · {profile.contextWindowTokens.toLocaleString()} tokens
                         </div>
                       </div>
@@ -542,16 +550,16 @@ export function ProviderSettings({
                     </div>
                   ))}
                   {selectedModels.length === 0 && (
-                    <div className="flex items-center gap-2 py-5 text-xs text-neutral-500">
+                    <div className="flex items-center gap-2 py-5 text-xs text-kw-text-muted">
                       <Server size={15} /> {t('noModels')}
                     </div>
                   )}
                 </div>
               </section>
             )}
-          </BlurReveal>
+          </Reveal>
         ) : (
-          <div className="grid h-full place-items-center px-8 text-center text-sm text-neutral-500">
+          <div className="grid h-full place-items-center px-8 text-center text-sm text-kw-text-muted">
             {t('selectProvider')}
           </div>
         )}

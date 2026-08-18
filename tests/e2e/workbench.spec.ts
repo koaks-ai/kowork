@@ -52,6 +52,21 @@ test('runs through the real Electron, preload, main and Core process chain', asy
     await expect(statusInformation.getByText('+1', { exact: true })).toBeVisible()
     await expect(statusInformation.getByText('-1', { exact: true })).toBeVisible()
     await expect(statusInformation.getByText('本地', { exact: true })).toBeVisible()
+    const radiusXl = await page.evaluate(() => {
+      const token = getComputedStyle(document.documentElement)
+        .getPropertyValue('--kw-radius-xl')
+        .trim()
+      const probe = document.createElement('div')
+      probe.style.borderRadius = 'var(--kw-radius-xl)'
+      document.body.append(probe)
+      const resolved = getComputedStyle(probe).borderRadius
+      probe.remove()
+      return { token, resolved }
+    })
+    expect(radiusXl.token).not.toBe('')
+    const overviewTab = page.getByRole('tab', { name: '概览' })
+    await expect(overviewTab).toHaveAttribute('aria-selected', 'true')
+    await expect(overviewTab.locator('..')).toHaveAttribute('data-selected', 'true')
     const brandBox = await page.locator('.app-brand').boundingBox()
     expect(brandBox).not.toBeNull()
     expect(brandBox!.x).toBe(0)
@@ -85,7 +100,7 @@ test('runs through the real Electron, preload, main and Core process chain', asy
     await page.getByRole('button', { name: '发送' }).click()
     await expect(page.getByText('我先确认一下当前项目。')).toBeVisible()
     const userMessage = page.locator('[data-user-message]').first()
-    await expect(userMessage).toHaveCSS('border-radius', '16px')
+    await expect(userMessage).toHaveCSS('border-radius', radiusXl.resolved)
     await expect(userMessage).toHaveCSS('padding', '6px 12px')
     await expect(userMessage.locator('.kowork-markdown')).toHaveCSS('font-size', '15px')
     await expect(userMessage.locator('p')).toHaveCSS('line-height', '28px')
@@ -198,12 +213,28 @@ test('runs through the real Electron, preload, main and Core process chain', asy
     expect(composerOcclusionBox).not.toBeNull()
     expect(Math.abs(composerOverlayBox!.y - composerBox!.y)).toBeLessThanOrEqual(1)
     expect(Math.abs(composerOcclusionBox!.y - (composerBox!.y + 16))).toBeLessThanOrEqual(1)
-    await expect(page.locator('[data-chat-composer]')).toHaveCSS('border-radius', '16px')
+    await expect(page.locator('[data-chat-composer]')).toHaveCSS('border-radius', radiusXl.resolved)
     await expect(page.locator('[data-chat-composer]')).toHaveCSS(
       'transition-property',
       'border-color, box-shadow'
     )
-    await expect(page.locator('[data-chat-composer]')).toHaveCSS('transition-duration', '0.2s')
+    const focusMotion = await page.locator('[data-chat-composer]').evaluate((element) => ({
+      tokenMs: (() => {
+        const value = getComputedStyle(document.documentElement)
+          .getPropertyValue('--kw-motion-focus-duration')
+          .trim()
+        return value.endsWith('ms') ? Number.parseFloat(value) : Number.parseFloat(value) * 1_000
+      })(),
+      durationsMs: getComputedStyle(element)
+        .transitionDuration.split(',')
+        .map((duration) => {
+          const value = duration.trim()
+          return value.endsWith('ms') ? Number.parseFloat(value) : Number.parseFloat(value) * 1_000
+        })
+    }))
+    expect(
+      focusMotion.durationsMs.every((duration) => Math.abs(duration - focusMotion.tokenMs) < 1)
+    ).toBe(true)
     await expect(page.locator('[data-chat-composer-occlusion]')).toHaveCSS(
       'background-color',
       'rgb(255, 255, 255)'
@@ -215,6 +246,31 @@ test('runs through the real Electron, preload, main and Core process chain', asy
     expect(Math.abs(modelSelectorBox!.height - permissionSelectorBox!.height)).toBeLessThanOrEqual(
       1
     )
+    const permissionSelector = page.locator('[data-permission-selector]')
+    await expect(permissionSelector).toHaveAttribute('data-selection-style', 'sliding')
+    const selectedPermission = permissionSelector.locator('[data-selectable-item][data-selected]')
+    await expect(selectedPermission).toHaveAttribute('aria-pressed', 'true')
+    const nonSelectedPermission = permissionSelector
+      .locator('[data-selectable-item]:not([data-selected])')
+      .first()
+    expect(await nonSelectedPermission.getAttribute('data-selected')).toBeNull()
+    await nonSelectedPermission.hover()
+    await nonSelectedPermission.focus()
+    await expect(nonSelectedPermission).toBeFocused()
+    expect(
+      await nonSelectedPermission.evaluate(
+        (element) => getComputedStyle(element, '::before').backgroundColor
+      )
+    ).not.toBe('rgba(0, 0, 0, 0)')
+    const permissionSelectorWidth = (await permissionSelector.boundingBox())!.width
+    for (const label of ['询问', '自动', 'Yolo']) {
+      await permissionSelector.getByRole('button', { name: label, exact: true }).click()
+      await expect
+        .poll(async () =>
+          Math.abs(((await permissionSelector.boundingBox())?.width ?? 0) - permissionSelectorWidth)
+        )
+        .toBeLessThanOrEqual(1)
+    }
     const sendButtonBox = await page.getByRole('button', { name: '发送' }).boundingBox()
     const sendButtonRadius = await page
       .getByRole('button', { name: '发送' })
@@ -225,7 +281,9 @@ test('runs through the real Electron, preload, main and Core process chain', asy
     await page.screenshot({ path: testInfo.outputPath('conversation.png') })
 
     await statusInformation.getByRole('button', { name: /变更/ }).click()
-    await expect(page.getByRole('tab', { name: '改动' })).toHaveAttribute('aria-selected', 'true')
+    const changesTab = page.getByRole('tab', { name: '改动' })
+    await expect(changesTab).toHaveAttribute('aria-selected', 'true')
+    await expect(changesTab.locator('..')).toHaveAttribute('data-selected', 'true')
     await page.getByRole('button', { name: 'README.md M', exact: true }).click()
     await expect(page.getByText(/diff --git a\/README\.md b\/README\.md/)).toBeVisible()
     await page.screenshot({ path: testInfo.outputPath('desktop.png') })
@@ -310,9 +368,16 @@ test('stores provider credentials securely and restores them after restart', asy
     let page = await electronApp.firstWindow()
     await page.waitForLoadState('domcontentloaded')
     await page.getByRole('button', { name: '设置' }).first().click()
-    await page.getByRole('button', { name: '模型' }).click()
-    await page.getByRole('tab', { name: '接入' }).click()
-    await page.getByRole('button', { name: '添加自定义提供商' }).click()
+    const modelSettingsNav = page.getByRole('button', { name: '模型' })
+    await modelSettingsNav.click()
+    await expect(modelSettingsNav).toHaveAttribute('aria-current', 'page')
+    await expect(modelSettingsNav).toHaveAttribute('data-selected', 'true')
+    const accessTab = page.getByRole('tab', { name: '接入' })
+    await accessTab.click()
+    await expect(accessTab).toHaveAttribute('data-selected', 'true')
+    const addProvider = page.getByRole('button', { name: '添加自定义提供商' })
+    await addProvider.click()
+    await expect(addProvider).toHaveAttribute('data-selected', 'true')
     await page.getByLabel('提供商').selectOption('anthropic-compatible')
     await page.getByLabel('名称').fill('E2E Anthropic Compatible')
     await page.getByLabel('API Key', { exact: true }).fill(secret)

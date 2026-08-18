@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { ResizablePanel } from './shared/ui/ResizablePanel'
 import { ConversationWorkspace } from './widgets/ConversationWorkspace'
-import { InspectorPanel } from './widgets/InspectorPanel'
+import { InspectorPanel } from './features/inspector'
 import { ProjectSidebar } from './widgets/ProjectSidebar'
 import { StatusBar } from './widgets/StatusBar'
 
@@ -13,13 +13,13 @@ function App(): React.JSX.Element {
   const frosted = window.kowork.platform.backdrop !== 'none'
   if (bootstrap.isLoading)
     return (
-      <div className="grid h-screen place-items-center bg-white text-sm text-neutral-500">
+      <div className="grid h-screen place-items-center bg-kw-canvas text-sm text-kw-text-muted">
         KoWork
       </div>
     )
   if (bootstrap.isError || !bootstrap.data)
     return (
-      <div className="grid h-screen place-items-center bg-white px-8 text-center text-sm text-red-700">
+      <div className="grid h-screen place-items-center bg-kw-canvas px-8 text-center text-sm text-kw-danger">
         {bootstrap.error instanceof Error ? bootstrap.error.message : 'KoWork Core unavailable'}
       </div>
     )
@@ -35,7 +35,7 @@ function App(): React.JSX.Element {
       >
         <ProjectSidebar bootstrap={bootstrap.data} isMacOS={isMacOS} frosted={frosted} />
       </ResizablePanel>
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-white">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-kw-surface">
         <div className="flex min-h-0 flex-1">
           <ConversationWorkspace bootstrap={bootstrap.data} />
           <ResizablePanel

@@ -1,7 +1,7 @@
 import type { PropsWithChildren } from 'react'
 
 export const settingsControlClassName =
-  'h-9 w-[240px] rounded-md border border-neutral-200 bg-white px-2.5 text-sm text-neutral-800 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/20'
+  'h-9 w-[240px] rounded-md border border-kw-border-default bg-kw-surface px-2.5 text-sm text-kw-text-secondary outline-none focus-visible:border-kw-accent focus-visible:ring-1 focus-visible:ring-kw-focus-ring'
 
 export function SettingsPaneHeader({
   title,
@@ -12,8 +12,8 @@ export function SettingsPaneHeader({
 }): React.JSX.Element {
   return (
     <div className="mb-5">
-      <h2 className="text-lg font-semibold text-neutral-900">{title}</h2>
-      <p className="mt-1 text-sm text-neutral-500">{description}</p>
+      <h2 className="text-lg font-semibold text-kw-text-primary">{title}</h2>
+      <p className="mt-1 text-sm text-kw-text-muted">{description}</p>
     </div>
   )
 }
@@ -31,10 +31,10 @@ export function SettingsRow({
   return (
     <div className="flex items-center justify-between gap-6 py-4">
       <div className="min-w-0 flex-1">
-        <label htmlFor={htmlFor} className="text-sm font-medium text-neutral-900">
+        <label htmlFor={htmlFor} className="text-sm font-medium text-kw-text-primary">
           {label}
         </label>
-        {description ? <p className="mt-1 text-xs text-neutral-500">{description}</p> : null}
+        {description ? <p className="mt-1 text-xs text-kw-text-muted">{description}</p> : null}
       </div>
       <div className="shrink-0">{children}</div>
     </div>

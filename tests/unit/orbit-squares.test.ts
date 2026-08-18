@@ -3,7 +3,7 @@
 import { cleanup, render } from '@testing-library/react'
 import { createElement } from 'react'
 import { afterEach, describe, expect, it } from 'vitest'
-import { OrbitSquares } from '../../src/renderer/src/shared/ui/OrbitSquares'
+import { OrbitSquares } from '@kowork/design-system'
 
 afterEach(() => {
   cleanup()
@@ -15,7 +15,7 @@ describe('OrbitSquares', () => {
     const root = view.container.querySelector('[data-orbit-squares]') as HTMLElement
     const cells = [...root.children] as HTMLElement[]
 
-    expect(root.className).toContain('kowork-orbit-squares')
+    expect(root.className).toContain('kw-orbit-squares')
     expect(cells).toHaveLength(9)
     expect(
       cells.slice(0, 8).map((cell) => [
@@ -33,6 +33,6 @@ describe('OrbitSquares', () => {
       ['1', '3', '6'],
       ['1', '2', '7']
     ])
-    expect(cells[8]?.className).toContain('kowork-orbit-center')
+    expect(cells[8]?.className).toContain('kw-orbit-center')
   })
 })

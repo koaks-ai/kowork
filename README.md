@@ -27,6 +27,16 @@ API Key 由 Electron Main 使用 `safeStorage` 加密后持久化。SQLite 只�
 
 原始 provider 事件和模型生命周期事件仅用于流式解码，不进入 KoWork 数据库，也不会显示在 Timeline 中。
 
+## 开发约定
+
+涉及界面、样式、动画、交互原语、主题、Inspector 卡片或 UI 插件的功能，开始实现前必须先阅读
+[`docs/design-system.md`](docs/design-system.md)。该文档规定设计系统的唯一来源、目录边界、token
+和组件使用规则；新的通用视觉能力应先进入 `packages/design-system`，业务代码再消费对应的 token
+和原语，不能在 renderer 中另起一套实现。
+
+架构总览见 [`docs/architecture.md`](docs/architecture.md)，分阶段重构任务和迁移状态见
+[`docs/refactor-plan.md`](docs/refactor-plan.md)。
+
 ## 开发与验证
 
 ```bash

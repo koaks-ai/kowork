@@ -8,9 +8,9 @@ export function StatusBar({ bootstrap }: { bootstrap: AppBootstrapDto }): React.
   const { projectId, threadId } = useWorkbenchStore()
   const project = bootstrap.projects.find((item) => item.id === projectId)
   return (
-    <footer className="flex h-6 shrink-0 items-center justify-between border-t border-neutral-200 bg-white px-3 text-[10px] text-neutral-500">
+    <footer className="flex h-6 shrink-0 items-center justify-between border-t border-kw-border-default bg-kw-surface px-3 text-[10px] text-kw-text-muted">
       <div className="flex min-w-0 items-center gap-4">
-        <span className="flex items-center gap-1 text-emerald-700">
+        <span className="flex items-center gap-1 text-kw-success">
           <Wifi size={11} />
           {t('statusReady')}
         </span>
@@ -21,7 +21,7 @@ export function StatusBar({ bootstrap }: { bootstrap: AppBootstrapDto }): React.
           </span>
         )}
       </div>
-      {threadId && <span className="font-mono text-neutral-400">{threadId.slice(0, 18)}</span>}
+      {threadId && <span className="font-mono text-kw-text-faint">{threadId.slice(0, 18)}</span>}
     </footer>
   )
 }

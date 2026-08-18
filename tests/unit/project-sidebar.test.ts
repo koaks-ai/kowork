@@ -179,9 +179,13 @@ describe('ProjectSidebar', () => {
     const alpha = view.getByRole('button', { name: 'Alpha' })
     const beta = view.getByRole('button', { name: 'Beta' })
 
+    expect(alpha.getAttribute('data-selected')).toBeNull()
     expect(alpha.getAttribute('aria-expanded')).toBe('true')
     expect(beta.getAttribute('aria-expanded')).toBe('false')
     await waitFor(() => expect(view.getByText('Alpha conversation')).not.toBeNull())
+    expect(view.getByText('Alpha conversation').closest('[data-selectable-item]')?.getAttribute('data-selected')).toBe(
+      'true'
+    )
     const alphaThread = threads['project-a']![0]!
     act(() => {
       queryClient.setQueryData<ThreadDto[]>(
@@ -195,10 +199,10 @@ describe('ProjectSidebar', () => {
     await waitFor(() => expect(view.getByText('Alpha follow-up')).not.toBeNull())
     const alphaDisclosure = view.container.querySelector('#project-threads-project-a')!
     const highlight = alphaDisclosure.querySelector('[data-selection-highlight]') as HTMLElement
-    expect(highlight.style.transform).toBe('translateY(0px)')
+    expect(highlight.style.transform).toBe('translate3d(0px, 0px, 0)')
 
     fireEvent.click(view.getByRole('button', { name: 'Alpha follow-up' }))
-    await waitFor(() => expect(highlight.style.transform).toBe('translateY(34px)'))
+    await waitFor(() => expect(highlight.style.transform).toMatch(/^translate3d\(/))
     fireEvent.click(view.getByRole('button', { name: 'Alpha conversation' }))
 
     fireEvent.click(beta)
@@ -231,7 +235,7 @@ describe('ProjectSidebar', () => {
     fireEvent.contextMenu(view.getByRole('button', { name: 'Alpha conversation' }))
     fireEvent.click(view.getByRole('menuitem', { name: '修改名称' }))
 
-    const input = view.getByRole('textbox', { name: '会话标题' }) as HTMLInputElement
+    const input = await view.findByRole('textbox', { name: '会话标题' }) as HTMLInputElement
     expect(input.value).toBe('Alpha conversation')
     fireEvent.change(input, { target: { value: '  手动命名的会话  ' } })
     fireEvent.keyDown(input, { key: 'Enter' })
@@ -239,6 +243,12 @@ describe('ProjectSidebar', () => {
     await waitFor(() =>
       expect(api.update).toHaveBeenCalledWith('thread-project-a', { title: '手动命名的会话' })
     )
+    const swappedTitle = await waitFor(() => {
+      const element = view.container.querySelector('.kw-swap-text-value[data-phase="out"]')
+      expect(element).not.toBeNull()
+      return element!
+    })
+    fireEvent(swappedTitle, new Event('animationend', { bubbles: true }))
     await waitFor(() => expect(view.getByText('手动命名的会话')).not.toBeNull())
   })
 

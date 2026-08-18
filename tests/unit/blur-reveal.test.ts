@@ -4,17 +4,17 @@
 import { cleanup, render } from '@testing-library/react'
 import { createElement, useEffect } from 'react'
 import { afterEach, describe, expect, it } from 'vitest'
-import { BlurReveal } from '../../src/renderer/src/shared/ui/BlurReveal'
+import { Reveal } from '@kowork/design-system'
 
 afterEach(() => {
   cleanup()
 })
 
-describe('BlurReveal', () => {
+describe('Reveal', () => {
   it('wraps children with the blur reveal class', () => {
-    const view = render(createElement(BlurReveal, { className: 'h-full', children: 'pane' }))
-    const root = view.container.querySelector('[data-blur-reveal]')
-    expect(root?.className).toContain('kowork-blur-reveal')
+    const view = render(createElement(Reveal, { className: 'h-full', children: 'pane' }))
+    const root = view.container.querySelector('[data-reveal]')
+    expect(root?.className).toContain('kw-reveal')
     expect(root?.className).toContain('h-full')
     expect(root?.textContent).toBe('pane')
   })
@@ -29,23 +29,23 @@ describe('BlurReveal', () => {
     }
 
     const view = render(
-      createElement(BlurReveal, { contentKey: 'a', children: createElement(Child) })
+      createElement(Reveal, { contentKey: 'a', children: createElement(Child) })
     )
     expect(mounts).toBe(1)
 
-    view.rerender(createElement(BlurReveal, { contentKey: 'b', children: createElement(Child) }))
+    view.rerender(createElement(Reveal, { contentKey: 'b', children: createElement(Child) }))
     expect(mounts).toBe(2)
   })
 
   it('defaults to the open state', () => {
-    const view = render(createElement(BlurReveal, { children: 'pane' }))
-    const root = view.container.querySelector('[data-blur-reveal]')
+    const view = render(createElement(Reveal, { children: 'pane' }))
+    const root = view.container.querySelector('[data-reveal]')
     expect(root?.getAttribute('data-state')).toBe('open')
   })
 
   it('reflects the closed state for exit animations', () => {
-    const view = render(createElement(BlurReveal, { state: 'closed', children: 'pane' }))
-    const root = view.container.querySelector('[data-blur-reveal]')
+    const view = render(createElement(Reveal, { state: 'closed', children: 'pane' }))
+    const root = view.container.querySelector('[data-reveal]')
     expect(root?.getAttribute('data-state')).toBe('closed')
   })
 })

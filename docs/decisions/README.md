@@ -15,4 +15,5 @@
 ## 相关文档
 
 - [`../architecture.md`](../architecture.md) —— 目标架构总览
+- [`../design-system.md`](../design-system.md) —— renderer 与 UI 插件的视觉实现规范
 - [`../protocol/kap-v1.md`](../protocol/kap-v1.md) —— 协议规范

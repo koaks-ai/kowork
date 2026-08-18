@@ -5,7 +5,8 @@
     "src/renderer/src/**/*",
     "src/renderer/src/**/*.tsx",
     "src/preload/*.d.ts",
-    "packages/contracts/src/**/*"
+    "packages/contracts/src/**/*",
+    "packages/design-system/src/**/*"
   ],
   "compilerOptions": {
     "composite": true,
@@ -17,6 +18,9 @@
       ],
       "@kowork/contracts": [
         "packages/contracts/src/index.ts"
+      ],
+      "@kowork/design-system": [
+        "packages/design-system/src/index.ts"
       ]
     }
   }

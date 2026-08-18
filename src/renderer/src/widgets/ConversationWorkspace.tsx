@@ -8,12 +8,10 @@ import {
   type RunEventDto,
   type ThreadDto
 } from '@kowork/contracts'
+import { Button, IconButton, Reveal, SwapText } from '@kowork/design-system'
 import { Composer } from '../features/chat/Composer'
 import { Timeline } from '../features/chat/Timeline'
 import { useWorkbenchStore } from '../shared/store/workbench'
-import { BlurSwapText } from '../shared/ui/BlurSwapText'
-import { BlurReveal } from '../shared/ui/BlurReveal'
-import { IconButton } from '../shared/ui/IconButton'
 import { InlineRenameInput } from '../shared/ui/InlineRenameInput'
 
 const AUTO_SCROLL_THRESHOLD_PX = 80
@@ -166,7 +164,7 @@ export function ConversationWorkspace({
 
   if (!project || !thread) {
     return (
-      <main className="flex min-w-0 flex-1 items-center justify-center bg-white text-sm text-neutral-500">
+      <main className="flex min-w-0 flex-1 items-center justify-center bg-kw-surface text-sm text-kw-text-muted">
         {project ? t('noThread') : t('noProject')}
       </main>
     )
@@ -174,15 +172,15 @@ export function ConversationWorkspace({
 
   const hasConversation = eventsQuery.data?.some((event) => event.type === 'run.started') ?? false
   return (
-    <main className="relative flex min-w-0 flex-1 flex-col bg-white">
-      <header className="app-drag kowork-dot-blur absolute inset-x-0 top-0 z-20 flex h-12 items-center justify-between border-b border-neutral-200 px-4">
+    <main className="relative flex min-w-0 flex-1 flex-col bg-kw-surface">
+      <header className="app-drag kw-dot-blur absolute inset-x-0 top-0 z-20 flex h-12 items-center justify-between border-b border-kw-border-default px-4">
         <div className="flex min-w-0 items-center gap-2 text-sm">
           {editingTitle ? (
             <InlineRenameInput
               value={thread.title}
               placeholder={t('untitledThread')}
               aria-label={t('threadTitle')}
-              className="no-drag h-8 min-w-[10rem] max-w-md rounded-md border border-neutral-300 bg-white px-2 text-sm font-medium text-neutral-900 outline-none focus:border-blue-400"
+              className="no-drag h-8 min-w-[10rem] max-w-md rounded-md border border-kw-border-strong bg-kw-surface px-2 text-sm font-medium text-kw-text-primary outline-none focus-visible:border-kw-accent"
               onSubmit={(title) => {
                 setEditingTitle(false)
                 renameThread.mutate(title)
@@ -191,10 +189,10 @@ export function ConversationWorkspace({
             />
           ) : (
             <>
-              <BlurSwapText
+              <SwapText
                 value={thread.title}
                 fallback={t('untitledThread')}
-                className="min-w-0 truncate font-medium text-neutral-900"
+                className="min-w-0 truncate font-medium text-kw-text-primary"
               />
               <IconButton label={t('renameThread')} onClick={() => setEditingTitle(true)}>
                 <Pencil size={13} />
@@ -203,13 +201,13 @@ export function ConversationWorkspace({
           )}
         </div>
         {thread.queuePaused && (
-          <button
-            className="no-drag flex h-8 items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 text-xs font-medium text-amber-800 hover:bg-amber-100"
+          <Button
+            className="no-drag h-8 border-kw-warning bg-kw-warning-subtle text-kw-warning"
             onClick={() => resumeQueue.mutate()}
           >
             <Play size={13} />
             {t('resumeQueue')}
-          </button>
+          </Button>
         )}
       </header>
       <div className="relative min-h-0 flex-1 overflow-hidden">
@@ -224,7 +222,7 @@ export function ConversationWorkspace({
             followingLatest.current = distanceFromBottom <= AUTO_SCROLL_THRESHOLD_PX
           }}
         >
-          <BlurReveal contentKey={threadId} className="flex min-h-full flex-1 flex-col">
+          <Reveal contentKey={threadId} className="flex min-h-full flex-1 flex-col">
             <div
               className="flex flex-1 flex-col pt-12"
               style={{ paddingBottom: composerHeight }}
@@ -233,11 +231,11 @@ export function ConversationWorkspace({
                 <Timeline events={eventsQuery.data ?? []} />
               ) : (
                 <div className="flex flex-1 items-center justify-center px-6">
-                  <p className="text-sm text-neutral-500">{t('emptyConversation')}</p>
+                  <p className="text-sm text-kw-text-muted">{t('emptyConversation')}</p>
                 </div>
               )}
             </div>
-          </BlurReveal>
+          </Reveal>
         </div>
         <Composer
           thread={thread}

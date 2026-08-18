@@ -1,14 +1,11 @@
 @import 'tailwindcss';
+@import '@kowork/design-system/styles.css';
 
-@theme {
-  --color-neutral-250: #dddddd;
-}
+@source '../../../../packages/design-system/src';
 
 :root {
-  color: #262626;
+  color: var(--kw-color-text-primary);
   background: transparent;
-  --kowork-select-active: rgb(229 229 229 / 0.7);
-  --kowork-select-hover: #f5f5f5;
   font-family:
     Inter,
     ui-sans-serif,
@@ -39,7 +36,12 @@ body,
 html[data-system-backdrop='none'],
 html[data-system-backdrop='none'] body,
 html[data-system-backdrop='none'] #root {
-  background: #ffffff;
+  background: var(--kw-color-canvas);
+}
+
+[data-settings-dialog] {
+  --kw-color-selection-active: var(--kw-color-selection-active-strong);
+  --kw-color-selection-hover: var(--kw-color-selection-hover-strong);
 }
 
 html.kowork-panel-resizing,
@@ -50,73 +52,6 @@ html.kowork-panel-resizing * {
 
 body {
   user-select: none;
-}
-
-[data-frosted] {
-  --kowork-select-active: rgb(0 0 0 / 0.1);
-  --kowork-select-hover: rgb(0 0 0 / 0.04);
-}
-
-.kowork-select-list {
-  --kowork-select-radius: 0.375rem;
-}
-
-.kowork-select-list[data-radius='lg'] {
-  --kowork-select-radius: 0.5rem;
-}
-
-.kowork-select-highlight {
-  pointer-events: none;
-  position: absolute;
-  inset-inline: 0;
-  top: 2px;
-  border-radius: var(--kowork-select-radius);
-  background: var(--kowork-select-active);
-  transition:
-    transform 300ms cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 300ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.kowork-select-item {
-  position: relative;
-  z-index: 10;
-  isolation: isolate;
-}
-
-.kowork-select-item::before {
-  content: '';
-  pointer-events: none;
-  position: absolute;
-  inset-inline: 0;
-  top: 2px;
-  bottom: 2px;
-  z-index: 0;
-  border-radius: inherit;
-  background: transparent;
-  transition: background-color 150ms;
-}
-
-.kowork-select-item:hover:not([aria-current='page']):not([data-selected])::before {
-  background: var(--kowork-select-hover);
-}
-
-.kowork-select-item-fill[data-selected]::before {
-  background: var(--kowork-select-active);
-}
-
-.kowork-select-item > * {
-  position: relative;
-  z-index: 1;
-}
-
-/* Compact controls (icon buttons): same tokens, full-bleed fill, no sliding rail. */
-.kowork-hover-fill:hover:not(:disabled):not([data-selected]):not([aria-pressed='true']) {
-  background: var(--kowork-select-hover);
-}
-
-.kowork-hover-fill[data-selected],
-.kowork-hover-fill[aria-pressed='true'] {
-  background: var(--kowork-select-active);
 }
 
 textarea,
@@ -134,20 +69,20 @@ button,
   -webkit-app-region: drag;
 }
 
-.kowork-dot-blur {
-  background-color: transparent;
-  background-image: radial-gradient(transparent 1px, #ffffff 1px);
-  background-size: 4px 4px;
-  -webkit-backdrop-filter: saturate(50%) blur(8px);
-  backdrop-filter: saturate(50%) blur(8px);
-}
-
 .no-drag,
 button,
 input,
 textarea,
 [role='button'] {
   -webkit-app-region: no-drag;
+}
+
+.kw-dot-blur {
+  background-color: transparent;
+  background-image: radial-gradient(transparent 1px, var(--kw-color-surface) 1px);
+  background-size: 4px 4px;
+  -webkit-backdrop-filter: saturate(50%) blur(8px);
+  backdrop-filter: saturate(50%) blur(8px);
 }
 
 ::-webkit-scrollbar {
@@ -157,126 +92,16 @@ textarea,
 
 ::-webkit-scrollbar-thumb {
   border: 3px solid transparent;
-  border-radius: 8px;
-  background: #d4d4d4;
+  border-radius: var(--kw-radius-md);
+  background: var(--kw-color-scrollbar);
   background-clip: padding-box;
 }
 
-.kowork-markdown .hljs-comment,
-.kowork-markdown .hljs-quote {
-  color: #6e7781;
-  font-style: italic;
-}
-
-.kowork-markdown .hljs-keyword,
-.kowork-markdown .hljs-selector-tag,
-.kowork-markdown .hljs-subst {
-  color: #cf222e;
-}
-
-.kowork-markdown .hljs-number,
-.kowork-markdown .hljs-literal,
-.kowork-markdown .hljs-variable,
-.kowork-markdown .hljs-template-variable,
-.kowork-markdown .hljs-attr,
-.kowork-markdown .hljs-tag {
-  color: #0550ae;
-}
-
-.kowork-markdown .hljs-string,
-.kowork-markdown .hljs-regexp,
-.kowork-markdown .hljs-doctag,
-.kowork-markdown .hljs-attribute {
-  color: #0a6847;
-}
-
-.kowork-markdown .hljs-title,
-.kowork-markdown .hljs-section,
-.kowork-markdown .hljs-name,
-.kowork-markdown .hljs-selector-id,
-.kowork-markdown .hljs-selector-class {
-  color: #8250df;
-}
-
-.kowork-markdown .hljs-type,
-.kowork-markdown .hljs-built_in,
-.kowork-markdown .hljs-symbol,
-.kowork-markdown .hljs-bullet {
-  color: #953800;
-}
-
-.kowork-markdown .hljs-meta {
-  color: #1f6feb;
-}
-
-.kowork-markdown .hljs-deletion {
-  color: #82071e;
-  background: #ffebe9;
-}
-
-.kowork-markdown .hljs-addition {
-  color: #116329;
-  background: #dafbe1;
-}
-
-.kowork-markdown .hljs-emphasis {
-  font-style: italic;
-}
-
-.kowork-markdown .hljs-strong {
-  font-weight: 600;
-}
-
-.kowork-markdown[data-tone='muted'] {
-  filter: grayscale(1);
-}
-
-.kowork-markdown[data-tone='muted'] pre {
-  position: relative;
-}
-
-.kowork-markdown[data-tone='muted'] pre::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: rgb(115 115 115 / 0.22);
-  pointer-events: none;
-}
-
-/* 本动画效果取自于豆包网页版 */
-.kowork-disclosure {
-  overflow-y: hidden;
-  opacity: 0;
-  filter: blur(4px);
-  transform: translateY(5px);
-  transform-origin: top;
-  pointer-events: none;
-  will-change: height, opacity, filter, transform;
-  transition:
-    height 420ms cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 300ms cubic-bezier(0.22, 1, 0.36, 1),
-    filter 360ms cubic-bezier(0.22, 1, 0.36, 1),
-    transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.kowork-disclosure.is-open {
-  opacity: 1;
-  filter: blur(0);
-  transform: translateY(0);
-  pointer-events: auto;
-}
-
-.kowork-disclosure-content {
-  min-height: 0;
-  overflow: hidden;
-}
-
-.kowork-run-activities > [data-run-content] + [data-run-content] {
+.kw-run-activities > [data-run-content] + [data-run-content] {
   margin-block-start: 1.25rem;
 }
 
-.kowork-run-activities
+.kw-run-activities
   > :is(
     [data-run-content='tool'],
     [data-run-content='reasoning'],
@@ -292,336 +117,4 @@ textarea,
     [data-run-content='annotations']
   ) {
   margin-block-start: 0.75rem;
-}
-
-.kowork-stream-enter {
-  animation: kowork-stream-enter 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  transform-origin: top left;
-}
-
-@keyframes kowork-stream-enter {
-  from {
-    opacity: 0;
-    filter: blur(4px);
-    transform: translateY(5px);
-  }
-
-  to {
-    opacity: 1;
-    filter: blur(0);
-    transform: translateY(0);
-  }
-}
-
-.kowork-orbit-squares {
-  display: grid;
-  width: 13px;
-  height: 13px;
-  grid-template-columns: repeat(3, 3px);
-  grid-template-rows: repeat(3, 3px);
-  gap: 2px;
-  --kowork-orbit-on: currentColor;
-  --kowork-orbit-trail: color-mix(in srgb, currentColor 48%, transparent);
-  --kowork-orbit-off: color-mix(in srgb, currentColor 18%, transparent);
-}
-
-.kowork-orbit-squares > span:not(.kowork-orbit-center) {
-  background-color: var(--kowork-orbit-off);
-  animation: kowork-orbit-square 960ms linear infinite;
-  animation-delay: calc(var(--i) * 120ms - 960ms);
-}
-
-.kowork-orbit-center {
-  grid-column: 2;
-  grid-row: 2;
-  background-color: var(--kowork-orbit-off);
-}
-
-@keyframes kowork-orbit-square {
-  0% {
-    background-color: var(--kowork-orbit-on);
-  }
-
-  12.5% {
-    background-color: var(--kowork-orbit-trail);
-  }
-
-  25%,
-  75% {
-    background-color: var(--kowork-orbit-off);
-  }
-
-  87.5% {
-    background-color: var(--kowork-orbit-trail);
-  }
-
-  100% {
-    background-color: var(--kowork-orbit-on);
-  }
-}
-
-.kowork-blur-swap {
-  display: block;
-  min-width: 0;
-}
-
-.kowork-blur-swap-text {
-  display: block;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  will-change: opacity, filter;
-}
-
-.kowork-blur-swap-text[data-phase='out'] {
-  animation: kowork-blur-swap-out 120ms cubic-bezier(0.4, 0, 1, 1) both;
-}
-
-.kowork-blur-swap-text[data-phase='in'] {
-  animation: kowork-blur-swap-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-@keyframes kowork-blur-swap-out {
-  from {
-    opacity: 1;
-    filter: blur(0);
-  }
-
-  to {
-    opacity: 0;
-    filter: blur(4px);
-  }
-}
-
-@keyframes kowork-blur-swap-in {
-  from {
-    opacity: 0;
-    filter: blur(4px);
-  }
-
-  to {
-    opacity: 1;
-    filter: blur(0);
-  }
-}
-
-.kowork-settings-overlay {
-  background: rgba(9, 9, 11, 0.22);
-}
-
-.kowork-settings-overlay[data-state='open'] {
-  animation: kowork-settings-overlay-in 180ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.kowork-settings-overlay[data-state='closed'] {
-  animation: kowork-settings-overlay-out 140ms cubic-bezier(0.4, 0, 1, 1) both;
-}
-
-.kowork-settings-dialog {
-  pointer-events: none;
-}
-
-.kowork-settings-dialog[data-state='open'] {
-  animation:
-    kowork-settings-dialog-fade-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both,
-    kowork-settings-dialog-blur-in 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.kowork-settings-dialog[data-state='closed'] {
-  animation:
-    kowork-settings-dialog-fade-out 160ms cubic-bezier(0.4, 0, 1, 1) both,
-    kowork-settings-dialog-blur-out 220ms cubic-bezier(0.4, 0, 1, 1) both;
-}
-
-.kowork-blur-reveal {
-  animation:
-    kowork-blur-reveal-fade-in 200ms cubic-bezier(0.22, 1, 0.36, 1) both,
-    kowork-blur-reveal-blur-in 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.kowork-blur-reveal[data-state='closed'] {
-  animation:
-    kowork-blur-reveal-fade-out 160ms cubic-bezier(0.4, 0, 1, 1) both,
-    kowork-blur-reveal-blur-out 220ms cubic-bezier(0.4, 0, 1, 1) both;
-}
-
-.kowork-blur-reveal.kowork-blur-reveal-from-bottom {
-  transform-origin: bottom left;
-  animation:
-    kowork-blur-reveal-fade-in 200ms cubic-bezier(0.22, 1, 0.36, 1) both,
-    kowork-blur-reveal-blur-in 380ms cubic-bezier(0.22, 1, 0.36, 1) both,
-    kowork-blur-reveal-scale-in 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.kowork-blur-reveal.kowork-blur-reveal-from-bottom[data-state='closed'] {
-  animation:
-    kowork-blur-reveal-fade-out 160ms cubic-bezier(0.4, 0, 1, 1) both,
-    kowork-blur-reveal-blur-out 220ms cubic-bezier(0.4, 0, 1, 1) both,
-    kowork-blur-reveal-scale-out 220ms cubic-bezier(0.4, 0, 1, 1) both;
-}
-
-@keyframes kowork-settings-overlay-in {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes kowork-settings-overlay-out {
-  from {
-    opacity: 1;
-  }
-
-  to {
-    opacity: 0;
-  }
-}
-
-@keyframes kowork-settings-dialog-fade-in {
-  from {
-    opacity: 0;
-    transform: scale(0.98);
-  }
-
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes kowork-settings-dialog-blur-in {
-  from {
-    filter: blur(5px);
-  }
-
-  to {
-    filter: blur(0);
-  }
-}
-
-@keyframes kowork-settings-dialog-fade-out {
-  from {
-    opacity: 1;
-    transform: scale(1);
-  }
-
-  to {
-    opacity: 0;
-    transform: scale(0.99);
-  }
-}
-
-@keyframes kowork-settings-dialog-blur-out {
-  from {
-    filter: blur(0);
-  }
-
-  to {
-    filter: blur(4px);
-  }
-}
-
-@keyframes kowork-blur-reveal-fade-in {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes kowork-blur-reveal-blur-in {
-  from {
-    filter: blur(4px);
-  }
-
-  to {
-    filter: blur(0);
-  }
-}
-
-@keyframes kowork-blur-reveal-fade-out {
-  from {
-    opacity: 1;
-  }
-
-  to {
-    opacity: 0;
-  }
-}
-
-@keyframes kowork-blur-reveal-blur-out {
-  from {
-    filter: blur(0);
-  }
-
-  to {
-    filter: blur(4px);
-  }
-}
-
-@keyframes kowork-blur-reveal-scale-in {
-  from {
-    transform: translateY(6px) scale(0.94);
-  }
-
-  to {
-    transform: translateY(0) scale(1);
-  }
-}
-
-@keyframes kowork-blur-reveal-scale-out {
-  from {
-    transform: translateY(0) scale(1);
-  }
-
-  to {
-    transform: translateY(4px) scale(0.96);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .kowork-disclosure {
-    transition: none;
-  }
-
-  .kowork-stream-enter {
-    animation: none;
-  }
-
-  .kowork-blur-swap-text {
-    animation: none;
-  }
-
-  .kowork-select-highlight {
-    transition: none;
-  }
-
-  .kowork-orbit-squares > span {
-    animation: none;
-    background-color: var(--kowork-orbit-off);
-  }
-
-  .kowork-orbit-squares > span:nth-child(1) {
-    background-color: var(--kowork-orbit-on);
-  }
-
-  .kowork-orbit-squares > span:nth-child(2),
-  .kowork-orbit-squares > span:nth-child(8) {
-    background-color: var(--kowork-orbit-trail);
-  }
-
-  .kowork-settings-overlay,
-  .kowork-settings-dialog,
-  .kowork-blur-reveal,
-  .kowork-blur-reveal[data-state='closed'],
-  .kowork-blur-reveal.kowork-blur-reveal-from-bottom,
-  .kowork-blur-reveal.kowork-blur-reveal-from-bottom[data-state='closed'] {
-    animation: none;
-  }
 }

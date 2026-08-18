@@ -1,4 +1,5 @@
 import type { AppSettingsDto, PermissionMode } from '@kowork/contracts'
+import { Surface } from '@kowork/design-system'
 import { useTranslation } from 'react-i18next'
 import { SettingsPaneHeader, SettingsRow, settingsControlClassName } from './SettingsRow'
 
@@ -17,7 +18,7 @@ export function GeneralSettingsPane({
         title={t('settingsGeneral')}
         description={t('settingsGeneralDescription')}
       />
-      <section className="divide-y divide-neutral-100 overflow-hidden rounded-lg border border-neutral-200 px-5">
+      <Surface variant="card" className="divide-y divide-kw-border-subtle overflow-hidden px-5">
         <SettingsRow
           label={t('defaultPermission')}
           description={t('defaultPermissionDescription')}
@@ -36,7 +37,7 @@ export function GeneralSettingsPane({
             <option value="yolo">{t('permissionYolo')}</option>
           </select>
         </SettingsRow>
-      </section>
+      </Surface>
     </div>
   )
 }

@@ -5,9 +5,9 @@ todos:
   - id: phase0-protocol [completed]
     content: 阶段 0：定义 KAP v1 协议（Kotlin @Serializable 真源 + TS Zod 镜像 + conformance fixtures），补齐所有事件 payload schema，预留 server.info / auth / fs.browse / files.upload / plugins 命名空间，改版本字面量为区间协商，重写 docs/architecture.md 与决策记录
     status: completed
-  - id: phase1-design-system
+  - id: phase1-design-system [completed]
     content: 阶段 1：建立 packages/design-system，统一圆角为 4 级 token（映射现有 56 处），抽出 Reveal 与 Disclosure 两个唯一动画原语，统一选中/悬停为单一 SelectableList（基准=左侧栏会话），新增 Surface 原语，建立 Inspector 卡片注册表，导出版本化 PluginUiKit
-    status: pending
+    status: completed
   - id: phase2-theme
     content: 阶段 2：主题体系。内置主题（默认灰需与阶段 1 基准逐像素一致）+ 自定义强调色 + 背景图片及模糊度/透明度，存客户端本地 client-settings.json，定义与 vibrancy/frosted 的叠加关系，实现 appearance 设置界面
     status: pending
@@ -176,6 +176,10 @@ graph TB
 
 ## 四、贯穿全程的规范
 
+视觉实现的目录边界、token、动画、选中态和插件 UI 规则集中维护在
+[`docs/design-system.md`](design-system.md)。后续阶段新增界面时，先按该规范判断能力应进入
+`packages/design-system` 还是 renderer 业务目录。
+
 后续所有会话必须遵守：
 
 - **协议单一真源**：任何新能力先在 `agent/protocol` 定义，再镜像到 `packages/protocol`，再实现。禁止在 renderer 或 main 里内联协议结构。
@@ -256,6 +260,16 @@ graph TB
 **验收**：全仓库 grep 不到硬编码颜色与非 token 圆角；只存在两种动画原语；只存在一套选中 / 悬停实现；Inspector 卡片来自注册表；视觉回归通过（建议补 Playwright 截图基线）。
 
 **不做**：不引入新的视觉风格，不做暗色模式（留给阶段 2 的主题体系）。
+
+**实施结果（2026-08-18）**：阶段 1 已落地。实际实现与后续维护入口如下：
+
+- 新建 `packages/design-system/`，公开 `Reveal`、`Disclosure`、`SelectableList`、`SelectableItem`、`Surface`、`Button`、`IconButton`、`ContextMenu`、`SwapText`、`OrbitSquares`，并通过 `PluginUiKit` 固定插件 API v1。
+- 将 token、motion、primitives、content 拆到 `packages/design-system/src/styles/`；renderer 的 `main.css` 只保留窗口、布局、拖拽、面板 resizing、业务间距和滚动条几何。
+- 删除 renderer 中旧的 `BlurReveal`、`AnimatedDisclosure`、`BlurSwapText`、`SelectionList`、`IconButton`、自绘 `ContextMenu`、`OrbitSquares` 实现，避免兼容层和第二套视觉实现。
+- Inspector 已迁移到 `src/renderer/src/features/inspector/`，三张内置卡片通过 `registry.ts` 注册；后续插件卡片应复用该 registry，不得重新修改 `InspectorPanel` 的固定 JSX。
+- 补充 `docs/design-system.md` 作为日常开发规范，明确 token、目录边界、插件 API 和新增视觉需求流程。
+
+验证结果：`pnpm typecheck`、`pnpm test`（233 项）、`pnpm build`、阶段 1 范围 eslint、`git diff --check` 通过；全仓 `pnpm lint` 仍受仓库已有生成文件、既有 lint 错误和 Prettier warning 影响，未发现阶段 1 新增错误。最后一次代码修正后的完整 Electron e2e 未能重新执行，原因是沙箱外 Electron 启动审批服务返回 503，因此不能将全量 e2e 标记为通过。
 
 ---
 

@@ -15,9 +15,8 @@ import {
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { RunEventDto } from '@kowork/contracts'
-import { AnimatedDisclosure } from '../../shared/ui/AnimatedDisclosure'
+import { Disclosure, IconButton, Reveal, Surface } from '@kowork/design-system'
 import { MarkdownContent } from '../../shared/ui/MarkdownContent'
-import { IconButton } from '../../shared/ui/IconButton'
 import {
   collectTimeline,
   type AnnotationActivity,
@@ -108,13 +107,13 @@ function StreamingMarkdown({
     []
   )
 
-  return (
-    <div
-      className={active ? 'kowork-stream-enter' : undefined}
-      data-streaming={active || undefined}
-    >
-      <MarkdownContent content={displayed} />
-    </div>
+  const renderedContent = <MarkdownContent content={displayed} />
+  return active ? (
+    <Reveal variant="stream" data-streaming>
+      {renderedContent}
+    </Reveal>
+  ) : (
+    <div>{renderedContent}</div>
   )
 }
 
@@ -238,36 +237,37 @@ function ReasoningActivityView({
         : t('reasoning')
 
   return (
+    <Disclosure.Root
+      open={open}
+      onOpenChange={() =>
+        setMode((current) => {
+          if (current === 'collapsed' || current === 'preview') return 'expanded'
+          return 'collapsed'
+        })
+      }
+    >
     <div
       data-run-content="reasoning"
       data-reasoning-kind={activity.reasoningKind}
-      className="text-neutral-500"
+      className="text-kw-text-muted"
     >
+      <Disclosure.Trigger asChild>
       <button
         type="button"
-        aria-expanded={open}
-        onClick={() =>
-          setMode((current) => {
-            if (current === 'collapsed' || current === 'preview') return 'expanded'
-            return 'collapsed'
-          })
-        }
-        className="flex items-center gap-2 text-sm font-[450] leading-6 transition-colors hover:text-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-2"
+        className="kw-focus-ring flex items-center gap-2 text-sm font-[450] leading-6 hover:text-kw-text-secondary"
       >
         {activity.reasoningKind === 'summary' ? (
-          <Sparkles size={14} className="shrink-0 text-blue-500" />
+          <Sparkles size={14} className="shrink-0 text-kw-info" />
         ) : (
           <Brain size={14} className="shrink-0" />
         )}
         <span>{label}</span>
-        <ChevronDown
-          size={13}
-          className={`transition-transform duration-300 ease-out motion-reduce:transition-none ${
-            open ? 'rotate-0' : '-rotate-90'
-          }`}
-        />
+        <Disclosure.Chevron open={open} direction="down" asChild>
+          <ChevronDown size={13} />
+        </Disclosure.Chevron>
       </button>
-      <AnimatedDisclosure open={open}>
+      </Disclosure.Trigger>
+      <Disclosure.Content>
         <div className="relative pt-2">
           <div
             ref={preview}
@@ -280,12 +280,13 @@ function ReasoningActivityView({
             <div
               data-reasoning-overflow-rule
               aria-hidden="true"
-              className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-neutral-400/25"
+              className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-kw-border-strong/25"
             />
           ) : null}
         </div>
-      </AnimatedDisclosure>
+      </Disclosure.Content>
     </div>
+    </Disclosure.Root>
   )
 }
 
@@ -336,89 +337,91 @@ function ToolActivityView({ activity }: { activity: ToolActivity }): React.JSX.E
   const pendingLabel = activity.requested ? t('toolRunning') : t('toolPreparing')
 
   return (
+    <Disclosure.Root open={open} onOpenChange={setOpen}>
     <div data-run-content="tool" className="min-w-0">
+      <Disclosure.Trigger asChild>
       <button
         type="button"
-        aria-expanded={open}
-        onClick={() => setOpen((current) => !current)}
-        className="group/trigger flex w-full items-center gap-2 overflow-hidden text-left text-sm leading-6 text-neutral-600 transition-colors hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-2"
+        className="kw-focus-ring group/trigger flex w-full items-center gap-2 overflow-hidden text-left text-sm leading-6 text-kw-text-secondary hover:text-kw-text-primary"
       >
         <TerminalSquare
           size={14}
-          className="shrink-0 transition-colors group-hover/trigger:text-blue-600"
+          className="shrink-0 group-hover/trigger:text-kw-accent"
         />
         <span className="flex min-w-0 items-center overflow-hidden whitespace-nowrap">
           <span
-            className={`shrink-0 font-mono font-medium transition-colors ${
+            className={`shrink-0 font-mono font-medium ${
               activity.isError
-                ? 'text-red-600 group-hover/trigger:text-red-700'
-                : 'text-neutral-500 group-hover/trigger:text-neutral-800'
+                ? 'text-kw-danger'
+                : 'text-kw-text-muted group-hover/trigger:text-kw-text-secondary'
             }`}
           >
             {activity.name || t('unknownTool')}
           </span>
           {activity.argumentsJson && (
-            <span className="ml-2 min-w-0 truncate text-neutral-400 transition-colors group-hover/trigger:text-neutral-600">
+            <span className="ml-2 min-w-0 truncate text-kw-text-faint group-hover/trigger:text-kw-text-secondary">
               {summarizeArguments(activity.argumentsJson)}
             </span>
           )}
           <span className="ml-1.5 inline-flex shrink-0 items-center gap-1 align-middle">
-            {!hasResult ? <span className="text-neutral-400">{pendingLabel}</span> : null}
-            <ChevronDown
-              size={13}
-              className={`shrink-0 transition-[color,transform] duration-300 ease-out motion-reduce:transition-none group-hover/trigger:text-blue-600 ${
-                open ? 'rotate-0' : '-rotate-90'
-              }`}
-            />
+            {!hasResult ? <span className="text-kw-text-faint">{pendingLabel}</span> : null}
+            <Disclosure.Chevron open={open} direction="down" asChild>
+              <ChevronDown
+                size={13}
+                className="shrink-0 group-hover/trigger:text-kw-accent"
+              />
+            </Disclosure.Chevron>
           </span>
         </span>
       </button>
-      <AnimatedDisclosure open={open}>
-        <div className="mt-2 overflow-hidden rounded-md border border-neutral-200 bg-white">
+      </Disclosure.Trigger>
+      <Disclosure.Content>
+        <Surface variant="card" className="mt-2 overflow-hidden rounded-md">
           {activity.argumentsJson && (
-            <div className="border-b border-neutral-200 px-3 py-2.5">
-              <div className="mb-1.5 text-[10px] font-semibold uppercase text-neutral-400">
+            <div className="border-b border-kw-border-default px-3 py-2.5">
+              <div className="mb-1.5 text-[10px] font-semibold uppercase text-kw-text-faint">
                 {t('toolInput')}
               </div>
-              <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-5 text-neutral-600 [overflow-wrap:anywhere]">
+              <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-5 text-kw-text-secondary [overflow-wrap:anywhere]">
                 {formatArguments(activity.argumentsJson)}
               </pre>
             </div>
           )}
           <div className="px-3 py-2.5">
-            <div className="mb-1.5 text-[10px] font-semibold uppercase text-neutral-400">
+            <div className="mb-1.5 text-[10px] font-semibold uppercase text-kw-text-faint">
               {t('toolOutput')}
             </div>
             {hasResult ? (
               <pre
                 className={`max-h-64 overflow-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-5 [overflow-wrap:anywhere] ${
-                  activity.isError ? 'text-red-700' : 'text-neutral-600'
+                  activity.isError ? 'text-kw-danger' : 'text-kw-text-secondary'
                 }`}
               >
                 {activity.output || t('emptyToolOutput')}
               </pre>
             ) : (
-              <div className="flex items-center gap-2 text-xs text-neutral-400">
-                <Clock3 size={12} className="animate-pulse" />
+              <div className="flex items-center gap-2 text-xs text-kw-text-faint">
+                <Clock3 size={12} className="kw-status-pulse" />
                 {pendingLabel}
               </div>
             )}
           </div>
-        </div>
-      </AnimatedDisclosure>
+        </Surface>
+      </Disclosure.Content>
     </div>
+    </Disclosure.Root>
   )
 }
 
 function RefusalActivityView({ activity }: { activity: RefusalActivity }): React.JSX.Element {
   const { t } = useTranslation()
   return (
-    <div data-run-content="refusal" className="border-l-2 border-red-200 pl-3 text-red-800">
+    <div data-run-content="refusal" className="border-l-2 border-kw-danger-hover pl-3 text-kw-danger">
       <div className="mb-1.5 flex items-center gap-2 text-sm font-medium">
-        <ShieldAlert size={14} className="shrink-0 text-red-500" />
+        <ShieldAlert size={14} className="shrink-0 text-kw-danger" />
         <span>{t('modelRefusal')}</span>
       </div>
-      <MarkdownContent content={activity.text} variant="compact" className="text-red-800" />
+      <MarkdownContent content={activity.text} variant="compact" className="text-kw-danger" />
     </div>
   )
 }
@@ -432,9 +435,9 @@ function annotationTitle(annotation: AnnotationActivity['annotations'][number]):
 function AnnotationActivityView({ activity }: { activity: AnnotationActivity }): React.JSX.Element {
   const { t } = useTranslation()
   return (
-    <div data-run-content="annotations" className="text-sm text-neutral-600">
-      <div className="mb-1.5 flex items-center gap-2 font-medium text-neutral-700">
-        <Link2 size={14} className="shrink-0 text-emerald-600" />
+    <div data-run-content="annotations" className="text-sm text-kw-text-secondary">
+      <div className="mb-1.5 flex items-center gap-2 font-medium text-kw-text-secondary">
+        <Link2 size={14} className="shrink-0 text-kw-success" />
         <span>{t('citationCount', { count: activity.annotations.length })}</span>
       </div>
       <div className="space-y-1 pl-[22px]">
@@ -445,7 +448,7 @@ function AnnotationActivityView({ activity }: { activity: AnnotationActivity }):
               href={annotation.url}
               target="_blank"
               rel="noreferrer"
-              className="block truncate text-blue-700 underline decoration-blue-200 underline-offset-2 hover:decoration-blue-500"
+              className="block truncate text-kw-accent-foreground underline decoration-kw-accent-subtle underline-offset-2 hover:decoration-kw-accent"
             >
               {annotationTitle(annotation)}
             </a>
@@ -495,15 +498,15 @@ export function Timeline({ events }: { events: RunEventDto[] }): React.JSX.Eleme
               <div className="group/user-message flex flex-col items-end">
                 <div
                   data-user-message
-                  className="max-w-[80%] select-text rounded-2xl bg-[#f3f3f3] px-3 py-1.5 text-neutral-900 sm:max-w-[72%]"
+                  className="max-w-[80%] select-text rounded-xl bg-kw-surface-subtle px-3 py-1.5 text-kw-text-primary sm:max-w-[72%]"
                 >
                   <MarkdownContent content={item.input} />
                 </div>
                 <div
                   data-user-message-meta
-                  className="pointer-events-none mt-1 flex h-7 items-center gap-0.5 pr-0.5 opacity-0 transition-opacity duration-150 group-focus-within/user-message:pointer-events-auto group-focus-within/user-message:opacity-100 group-hover/user-message:pointer-events-auto group-hover/user-message:opacity-100 motion-reduce:transition-none"
+                  className="kw-hover-actions pointer-events-none mt-1 flex h-7 items-center gap-0.5 pr-0.5 opacity-0 group-focus-within/user-message:pointer-events-auto group-focus-within/user-message:opacity-100 group-hover/user-message:pointer-events-auto group-hover/user-message:opacity-100"
                 >
-                  <time className="mr-1 text-[10px] tabular-nums text-neutral-400">
+                  <time className="mr-1 text-[10px] tabular-nums text-kw-text-faint">
                     {new Date(item.startedAt).toLocaleTimeString('zh-CN', {
                       hour: '2-digit',
                       minute: '2-digit',
@@ -516,16 +519,16 @@ export function Timeline({ events }: { events: RunEventDto[] }): React.JSX.Eleme
             )}
 
             <div className="min-w-0">
-              <div className="mb-4 flex items-center gap-2 text-xs font-medium text-neutral-500">
+              <div className="mb-4 flex items-center gap-2 text-xs font-medium text-kw-text-muted">
                 <Activity
                   size={14}
-                  className={item.status ? 'text-neutral-400' : 'animate-pulse text-blue-600'}
+                  className={item.status ? 'text-kw-text-faint' : 'kw-status-pulse text-kw-accent'}
                 />
                 <span>{summary.join(' · ')}</span>
               </div>
 
               {item.activities.length > 0 ? (
-                <div className="kowork-run-activities">
+                <div className="kw-run-activities">
                   {item.activities.map((activity) => {
                     if (activity.kind === 'text') {
                       return (
@@ -548,15 +551,15 @@ export function Timeline({ events }: { events: RunEventDto[] }): React.JSX.Eleme
                         <details
                           key={activity.id}
                           data-run-content="compression"
-                          className="rounded-md border border-neutral-200 bg-white px-3 py-2 text-xs text-neutral-500"
+                          className="rounded-md border border-kw-border-default bg-kw-surface px-3 py-2 text-xs text-kw-text-muted"
                         >
-                          <summary className="cursor-pointer font-medium text-neutral-700">
+                          <summary className="cursor-pointer font-medium text-kw-text-secondary">
                             {t('compressed')}
                           </summary>
                           <MarkdownContent
                             content={activity.summary}
                             variant="compact"
-                            className="mt-2 text-neutral-500"
+                            className="mt-2 text-kw-text-muted"
                           />
                         </details>
                       )
@@ -584,8 +587,8 @@ export function Timeline({ events }: { events: RunEventDto[] }): React.JSX.Eleme
                   })}
                 </div>
               ) : !item.status ? (
-                <div className="flex items-center gap-2 text-sm text-neutral-400">
-                  <Clock3 size={14} className="animate-pulse" />
+                <div className="flex items-center gap-2 text-sm text-kw-text-faint">
+                  <Clock3 size={14} className="kw-status-pulse" />
                   {t('running')}
                 </div>
               ) : null}
@@ -593,7 +596,7 @@ export function Timeline({ events }: { events: RunEventDto[] }): React.JSX.Eleme
               {item.status === 'completed' ? (
                 <RunActions copyText={item.copyText} />
               ) : item.status ? (
-                <div className="mt-5 flex items-center gap-1.5 text-xs text-red-600">
+                <div className="mt-5 flex items-center gap-1.5 text-xs text-kw-danger">
                   <CircleAlert size={14} />
                   {t(item.status)}
                   {item.error ? ` · ${item.error}` : ''}

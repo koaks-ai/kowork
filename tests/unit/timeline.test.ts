@@ -138,7 +138,7 @@ describe('chat timeline', () => {
           id: 'call-1',
           nameDelta: 'read_file',
           argumentsDelta: '{"path":"',
-          itemRef: 'tool-1'
+          itemRef: 'call-1'
         }
       }),
       event(7, 'run.tool-call-delta', {
@@ -148,7 +148,7 @@ describe('chat timeline', () => {
           type: 'tool_call_delta',
           id: 'call-1',
           argumentsDelta: 'README.md"}',
-          itemRef: 'tool-1'
+          itemRef: 'call-1'
         }
       }),
       event(8, 'run.tool-call', {
@@ -200,5 +200,45 @@ describe('chat timeline', () => {
       expect.objectContaining({ type: 'url_citation', title: 'Source' })
     ])
     expect(items[0]?.copyText).toBe('无法执行该请求。')
+  })
+
+  it('merges provider-native tool ids into the canonical KoWork call', () => {
+    const items = collectTimeline([
+      event(1, 'run.started', { input: '当前目录是什么？' }),
+      event(2, 'run.tool-call-delta', {
+        step: 0,
+        phase: 'normal',
+        event: {
+          type: 'tool_call_delta',
+          id: 'provider-call-1',
+          nameDelta: 'run_command',
+          argumentsDelta: '{"command":"pwd"}',
+          itemRef: 'kowork-call-1'
+        }
+      }),
+      event(3, 'run.tool-call', {
+        call: {
+          id: 'kowork-call-1',
+          name: 'run_command',
+          argumentsJson: '{"command":"pwd"}'
+        }
+      }),
+      event(4, 'run.tool-output', {
+        callId: 'kowork-call-1',
+        text: '/workspace',
+        isError: false
+      })
+    ])
+
+    const tools = items[0]?.activities.filter((activity) => activity.kind === 'tool') ?? []
+    expect(tools).toHaveLength(1)
+    expect(tools[0]).toMatchObject({
+      callId: 'kowork-call-1',
+      name: 'run_command',
+      argumentsJson: '{"command":"pwd"}',
+      output: '/workspace',
+      requested: true,
+      isError: false
+    })
   })
 })

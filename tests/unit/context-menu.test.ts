@@ -1,41 +1,44 @@
 // @vitest-environment jsdom
 
-import { act, cleanup, fireEvent, render } from '@testing-library/react'
+import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import { createElement } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ContextMenu } from '../../src/renderer/src/shared/ui/ContextMenu'
+import { ContextMenu } from '@kowork/design-system'
 
 afterEach(() => {
   cleanup()
-  vi.useRealTimers()
 })
 
 describe('ContextMenu', () => {
-  it('reveals with BlurReveal and plays the exit animation before closing', async () => {
-    vi.useFakeTimers()
-    const onClose = vi.fn()
+  it('opens with Radix context-menu semantics and selects an item', async () => {
     const onSelect = vi.fn()
     render(
-      createElement(ContextMenu, {
-        x: 12,
-        y: 24,
-        onClose,
-        items: [{ id: 'rename', label: '修改名称', onSelect }]
-      })
+      createElement(
+        ContextMenu,
+        null,
+        createElement(
+          ContextMenu.Trigger,
+          { asChild: true },
+          createElement('div', { 'data-trigger': true }, 'row')
+        ),
+        createElement(
+          ContextMenu.Portal,
+          null,
+          createElement(
+            ContextMenu.Content,
+            null,
+            createElement(ContextMenu.Item, { onSelect }, '修改名称')
+          )
+        )
+      )
     )
 
-    const reveal = document.querySelector('[data-blur-reveal]')
-    expect(reveal?.className).toContain('kowork-blur-reveal')
-    expect(reveal?.className).toContain('h-full')
-    expect(reveal?.getAttribute('data-state')).toBe('open')
+    const trigger = document.querySelector('[data-trigger]')!
+    fireEvent.contextMenu(trigger)
+    const reveal = document.querySelector('[data-reveal]')
+    expect(reveal).not.toBeNull()
 
-    fireEvent.pointerDown(document.body)
-    expect(reveal?.getAttribute('data-state')).toBe('closed')
-    expect(onClose).not.toHaveBeenCalled()
-
-    await act(() => vi.advanceTimersByTimeAsync(219))
-    expect(onClose).not.toHaveBeenCalled()
-    await act(() => vi.advanceTimersByTimeAsync(1))
-    expect(onClose).toHaveBeenCalledOnce()
+    fireEvent.click(document.querySelector('[role="menuitem"]')!)
+    await waitFor(() => expect(onSelect).toHaveBeenCalledOnce())
   })
 })

@@ -28,6 +28,7 @@
     "@koaks/node": "file:vendor/koaks/koaks-node-0.0.1-beta5.tgz",
     "@kowork/contracts": "workspace:*",
     "@kowork/core": "workspace:*",
+    "@kowork/design-system": "workspace:*",
     "@radix-ui/react-dialog": "^1.1.23",
     "@radix-ui/react-dropdown-menu": "^2.1.24",
     "@radix-ui/react-scroll-area": "^1.2.18",
