@@ -8,3 +8,10 @@ out
 *.log*
 playwright-report
 test-results
+*.tsbuildinfo
+
+# Gradle / Kotlin（agent/ 的构建产物）
+.gradle/
+.kotlin/
+agent/**/build/
+agent/local.properties
