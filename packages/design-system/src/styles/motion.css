@@ -25,6 +25,19 @@
     kw-reveal-scale-out var(--kw-motion-reveal-exit-blur) var(--kw-motion-ease-exit) both;
 }
 
+.kw-tooltip {
+  transform-origin: center bottom;
+  animation:
+    kw-reveal-fade-in var(--kw-motion-reveal-enter-fade) var(--kw-motion-ease-standard) both,
+    kw-reveal-scale-in var(--kw-motion-reveal-scale-enter) var(--kw-motion-ease-standard) both;
+}
+
+.kw-tooltip[data-state='closed'] {
+  animation:
+    kw-reveal-fade-out var(--kw-motion-reveal-exit-fade) var(--kw-motion-ease-exit) both,
+    kw-reveal-scale-out var(--kw-motion-reveal-exit-blur) var(--kw-motion-ease-exit) both;
+}
+
 .kw-reveal-dialog {
   animation:
     kw-dialog-fade-in var(--kw-motion-dialog-enter-fade) var(--kw-motion-ease-standard) both,
@@ -180,6 +193,8 @@
   .kw-reveal-dialog[data-state='closed'],
   .kw-reveal-overlay,
   .kw-reveal-overlay[data-state='closed'],
+  .kw-tooltip,
+  .kw-tooltip[data-state='closed'],
   .kw-swap-text-value { animation: none; }
   .kw-disclosure { transition: none; }
   .kw-disclosure-chevron { transition: none; }

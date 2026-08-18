@@ -88,6 +88,18 @@ describe('design-system boundary', () => {
     )
   })
 
+  it('uses the shared light tooltip surface and reveal motion', () => {
+    const primitivesCss = readFileSync(join(designSystemRoot, 'styles/primitives.css'), 'utf8')
+    const motionCss = readFileSync(join(designSystemRoot, 'styles/motion.css'), 'utf8')
+    expect(primitivesCss).toMatch(
+      /\.kw-tooltip\s*\{[^}]*background:\s*var\(--kw-color-surface-subtle\);[^}]*color:\s*var\(--kw-color-text-secondary\);/s
+    )
+    expect(motionCss).toMatch(
+      /\.kw-tooltip\s*\{[^}]*kw-reveal-fade-in[^}]*kw-reveal-scale-in/s
+    )
+    expect(motionCss).toMatch(/\.kw-tooltip\[data-state='closed'\]\s*\{[^}]*kw-reveal-fade-out/s)
+  })
+
   it('removes the legacy shared implementations and selectors', () => {
     const removedFiles = [
       'AnimatedDisclosure.tsx',
