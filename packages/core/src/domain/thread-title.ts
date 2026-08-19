@@ -30,7 +30,7 @@ function truncateTitle(value: string): string {
     return `${characters.slice(0, MAX_GENERATED_THREAD_TITLE_LENGTH - 1).join('')}…`
   }
   const words = value.split(/\s+/u).filter(Boolean)
-  let truncated =
+  const truncated =
     words.length <= MAX_GENERATED_THREAD_TITLE_WORDS
       ? value
       : `${words.slice(0, MAX_GENERATED_THREAD_TITLE_WORDS).join(' ')}…`
