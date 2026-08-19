@@ -12,8 +12,8 @@ todos:
     content: 阶段 2：主题体系。内置主题（默认灰需与阶段 1 基准逐像素一致）+ 自定义强调色 + 背景图片及模糊度/透明度，存客户端本地 client-settings.json，定义与 vibrancy/frosted 的叠加关系，实现 appearance 设置界面
     status: completed
   - id: phase3a-koaks-native
-    content: 阶段 3a（改 koaks 仓库）：增加 linuxX64/linuxArm64（评估 macosX64）目标，补 Linux 的 HTTP engine 与 FileSystem actual，把 NodeJson 的事件 wire 映射上提到 commonMain 并给 AgentEvent 等加 @Serializable
-    status: pending
+    content: 阶段 3a（改 koaks 仓库）：将 Koaks 事件 wire codec 提升为 commonMain 可复用模块；Linux targets、HTTP engine 与 FileSystem actual 延后
+    status: partially_completed
   - id: phase3-spike
     content: 阶段 3 前置 spike：在单个 macosArm native 二进制里跑通 Ktor CIO WS server + kmp-process 子进程 + SQLDelight native + koaks agent 四者共存，完成「WS 连接 → 一次 read_file 工具调用 → 事件回传」纵切
     status: pending
@@ -323,13 +323,22 @@ graph TB
 
 #### 3a — koaks 框架侧改造（改动 `/Users/atri/DevLab/Kotlin/koaks`）
 
-- 在 `build-logic/src/main/kotlin/koaks.kmp.library.gradle.kts` 增加 `linuxX64()` `linuxArm64()`，并评估补 `macosX64()`（Intel Mac 用户的本地 sidecar）
-- 为 Linux 补 HTTP client engine actual。`core/src/commonMain/.../net/HttpEngineProvider.kt` 是 `expect fun provideEngine()`，现有 actual 在 `jvmMain`(okhttp) / `jsMain`(js) / `appleMain`(darwin) / `windowsX64Main`(winhttp)。**建议 Linux 用 `ktor-client-cio`**（纯 Kotlin、无 libcurl 系统依赖，利于自包含二进制）；若其 TLS 表现不满足则回退 `ktor-client-curl`。这是一个需要实测的 spike
-- 为 Linux 补 FileSystem 与 PlatformType actual（参照 `appleMain` / `windowsX64Main` 的 SYSTEM FS 实现），考虑抽 `posixMain` 共享
-- **把事件的 JSON 映射从 `interop/node/src/jsMain/.../NodeJson.kt` 上提到 commonMain**，并给 `AgentEvent` / `ModelEvent` / `RunEventEnvelope` / `Usage` / `ToolCall` / `AgentError` 加 `@Serializable`。原因：目前手写的 `toJson()` 只存在于 JS 侧，Native server 无法复用；上提后 node interop 与新 server 共享同一份 wire 映射，是框架层面的净改进
-- 不要把 JVM-only 的 `@Tool` 反射 / Jackson / victools 路径带进 Native；Native 侧统一用 commonMain 的 `tool<In>()` 与 `Tool<In>` 接口
+已完成的公共 codec 范围：
 
-**验收**：`./gradlew build` 在 Linux 与 macOS 上通过；linux native target 能编出可执行的最小示例并成功调一次模型。
+- 新增独立的 `interop:json` KMP 模块，使用 commonMain 的 `@Serializable` wire DTO 与显式 mapper。
+- 将 Node bridge 的领域对象 JSON 映射迁移到公共 `KoaksWireJson` facade；Node 侧不再维护第二套事件 wire 实现。
+- 保留现有 Node JSON 字段形状、snake_case、discriminator、opaque/base64 payload、nullable/default 语义和 `AgentError.cause.message` 限制。
+- common codec 测试覆盖模型事件、Agent 事件、运行时 envelope、状态嵌套类型、golden fixture 和 fail-fast 解析错误。
+
+暂缓的 Linux / 额外 Native 范围：
+
+- `linuxX64()` / `linuxArm64()` 目标，以及 `macosX64()` 评估。
+- Linux HTTP client engine actual、FileSystem 与 PlatformType actual；相关 `ktor-client-cio` 选型仍留待后续 Native 纵切验证。
+- JVM-only 的 `@Tool` 反射 / Jackson / victools 路径不进入 Native；Native 侧仍统一使用 commonMain 的 `tool<In>()` 与 `Tool<In>` 接口。
+
+**阶段 3a 当前实施结果（2026-08-19）**：公共事件 wire codec 子范围已完成，但阶段 3a 不整体结项；Linux 与额外 Native target 仍是后续工作。Koaks 的 macOS Native、JS Node 和 JVM 相关测试已验证通过。
+
+**剩余验收**：恢复 Linux 范围后，需在 Linux 与 macOS 上完成构建，并让 Linux Native target 编出可执行的最小示例并成功调一次模型。
 
 #### 3b — `agent/` Gradle 骨架 + persistence
 
@@ -437,6 +446,6 @@ graph TB
 - **Kotlin/Native 无原生 HTTPS**。远程部署强制依赖反向代理。若不可接受，替代方案是在应用层做加密握手，成本显著更高。建议先按反向代理走。
 - **SQLDelight Native 在 Linux 的链接与 glibc 兼容性**。需在较旧的 Linux 发行版上构建发布产物。这是阶段 3b 的第一个 spike。
 - **Linux 的 ktor client engine 选型**（CIO vs curl）。阶段 3a 必须实测，不要凭文档假定。
-- **阶段 3 工时体量**。工具 + 持久化 + 审批 + 服务端全量重写是本计划最大的不确定性。建议在 3b 之前先做一个纵切 spike：linux native 二进制里跑通「WS 连接 → 一次 `read_file` 工具调用 → 事件回传」，验证 Ktor server + kmp-process + SQLDelight + koaks 四者能在同一个 native 二进制里共存。这个 spike 的价值远高于其成本。
+- **阶段 3 工时体量**。工具 + 持久化 + 审批 + 服务端全量重写是本计划最大的不确定性。建议在 3b 之前先做一个纵切 spike：macOS Arm native 二进制里跑通「WS 连接 → 一次 `read_file` 工具调用 → 事件回传」，验证 Ktor server + kmp-process + SQLDelight + koaks 四者能在同一个 native 二进制里共存。这个 spike 的价值远高于其成本；Linux 运行验证留到后续范围。
 - **阶段 4 期间应用不可用**。建议在切换前打 tag 并保留可运行的旧版分支。
 - **插件同 realm 执行的安全性**。已作为显式取舍记录，需在 UI 安装流程里明确告知用户。

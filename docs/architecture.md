@@ -194,8 +194,8 @@ UI 插件的信任模型（同 realm 执行，权限是告知性而非强制沙�
 | 0 | KAP v1 协议：Kotlin 真源 + TS 镜像 + 一致性用例 + 文档 | 已完成 |
 | 1 | 设计系统：令牌、两个动画原语、SelectableList、Inspector 注册表 | 已完成 |
 | 2 | 主题体系 | 已完成 |
-| 3a | koaks 仓库增加 Linux 目标与事件序列化 | 未开始 |
-| 3 spike | 单个 linux native 二进制里验证 Ktor WS + 子进程 + SQLDelight + koaks 共存 | 未开始 |
+| 3a | Koaks 公共事件 wire codec；Linux 目标与平台 actual | 部分完成：codec 已完成，Linux 范围延后 |
+| 3 spike | 单个 macOS Arm native 二进制里验证 Ktor WS + 子进程 + SQLDelight + koaks 共存 | 未开始 |
 | 3b–3f | Agent Server 实现（持久化 → 工作区 → 工具 → 应用层 → 服务端） | 未开始 |
 | 4 | 硬切换：agent-client、sidecar 监管、删除旧实现 | 未开始 |
 | 5 | 插件系统 | 未开始 |
@@ -204,8 +204,14 @@ UI 插件的信任模型（同 realm 执行，权限是告知性而非强制沙�
 阶段 2 的主题体系已完成；实施结果与验收记录见
 [`refactor-plan.md`](refactor-plan.md#阶段-2--主题体系)。
 
-阶段 3 之前必须先完成 spike。它要证伪的是四个 native 目标上相对少走的路径能否共存 —— 任何一个
-不通都会让阶段 3 的方案作废，必须在投入大量实现之前先验证。
+阶段 3a 目前是部分完成：Koaks 已新增 `interop:json` commonMain 模块，Node bridge 已复用统一的
+serializable wire DTO 与 mapper，公共 codec 的 macOS Native、JS Node 和 JVM 测试已通过。Linux
+targets、Linux HTTP engine、FileSystem/PlatformType actual 以及 macOS Intel 评估暂缓，因此不能把
+阶段 3a 标记为整体完成。
+
+阶段 3 之前必须先完成 spike。它先在单个 macOS Arm native 二进制中验证 Ktor WS、子进程、
+SQLDelight native 与 Koaks agent 能否共存；任何一个不通都会让阶段 3 的方案作废，必须在投入大量
+实现之前先验证。Linux 目标的交叉编译与运行验证留在后续范围。
 
 阶段 3f 结束时必须完成**对等性检查清单**：逐项确认新 server 覆盖旧 Core 的每个 RPC、每个事件、
 每条权限规则。清单未过不得进入阶段 4。

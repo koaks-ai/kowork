@@ -57,10 +57,11 @@ Koaks 是 Kotlin Multiplatform 框架，当前给 KoWork 提供的是 **Kotlin/J
 
 ## 后果
 
-- 需要先改 koaks 仓库（阶段 3a）：增加 Linux 目标、补 Linux 的 HTTP engine 与 FileSystem
-  actual、把事件的 wire 映射从 JS 专属的 `NodeJson` 上提到 `commonMain` 并给 `AgentEvent` 等
-  加 `@Serializable`。
-- 阶段 3 之前需要一个**前置 spike**，在单个 linux native 二进制里验证四件东西能共存：
+- 需要先改 koaks 仓库（阶段 3a）：把事件的 wire 映射从 JS 专属的 `NodeJson` 提升到独立的
+  `interop:json` commonMain 模块，使用 serializable wire DTO 与显式 mapper；不把 Node/KAP wire
+  格式直接耦合到 `AgentEvent` 等领域对象。Linux 目标、Linux 的 HTTP engine 与 FileSystem actual
+  已明确延后，不影响最终 Linux server 的目标。
+- 阶段 3 之前需要一个**前置 spike**，在单个 macOS Arm native 二进制里验证四件东西能共存：
   Ktor CIO WebSocket server、`kmp-process` 子进程、SQLDelight native driver、koaks agent。
   这四者都是 native target 上相对少走的路径，任何一个不通都会让阶段 3 的方案作废 —— 必须在投入
   大量实现之前先证伪。
