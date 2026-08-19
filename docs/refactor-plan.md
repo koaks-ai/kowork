@@ -16,7 +16,7 @@ todos:
     status: partially_completed
   - id: phase3-spike
     content: 阶段 3 前置 spike：在单个 macosArm native 二进制里跑通 Ktor CIO WS server + kmp-process 子进程 + SQLDelight native + koaks agent 四者共存，完成「WS 连接 → 一次 read_file 工具调用 → 事件回传」纵切
-    status: pending
+    status: completed
   - id: phase3b-persistence
     content: 阶段 3b：agent/ Gradle 骨架与目标集，SQLDelight schema 落地 12 张表并预先加入 plugins / plugin_state 表，按聚合拆 repositories，可审阅迁移
     status: pending
