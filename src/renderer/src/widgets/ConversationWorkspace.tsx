@@ -36,7 +36,7 @@ export function ConversationWorkspace({
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [composerHeight, setComposerHeight] = useState(0)
-  const [editingTitle, setEditingTitle] = useState(false)
+  const [editingTitleThreadId, setEditingTitleThreadId] = useState<string | null>(null)
   const { projectId, threadId } = useWorkbenchStore()
   const scrollContainer = useRef<HTMLDivElement>(null)
   const followingLatest = useRef(true)
@@ -87,10 +87,6 @@ export function ConversationWorkspace({
         current.map((item) => (item.id === updated.id ? updated : item))
       )
   })
-
-  useEffect(() => {
-    setEditingTitle(false)
-  }, [threadId])
 
   useEffect(
     () =>
@@ -177,6 +173,7 @@ export function ConversationWorkspace({
   }
 
   const hasConversation = eventsQuery.data?.some((event) => event.type === 'run.started') ?? false
+  const editingTitle = editingTitleThreadId === thread.id
   return (
     <main data-frosted={frosted || undefined} className="kw-chrome relative flex min-w-0 flex-1 flex-col">
       <header
@@ -191,10 +188,10 @@ export function ConversationWorkspace({
               aria-label={t('threadTitle')}
               className="no-drag h-8 min-w-[10rem] max-w-md rounded-md border border-kw-border-strong bg-kw-surface px-2 text-sm font-medium text-kw-text-primary outline-none focus-visible:border-kw-accent"
               onSubmit={(title) => {
-                setEditingTitle(false)
+                setEditingTitleThreadId(null)
                 renameThread.mutate(title)
               }}
-              onCancel={() => setEditingTitle(false)}
+              onCancel={() => setEditingTitleThreadId(null)}
             />
           ) : (
             <>
@@ -203,7 +200,10 @@ export function ConversationWorkspace({
                 fallback={t('untitledThread')}
                 className="min-w-0 truncate font-medium text-kw-text-primary"
               />
-              <IconButton label={t('renameThread')} onClick={() => setEditingTitle(true)}>
+              <IconButton
+                label={t('renameThread')}
+                onClick={() => setEditingTitleThreadId(thread.id)}
+              >
                 <Pencil size={13} />
               </IconButton>
             </>
