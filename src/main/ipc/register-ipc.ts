@@ -9,12 +9,18 @@ import type { CoreSupervisor } from '../core/core-supervisor'
 import { notifyApprovalIfUnattended } from '../system/approval-notifier'
 import { pickProject } from '../system/project-picker'
 import type { CredentialStore } from '../system/credential-store'
+import type { ClientSettingsStore } from '../client-settings/store'
+import type { BackgroundAssetStore } from '../client-settings/backgrounds'
+import { registerClientSettingsIpc } from '../client-settings/ipc'
 
 export function registerIpc(
   supervisor: CoreSupervisor,
   credentials: CredentialStore,
-  ensureWindow: () => BrowserWindow
+  ensureWindow: () => BrowserWindow,
+  clientSettings: ClientSettingsStore,
+  backgrounds: BackgroundAssetStore
 ): () => void {
+  const unregisterClientSettings = registerClientSettingsIpc(clientSettings, backgrounds)
   ipcMain.handle('kowork:rpc', async (_event, method: RpcMethod, payload: unknown) => {
     return await supervisor.request(method, parseRpcInput(method, payload))
   })
@@ -83,6 +89,7 @@ export function registerIpc(
   })
 
   return () => {
+    unregisterClientSettings()
     unsubscribe()
     ipcMain.removeHandler('kowork:rpc')
     ipcMain.removeHandler('kowork:pick-project')

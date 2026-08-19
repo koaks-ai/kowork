@@ -7,7 +7,12 @@ export default defineConfig({
   main: {
     build: {
       externalizeDeps: {
-        exclude: ['@kowork/contracts', '@kowork/core', '@kowork/design-system']
+        exclude: [
+          '@kowork/client-settings',
+          '@kowork/contracts',
+          '@kowork/core',
+          '@kowork/design-system'
+        ]
       },
       rollupOptions: {
         input: {

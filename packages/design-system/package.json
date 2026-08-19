@@ -6,13 +6,15 @@
   "description": "KoWork design tokens and renderer UI primitives",
   "exports": {
     ".": "./src/index.ts",
-    "./styles.css": "./src/styles/index.css"
+    "./styles.css": "./src/styles/index.css",
+    "./theme": "./src/theme/index.ts"
   },
   "peerDependencies": {
     "react": ">=19",
     "react-dom": ">=19"
   },
   "dependencies": {
+    "@kowork/client-settings": "workspace:*",
     "@radix-ui/react-context-menu": "^2.2.16",
     "@radix-ui/react-slot": "^1.2.4",
     "@radix-ui/react-tooltip": "^1.2.16"

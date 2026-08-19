@@ -281,10 +281,11 @@ graph TB
 
 **范围**：
 
-- 主题模型：`accent`（选中底色 / 悬停底色 / 强调文字 / 强调前景）、`surface`、`border`、`text` 若干层级、可选 `radiusScale`、可选 `background`（图片路径、模糊度 px、透明度 0..1）。
+- 主题模型：`accent`（预置 ID 或小写 `#rrggbb`，推导选中 / 悬停 / 强调前景）、`surface`、`border`、`text` 若干层级，以及可选 `background`（`<uuid>.<ext>` 资源 ID、`blurPx` 0–64、`surfaceOpacity` 0.45–0.95）。本阶段不提供 `radiusScale` UI。
 - 内置主题：默认灰（严格等于阶段 1 收敛后的现有观感，作为基准不得漂移）+ 若干预置强调色。
 - 用户自定义强调色（取色器），以及自选背景图片 + 模糊度滑杆 + 透明度滑杆。
-- **存储位置：客户端本地**（决策 2）。落在 Electron `userData/client-settings.json`，经 main 读写，preload 暴露 `clientSettings` 命名空间。背景图片复制进 `userData/backgrounds/`，注意 `index.html` 的 CSP 需要放行相应来源。
+- **存储位置：客户端本地**（决策 2）。落在 Electron `userData/client-settings.json`，经 main 读写，preload 暴露 `clientSettings` 命名空间。背景图片复制进 `userData/backgrounds/<uuid>.<ext>`，扩展名仅允许 `png/jpeg/webp/gif`，renderer 只使用 `kowork-bg://` 协议 URL；`index.html` 的 CSP 放行该 scheme。
+- 旧 `localStorage` 的三个面板宽度只通过 preload 的一次性 bootstrap handshake 迁移；写入成功后才删除旧键，非法旧值使用对应默认值并记录结构化 warning。Composer 与 dialog/popover/menu/tooltip 归入不透明 raised 层。
 - 主题切换必须只改 CSS 变量，不触发 React 重渲染整棵树；切换本身走 `Reveal`。
 - 背景图层与现有 `vibrancy` / `mica` / `frosted` 的叠加关系要明确定义，避免两套毛玻璃互相打架。
 - `features/settings/appearance/` 界面。

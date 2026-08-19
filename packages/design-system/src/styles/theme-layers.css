@@ -1,0 +1,43 @@
+.kw-chrome {
+  background: var(--kw-color-surface);
+}
+.kw-raised {
+  background: var(--kw-color-surface-raised);
+}
+
+html[data-wallpaper='off'][data-system-backdrop='vibrancy'] .kw-chrome[data-frosted],
+html[data-wallpaper='off'][data-system-backdrop='mica'] .kw-chrome[data-frosted] {
+  background: var(--kw-color-surface-frosted);
+}
+
+html[data-wallpaper='on'] .kw-chrome {
+  --kw-color-chrome: color-mix(
+    in srgb,
+    var(--kw-color-surface) var(--kw-chrome-opacity),
+    transparent
+  );
+  background: var(--kw-color-chrome);
+}
+
+.kw-wallpaper-layer {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+}
+.kw-wallpaper-layer__image {
+  position: absolute;
+  inset: -80px;
+  width: calc(100% + 160px);
+  height: calc(100% + 160px);
+  object-fit: cover;
+  filter: blur(var(--kw-wallpaper-blur));
+}
+.kw-theme-transition {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: var(--kw-color-canvas);
+}

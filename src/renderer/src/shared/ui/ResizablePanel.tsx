@@ -6,13 +6,15 @@ import {
   type PointerEvent,
   type ReactNode
 } from 'react'
+import type { ClientLayoutKey } from '@kowork/client-settings'
+import { updateLayoutWidth, useAppearanceStore } from '../../app/appearance/appearance-store'
 
 interface ResizablePanelProps {
   side: 'left' | 'right'
   defaultWidth: number
   minWidth: number
   maxWidth: number
-  storageKey: string
+  layoutKey: ClientLayoutKey
   resizeLabel: string
   collapsed?: boolean
   className?: string
@@ -30,37 +32,23 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max)
 }
 
-function readStoredWidth(storageKey: string, fallback: number, min: number, max: number): number {
-  try {
-    const stored = Number(window.localStorage.getItem(storageKey))
-    return Number.isFinite(stored) && stored > 0 ? clamp(stored, min, max) : fallback
-  } catch {
-    return fallback
-  }
-}
-
-function storeWidth(storageKey: string, width: number): void {
-  try {
-    window.localStorage.setItem(storageKey, String(width))
-  } catch {
-    // Resizing still works when persistent browser storage is unavailable.
-  }
-}
-
 export function ResizablePanel({
   side,
   defaultWidth,
   minWidth,
   maxWidth,
-  storageKey,
+  layoutKey,
   resizeLabel,
   collapsed = false,
   className = '',
   children
 }: ResizablePanelProps): React.JSX.Element {
-  const [width, setWidth] = useState(() =>
-    readStoredWidth(storageKey, defaultWidth, minWidth, maxWidth)
-  )
+  const appearance = useAppearanceStore()
+  const storedWidth =
+    appearance.state?.status === 'ready'
+      ? clamp(appearance.state.snapshot.layout[layoutKey], minWidth, maxWidth)
+      : defaultWidth
+  const [width, setWidth] = useState(storedWidth)
   const [dragging, setDragging] = useState(false)
   const drag = useRef<DragState | null>(null)
 
@@ -71,6 +59,14 @@ export function ResizablePanel({
     []
   )
 
+  useEffect(() => {
+    if (!drag.current) setWidth(storedWidth)
+  }, [storedWidth])
+
+  const persistWidth = (nextWidth: number): void => {
+    void updateLayoutWidth(layoutKey, nextWidth)
+  }
+
   const finishResize = (event: PointerEvent<HTMLDivElement>): void => {
     const currentDrag = drag.current
     if (currentDrag?.pointerId !== event.pointerId) return
@@ -78,7 +74,7 @@ export function ResizablePanel({
     drag.current = null
     setDragging(false)
     document.documentElement.classList.remove('kowork-panel-resizing')
-    storeWidth(storageKey, finalWidth)
+    persistWidth(finalWidth)
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId)
     }
@@ -97,7 +93,7 @@ export function ResizablePanel({
     event.preventDefault()
     const clampedWidth = clamp(nextWidth, minWidth, maxWidth)
     setWidth(clampedWidth)
-    storeWidth(storageKey, clampedWidth)
+    persistWidth(clampedWidth)
   }
 
   return (
@@ -123,7 +119,7 @@ export function ResizablePanel({
         className={`no-drag group absolute inset-y-0 z-30 w-2 cursor-col-resize touch-none outline-none ${side === 'left' ? '-right-1' : '-left-1'}`}
         onDoubleClick={() => {
           setWidth(defaultWidth)
-          storeWidth(storageKey, defaultWidth)
+          persistWidth(defaultWidth)
         }}
         onKeyDown={resizeFromKeyboard}
         onPointerDown={(event) => {

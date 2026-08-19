@@ -17,6 +17,9 @@ importers:
       '@koaks/node':
         specifier: file:vendor/koaks/koaks-node-0.0.1-beta5.tgz
         version: file:vendor/koaks/koaks-node-0.0.1-beta5.tgz
+      '@kowork/client-settings':
+        specifier: workspace:*
+        version: link:packages/client-settings
       '@kowork/contracts':
         specifier: workspace:*
         version: link:packages/contracts
@@ -169,6 +172,12 @@ importers:
         specifier: ^4.1.10
         version: 4.1.10(@types/node@22.20.1)(@vitest/coverage-v8@4.1.10)(jsdom@30.0.1(@noble/hashes@2.3.0))(vite@7.3.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.12))
 
+  packages/client-settings:
+    dependencies:
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
+
   packages/contracts:
     dependencies:
       zod:
@@ -201,6 +210,9 @@ importers:
 
   packages/design-system:
     dependencies:
+      '@kowork/client-settings':
+        specifier: workspace:*
+        version: link:../client-settings
       '@radix-ui/react-context-menu':
         specifier: ^2.2.16
         version: 2.3.2(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)

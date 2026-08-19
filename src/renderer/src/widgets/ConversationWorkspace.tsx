@@ -25,10 +25,12 @@ function mergeEvents(...groups: RunEventDto[][]): RunEventDto[] {
 export function ConversationWorkspace({
   bootstrap,
   inspectorOpen = false,
+  frosted = false,
   onInspectorToggle
 }: {
   bootstrap: AppBootstrapDto
   inspectorOpen?: boolean
+  frosted?: boolean
   onInspectorToggle?(): void
 }): React.JSX.Element {
   const { t } = useTranslation()
@@ -168,7 +170,7 @@ export function ConversationWorkspace({
 
   if (!project || !thread) {
     return (
-      <main className="flex min-w-0 flex-1 items-center justify-center bg-kw-surface text-sm text-kw-text-muted">
+      <main data-frosted={frosted || undefined} className="kw-chrome flex min-w-0 flex-1 items-center justify-center text-sm text-kw-text-muted">
         {project ? t('noThread') : t('noProject')}
       </main>
     )
@@ -176,7 +178,7 @@ export function ConversationWorkspace({
 
   const hasConversation = eventsQuery.data?.some((event) => event.type === 'run.started') ?? false
   return (
-    <main className="relative flex min-w-0 flex-1 flex-col bg-kw-surface">
+    <main data-frosted={frosted || undefined} className="kw-chrome relative flex min-w-0 flex-1 flex-col">
       <header className="app-drag kw-dot-blur absolute inset-x-0 top-0 z-20 flex h-12 items-center justify-between border-b border-kw-border-default px-4">
         <div className="flex min-w-0 items-center gap-2 text-sm">
           {editingTitle ? (

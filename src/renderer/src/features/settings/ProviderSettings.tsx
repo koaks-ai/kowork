@@ -250,7 +250,7 @@ export function ProviderSettings({
         defaultWidth={208}
         minWidth={168}
         maxWidth={360}
-        storageKey="kowork:settings-provider-list-width"
+        layoutKey="settingsProviderListWidth"
         resizeLabel={t('resizeProviderList')}
       >
         <aside className="flex h-full w-full flex-col border-r border-kw-border-default bg-kw-surface-subtle">

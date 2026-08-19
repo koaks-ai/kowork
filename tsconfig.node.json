@@ -8,6 +8,7 @@
     "packages/contracts/src/**/*",
     "packages/protocol/src/**/*",
     "packages/core/src/**/*",
+    "packages/client-settings/src/**/*",
     "packages/design-system/src/**/*",
     "tests/unit/**/*",
     "tests/integration/**/*",

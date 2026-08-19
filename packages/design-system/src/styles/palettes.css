@@ -1,0 +1,62 @@
+html[data-color-scheme='light'] {
+  color-scheme: light;
+}
+
+html[data-color-scheme='dark'] {
+  color-scheme: dark;
+  --kw-color-canvas: #1c1c1c;
+  --kw-color-surface: #252525;
+  --kw-color-surface-subtle: #2d2d2d;
+  --kw-color-surface-raised: #303030;
+  --kw-color-surface-frosted: rgb(28 28 28 / 0.68);
+  --kw-color-text-primary: #f5f5f5;
+  --kw-color-text-secondary: #d4d4d4;
+  --kw-color-text-muted: #a3a3a3;
+  --kw-color-text-faint: #737373;
+  --kw-color-text-inverse: #171717;
+  --kw-color-border-subtle: #333333;
+  --kw-color-border-default: #404040;
+  --kw-color-border-strong: #525252;
+  --kw-color-accent: #60a5fa;
+  --kw-color-accent-hover: #93c5fd;
+  --kw-color-accent-subtle: #172554;
+  --kw-color-accent-foreground: #93c5fd;
+  --kw-color-accent-contrast: #171717;
+  --kw-color-selection-active: rgb(255 255 255 / 0.13);
+  --kw-color-selection-hover: rgb(255 255 255 / 0.07);
+  --kw-color-selection-active-strong: rgb(255 255 255 / 0.2);
+  --kw-color-selection-hover-strong: rgb(255 255 255 / 0.11);
+  --kw-color-selection-active-frosted: rgb(255 255 255 / 0.16);
+  --kw-color-selection-hover-frosted: rgb(255 255 255 / 0.09);
+  --kw-color-danger: #f87171;
+  --kw-color-danger-hover: #7f1d1d;
+  --kw-color-danger-subtle: #451a1a;
+  --kw-color-success: #34d399;
+  --kw-color-success-subtle: #052e24;
+  --kw-color-success-subtle-strong: #064e3b;
+  --kw-color-warning: #fbbf24;
+  --kw-color-warning-subtle: #422006;
+  --kw-color-info: #60a5fa;
+  --kw-color-overlay: rgb(0 0 0 / 0.48);
+  --kw-color-scrollbar: #525252;
+  --kw-color-markdown-code: #2d2d2d;
+  --kw-color-markdown-muted-overlay: rgb(163 163 163 / 0.14);
+  --kw-color-markdown-comment: #8b949e;
+  --kw-color-markdown-keyword: #ff7b72;
+  --kw-color-markdown-number: #79c0ff;
+  --kw-color-markdown-string: #7ee787;
+  --kw-color-markdown-title: #d2a8ff;
+  --kw-color-markdown-type: #ffa657;
+  --kw-color-markdown-meta: #58a6ff;
+  --kw-color-markdown-delete: #ffa198;
+  --kw-color-markdown-delete-bg: #490202;
+  --kw-color-markdown-add: #7ee787;
+  --kw-color-markdown-add-bg: #0f321e;
+  --kw-shadow-popover: 0 20px 45px rgb(0 0 0 / 0.36);
+  --kw-shadow-dialog: 0 24px 60px rgb(0 0 0 / 0.48);
+  --kw-shadow-tooltip: 0 8px 20px rgb(0 0 0 / 0.42);
+  --kw-shadow-card: 0 4px 16px rgb(0 0 0 / 0.2);
+  --kw-shadow-composer: 0 4px 14px rgb(0 0 0 / 0.3);
+  --kw-focus-ring: rgb(96 165 250 / 0.55);
+  --kw-focus-ring-offset: #252525;
+}

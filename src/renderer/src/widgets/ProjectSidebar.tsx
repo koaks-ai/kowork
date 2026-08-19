@@ -247,7 +247,7 @@ export function ProjectSidebar({
   return (
     <aside
       data-frosted={frosted || undefined}
-      className="group/sidebar flex h-full w-full flex-col border-r border-kw-border-default bg-kw-surface data-[frosted]:bg-kw-surface-frosted"
+      className="kw-chrome group/sidebar flex h-full w-full flex-col border-r border-kw-border-default"
     >
       <div
         className={`app-brand app-drag flex shrink-0 justify-start px-4 text-lg font-bold tracking-normal text-kw-text-primary ${isMacOS ? 'h-[88px] items-end pb-3' : 'h-14 items-center'}`}

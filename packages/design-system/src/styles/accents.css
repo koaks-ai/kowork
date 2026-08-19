@@ -1,0 +1,175 @@
+html[data-accent='teal'] {
+  --kw-color-accent: #0f766e;
+  --kw-color-accent-hover: #115e59;
+  --kw-color-accent-subtle: #f0fdfa;
+  --kw-color-accent-foreground: #0f766e;
+  --kw-color-info: #0f766e;
+  --kw-focus-ring: rgb(15 118 110 / 0.4);
+  --kw-color-selection-active: rgb(13 148 136 / 0.18);
+  --kw-color-selection-hover: rgb(13 148 136 / 0.09);
+  --kw-color-selection-active-strong: rgb(13 148 136 / 0.26);
+  --kw-color-selection-hover-strong: rgb(13 148 136 / 0.14);
+  --kw-color-selection-active-frosted: rgb(13 148 136 / 0.22);
+  --kw-color-selection-hover-frosted: rgb(13 148 136 / 0.12);
+}
+html[data-accent='violet'] {
+  --kw-color-accent: #7c3aed;
+  --kw-color-accent-hover: #6d28d9;
+  --kw-color-accent-subtle: #f5f3ff;
+  --kw-color-accent-foreground: #6d28d9;
+  --kw-color-info: #7c3aed;
+  --kw-focus-ring: rgb(124 58 237 / 0.4);
+  --kw-color-selection-active: rgb(124 58 237 / 0.17);
+  --kw-color-selection-hover: rgb(124 58 237 / 0.08);
+  --kw-color-selection-active-strong: rgb(124 58 237 / 0.25);
+  --kw-color-selection-hover-strong: rgb(124 58 237 / 0.13);
+  --kw-color-selection-active-frosted: rgb(124 58 237 / 0.21);
+  --kw-color-selection-hover-frosted: rgb(124 58 237 / 0.11);
+}
+html[data-accent='rose'] {
+  --kw-color-accent: #e11d48;
+  --kw-color-accent-hover: #be123c;
+  --kw-color-accent-subtle: #fff1f2;
+  --kw-color-accent-foreground: #be123c;
+  --kw-color-info: #e11d48;
+  --kw-focus-ring: rgb(225 29 72 / 0.4);
+  --kw-color-selection-active: rgb(225 29 72 / 0.16);
+  --kw-color-selection-hover: rgb(225 29 72 / 0.08);
+  --kw-color-selection-active-strong: rgb(225 29 72 / 0.24);
+  --kw-color-selection-hover-strong: rgb(225 29 72 / 0.12);
+  --kw-color-selection-active-frosted: rgb(225 29 72 / 0.2);
+  --kw-color-selection-hover-frosted: rgb(225 29 72 / 0.1);
+}
+html[data-accent='amber'] {
+  --kw-color-accent: #d97706;
+  --kw-color-accent-hover: #b45309;
+  --kw-color-accent-subtle: #fffbeb;
+  --kw-color-accent-foreground: #b45309;
+  --kw-color-accent-contrast: #171717;
+  --kw-color-info: #d97706;
+  --kw-focus-ring: rgb(217 119 6 / 0.42);
+  --kw-color-selection-active: rgb(217 119 6 / 0.18);
+  --kw-color-selection-hover: rgb(217 119 6 / 0.09);
+  --kw-color-selection-active-strong: rgb(217 119 6 / 0.27);
+  --kw-color-selection-hover-strong: rgb(217 119 6 / 0.14);
+  --kw-color-selection-active-frosted: rgb(217 119 6 / 0.22);
+  --kw-color-selection-hover-frosted: rgb(217 119 6 / 0.12);
+}
+html[data-accent='emerald'] {
+  --kw-color-accent: #059669;
+  --kw-color-accent-hover: #047857;
+  --kw-color-accent-subtle: #ecfdf5;
+  --kw-color-accent-foreground: #047857;
+  --kw-color-info: #059669;
+  --kw-focus-ring: rgb(5 150 105 / 0.4);
+  --kw-color-selection-active: rgb(5 150 105 / 0.17);
+  --kw-color-selection-hover: rgb(5 150 105 / 0.08);
+  --kw-color-selection-active-strong: rgb(5 150 105 / 0.25);
+  --kw-color-selection-hover-strong: rgb(5 150 105 / 0.13);
+  --kw-color-selection-active-frosted: rgb(5 150 105 / 0.21);
+  --kw-color-selection-hover-frosted: rgb(5 150 105 / 0.11);
+}
+
+html[data-color-scheme='dark'][data-accent='blue'] {
+  --kw-color-selection-active: rgb(96 165 250 / 0.22);
+  --kw-color-selection-hover: rgb(96 165 250 / 0.12);
+  --kw-color-selection-active-strong: rgb(96 165 250 / 0.32);
+  --kw-color-selection-hover-strong: rgb(96 165 250 / 0.18);
+  --kw-color-selection-active-frosted: rgb(96 165 250 / 0.28);
+  --kw-color-selection-hover-frosted: rgb(96 165 250 / 0.16);
+}
+
+html[data-color-scheme='dark'][data-accent='teal'] {
+  --kw-color-accent: #5eead4;
+  --kw-color-accent-hover: #99f6e4;
+  --kw-color-accent-subtle: #134e4a;
+  --kw-color-accent-foreground: #5eead4;
+  --kw-color-accent-contrast: #171717;
+  --kw-color-info: #5eead4;
+  --kw-focus-ring: rgb(94 234 212 / 0.5);
+  --kw-color-selection-active: rgb(94 234 212 / 0.22);
+  --kw-color-selection-hover: rgb(94 234 212 / 0.12);
+  --kw-color-selection-active-strong: rgb(94 234 212 / 0.32);
+  --kw-color-selection-hover-strong: rgb(94 234 212 / 0.18);
+  --kw-color-selection-active-frosted: rgb(94 234 212 / 0.28);
+  --kw-color-selection-hover-frosted: rgb(94 234 212 / 0.16);
+}
+html[data-color-scheme='dark'][data-accent='violet'] {
+  --kw-color-accent: #c4b5fd;
+  --kw-color-accent-hover: #ddd6fe;
+  --kw-color-accent-subtle: #4c1d95;
+  --kw-color-accent-foreground: #c4b5fd;
+  --kw-color-accent-contrast: #171717;
+  --kw-color-info: #c4b5fd;
+  --kw-focus-ring: rgb(196 181 253 / 0.5);
+  --kw-color-selection-active: rgb(196 181 253 / 0.22);
+  --kw-color-selection-hover: rgb(196 181 253 / 0.12);
+  --kw-color-selection-active-strong: rgb(196 181 253 / 0.32);
+  --kw-color-selection-hover-strong: rgb(196 181 253 / 0.18);
+  --kw-color-selection-active-frosted: rgb(196 181 253 / 0.28);
+  --kw-color-selection-hover-frosted: rgb(196 181 253 / 0.16);
+}
+html[data-color-scheme='dark'][data-accent='rose'] {
+  --kw-color-accent: #fb7185;
+  --kw-color-accent-hover: #fda4af;
+  --kw-color-accent-subtle: #881337;
+  --kw-color-accent-foreground: #fda4af;
+  --kw-color-accent-contrast: #171717;
+  --kw-color-info: #fb7185;
+  --kw-focus-ring: rgb(251 113 133 / 0.5);
+  --kw-color-selection-active: rgb(251 113 133 / 0.22);
+  --kw-color-selection-hover: rgb(251 113 133 / 0.12);
+  --kw-color-selection-active-strong: rgb(251 113 133 / 0.32);
+  --kw-color-selection-hover-strong: rgb(251 113 133 / 0.18);
+  --kw-color-selection-active-frosted: rgb(251 113 133 / 0.28);
+  --kw-color-selection-hover-frosted: rgb(251 113 133 / 0.16);
+}
+html[data-color-scheme='dark'][data-accent='amber'] {
+  --kw-color-accent: #fbbf24;
+  --kw-color-accent-hover: #fcd34d;
+  --kw-color-accent-subtle: #78350f;
+  --kw-color-accent-foreground: #fcd34d;
+  --kw-color-accent-contrast: #171717;
+  --kw-color-info: #fbbf24;
+  --kw-focus-ring: rgb(251 191 36 / 0.5);
+  --kw-color-selection-active: rgb(251 191 36 / 0.22);
+  --kw-color-selection-hover: rgb(251 191 36 / 0.12);
+  --kw-color-selection-active-strong: rgb(251 191 36 / 0.32);
+  --kw-color-selection-hover-strong: rgb(251 191 36 / 0.18);
+  --kw-color-selection-active-frosted: rgb(251 191 36 / 0.28);
+  --kw-color-selection-hover-frosted: rgb(251 191 36 / 0.16);
+}
+html[data-color-scheme='dark'][data-accent='emerald'] {
+  --kw-color-accent: #34d399;
+  --kw-color-accent-hover: #6ee7b7;
+  --kw-color-accent-subtle: #064e3b;
+  --kw-color-accent-foreground: #6ee7b7;
+  --kw-color-accent-contrast: #171717;
+  --kw-color-info: #34d399;
+  --kw-focus-ring: rgb(52 211 153 / 0.5);
+  --kw-color-selection-active: rgb(52 211 153 / 0.22);
+  --kw-color-selection-hover: rgb(52 211 153 / 0.12);
+  --kw-color-selection-active-strong: rgb(52 211 153 / 0.32);
+  --kw-color-selection-hover-strong: rgb(52 211 153 / 0.18);
+  --kw-color-selection-active-frosted: rgb(52 211 153 / 0.28);
+  --kw-color-selection-hover-frosted: rgb(52 211 153 / 0.16);
+}
+
+[data-accent-option='blue'] {
+  --kw-accent-swatch: #2563eb;
+}
+[data-accent-option='teal'] {
+  --kw-accent-swatch: #0f766e;
+}
+[data-accent-option='violet'] {
+  --kw-accent-swatch: #7c3aed;
+}
+[data-accent-option='rose'] {
+  --kw-accent-swatch: #e11d48;
+}
+[data-accent-option='amber'] {
+  --kw-accent-swatch: #d97706;
+}
+[data-accent-option='emerald'] {
+  --kw-accent-swatch: #059669;
+}

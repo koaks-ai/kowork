@@ -34,9 +34,9 @@ body,
   background: transparent;
 }
 
-html[data-system-backdrop='none'],
-html[data-system-backdrop='none'] body,
-html[data-system-backdrop='none'] #root {
+html[data-system-backdrop='none'][data-wallpaper='off'],
+html[data-system-backdrop='none'][data-wallpaper='off'] body,
+html[data-system-backdrop='none'][data-wallpaper='off'] #root {
   background: var(--kw-color-canvas);
 }
 
@@ -80,7 +80,7 @@ textarea,
 
 .kw-dot-blur {
   background-color: transparent;
-  background-image: radial-gradient(transparent 1px, var(--kw-color-surface) 1px);
+  background-image: radial-gradient(transparent 1px, var(--kw-color-chrome) 1px);
   background-size: 4px 4px;
   -webkit-backdrop-filter: saturate(50%) blur(8px);
   backdrop-filter: saturate(50%) blur(8px);

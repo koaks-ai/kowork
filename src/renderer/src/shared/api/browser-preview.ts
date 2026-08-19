@@ -10,6 +10,17 @@ import type {
   RunEventDto,
   ThreadDto
 } from '@kowork/contracts'
+import {
+  ClientSettingsError,
+  DEFAULT_CLIENT_SETTINGS,
+  layoutSchema,
+  type ClientLayoutKey,
+  type ClientSettingsBridgeApi,
+  type ClientSettingsSnapshot,
+  type ClientSettingsState,
+  type ClientSettingsWarning,
+  type LegacyLayoutInput
+} from '@kowork/client-settings'
 
 function previewHostOs(): string {
   if (navigator.userAgent.includes('Mac')) return 'darwin'
@@ -124,6 +135,97 @@ let settings: AppSettingsDto = {
   defaultPermissionMode: 'auto'
 }
 const listeners = new Set<(event: RunEventDto) => void>()
+const clientSettingsListeners = new Set<(state: ClientSettingsState) => void>()
+let clientSettingsSnapshot: ClientSettingsSnapshot = {
+  ...structuredClone(DEFAULT_CLIENT_SETTINGS),
+  resolvedColorScheme: 'light'
+}
+
+const previewLayoutKeys = [
+  'leftSidebarWidth',
+  'rightSidebarWidth',
+  'settingsProviderListWidth'
+] as const satisfies readonly ClientLayoutKey[]
+
+function migratePreviewLayout(legacyLayout: LegacyLayoutInput): readonly ClientSettingsWarning[] {
+  const layout = { ...clientSettingsSnapshot.layout }
+  const warnings: ClientSettingsWarning[] = []
+  for (const key of previewLayoutKeys) {
+    const rawValue = legacyLayout[key]
+    if (rawValue === undefined || rawValue === null || rawValue === '') continue
+    const value = typeof rawValue === 'number' ? rawValue : Number(rawValue)
+    const parsed = layoutSchema.safeParse({ ...layout, [key]: value })
+    if (parsed.success) {
+      layout[key] = parsed.data[key]
+    } else {
+      layout[key] = DEFAULT_CLIENT_SETTINGS.layout[key]
+      warnings.push({
+        code: 'LEGACY_LAYOUT_INVALID',
+        key,
+        reason: 'invalid',
+        defaultValue: DEFAULT_CLIENT_SETTINGS.layout[key]
+      })
+    }
+  }
+  clientSettingsSnapshot = { ...clientSettingsSnapshot, layout }
+  return warnings
+}
+
+const clientSettingsApi: ClientSettingsBridgeApi = {
+  bootstrap: (legacyLayout) => {
+    const warnings = migratePreviewLayout(legacyLayout)
+    return {
+      state: {
+        status: 'ready',
+        snapshot: clientSettingsSnapshot,
+        ...(warnings.length ? { warnings } : {})
+      },
+      removeLegacyKeys: true
+    }
+  },
+  get: async () => ({ status: 'ready', snapshot: clientSettingsSnapshot }),
+  patch: async (patch) => {
+    clientSettingsSnapshot = {
+      ...clientSettingsSnapshot,
+      [patch.section]: patch.value,
+      resolvedColorScheme:
+        patch.section === 'appearance' && patch.value.colorScheme !== 'system'
+          ? patch.value.colorScheme
+          : clientSettingsSnapshot.resolvedColorScheme
+    }
+    const state: ClientSettingsState = { status: 'ready', snapshot: clientSettingsSnapshot }
+    clientSettingsListeners.forEach((listener) => listener(state))
+    return clientSettingsSnapshot
+  },
+  chooseBackground: async () => {
+    throw new ClientSettingsError({
+      code: 'BACKGROUND_UNAVAILABLE',
+      message: '浏览器预览不支持选择本机背景图片'
+    })
+  },
+  clearBackground: async () => {
+    clientSettingsSnapshot = {
+      ...clientSettingsSnapshot,
+      appearance: { ...clientSettingsSnapshot.appearance, background: null }
+    }
+    const state: ClientSettingsState = { status: 'ready', snapshot: clientSettingsSnapshot }
+    clientSettingsListeners.forEach((listener) => listener(state))
+    return clientSettingsSnapshot
+  },
+  reset: async () => {
+    clientSettingsSnapshot = {
+      ...structuredClone(DEFAULT_CLIENT_SETTINGS),
+      resolvedColorScheme: 'light'
+    }
+    const state: ClientSettingsState = { status: 'ready', snapshot: clientSettingsSnapshot }
+    clientSettingsListeners.forEach((listener) => listener(state))
+    return clientSettingsSnapshot
+  },
+  subscribe: (listener) => {
+    clientSettingsListeners.add(listener)
+    return () => clientSettingsListeners.delete(listener)
+  }
+}
 
 function emit(
   type: RunEventDto['type'],
@@ -147,8 +249,9 @@ function emit(
 
 export function installBrowserPreviewApi(): void {
   if (!import.meta.env.DEV || window.kowork) return
-  const api: KoWorkApi = {
+  const api: KoWorkApi & { clientSettings: ClientSettingsBridgeApi } = {
     platform: { os: previewHostOs(), backdrop: 'none' },
+    clientSettings: clientSettingsApi,
     bootstrap: async () => ({
       projects: [project],
       providers,

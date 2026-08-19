@@ -5,6 +5,10 @@ import { CoreSupervisor } from '../core/core-supervisor'
 import { registerIpc } from '../ipc/register-ipc'
 import { createMainWindow } from '../windows/create-main-window'
 import { CredentialStore } from '../system/credential-store'
+import { BackgroundAssetStore } from '../client-settings/backgrounds'
+import { ClientSettingsStore } from '../client-settings/store'
+import { registerBackgroundProtocol } from '../client-settings/protocol'
+import { resolveNativeColorScheme, synchronizeNativeTheme } from '../client-settings/native-theme'
 
 export async function startApplication(): Promise<void> {
   await app.whenReady()
@@ -12,6 +16,36 @@ export async function startApplication(): Promise<void> {
   app.on('browser-window-created', (_, window) => optimizer.watchWindowShortcuts(window))
 
   const dataPath = app.getPath('userData')
+  const backgrounds = new BackgroundAssetStore(join(dataPath, 'backgrounds'))
+  const clientSettings = new ClientSettingsStore({
+    filePath: join(dataPath, 'client-settings.json'),
+    resolveColorScheme: resolveNativeColorScheme,
+    validateBackground: (assetId) => backgrounds.validate(assetId).then(() => undefined)
+  })
+  await clientSettings.initialize()
+  const clientSettingsState = clientSettings.getState()
+  if (clientSettingsState.status === 'ready') {
+    const currentBackground = clientSettingsState.snapshot.appearance.background?.assetId ?? null
+    try {
+      await backgrounds.garbageCollect(currentBackground)
+    } catch (error) {
+      clientSettings.addWarning({ code: 'BACKGROUND_CLEANUP_FAILED', operation: 'startup' })
+      console.error('Failed to clean up unreferenced backgrounds', error)
+    }
+  }
+  const stopNativeTheme = synchronizeNativeTheme(clientSettings)
+  const unregisterBackgroundProtocol = registerBackgroundProtocol(
+    backgrounds,
+    () => {
+      const state = clientSettings.getState()
+      return state.status === 'ready'
+        ? (state.snapshot.appearance.background?.assetId ?? null)
+        : null
+    },
+    async (assetId) => {
+      await clientSettings.clearInvalidBackground(assetId)
+    }
+  )
   const credentials = new CredentialStore(join(dataPath, 'credentials.json'))
   const supervisor = new CoreSupervisor(dataPath, credentials)
   await supervisor.start()
@@ -28,14 +62,22 @@ export async function startApplication(): Promise<void> {
   let mainWindow: BrowserWindow | undefined
   const ensureWindow = (): BrowserWindow => {
     if (!mainWindow || mainWindow.isDestroyed()) {
-      mainWindow = createMainWindow()
+      const state = clientSettings.getState()
+      const scheme = state.status === 'ready' ? state.snapshot.resolvedColorScheme : 'light'
+      mainWindow = createMainWindow(scheme)
       mainWindow.on('closed', () => {
         mainWindow = undefined
       })
     }
     return mainWindow
   }
-  const unregisterIpc = registerIpc(supervisor, credentials, ensureWindow)
+  const unregisterIpc = registerIpc(
+    supervisor,
+    credentials,
+    ensureWindow,
+    clientSettings,
+    backgrounds
+  )
   ensureWindow()
 
   app.on('activate', () => ensureWindow().show())
@@ -49,6 +91,8 @@ export async function startApplication(): Promise<void> {
     shutdownStarted = true
     event.preventDefault()
     unregisterIpc()
+    unregisterBackgroundProtocol()
+    stopNativeTheme()
     void supervisor.shutdown().finally(() => app.quit())
   })
 }

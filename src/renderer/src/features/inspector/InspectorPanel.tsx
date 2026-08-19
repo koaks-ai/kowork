@@ -12,7 +12,7 @@ import type { InspectorCardContext } from './types'
 
 type InspectorTab = 'overview' | 'changes'
 
-export function InspectorPanel({ bootstrap }: { bootstrap: AppBootstrapDto }): React.JSX.Element {
+export function InspectorPanel({ bootstrap, frosted = false }: { bootstrap: AppBootstrapDto; frosted?: boolean }): React.JSX.Element {
   const { t } = useTranslation()
   const store = useWorkbenchStore()
   const cards = useInspectorCards(inspectorCardRegistry)
@@ -47,7 +47,7 @@ export function InspectorPanel({ bootstrap }: { bootstrap: AppBootstrapDto }): R
   }
 
   return (
-    <aside className="flex h-full w-full flex-col border-l border-kw-border-default bg-kw-surface">
+    <aside data-frosted={frosted || undefined} className="kw-chrome flex h-full w-full flex-col border-l border-kw-border-default">
       <header className="app-drag flex h-12 shrink-0 items-center gap-1.5 border-b border-kw-border-default px-2.5">
         <SelectableList role="tablist" value={activeTab} orientation="horizontal" selectionStyle="sliding" className="flex min-w-0 flex-1 items-center gap-1.5">
           {tabs.map((tab) => {

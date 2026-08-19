@@ -1,4 +1,7 @@
 @import './tokens.css';
+@import './palettes.css';
+@import './accents.css';
 @import './motion.css';
 @import './primitives.css';
 @import './content.css';
+@import './theme-layers.css';

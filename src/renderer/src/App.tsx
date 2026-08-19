@@ -6,13 +6,19 @@ import { ConversationWorkspace } from './widgets/ConversationWorkspace'
 import { InspectorPanel } from './features/inspector'
 import { ProjectSidebar } from './widgets/ProjectSidebar'
 import { StatusBar } from './widgets/StatusBar'
+import { useAppearanceStore } from './app/appearance/appearance-store'
 
 function App(): React.JSX.Element {
   const { t } = useTranslation()
   const [inspectorOpen, setInspectorOpen] = useState(false)
+  const appearance = useAppearanceStore()
   const bootstrap = useQuery({ queryKey: ['bootstrap'], queryFn: () => window.kowork.bootstrap() })
   const isMacOS = window.kowork.platform.os === 'darwin'
   const frosted = window.kowork.platform.backdrop !== 'none'
+  const wallpaper =
+    appearance.state?.status === 'ready' && Boolean(appearance.state.snapshot.appearance.background)
+  const sidebarFrosted = frosted || wallpaper
+  const contentFrosted = wallpaper
   if (bootstrap.isLoading)
     return (
       <div className="grid h-screen place-items-center bg-kw-canvas text-sm text-kw-text-muted">
@@ -32,16 +38,17 @@ function App(): React.JSX.Element {
         defaultWidth={264}
         minWidth={220}
         maxWidth={420}
-        storageKey="kowork:left-sidebar-width"
+        layoutKey="leftSidebarWidth"
         resizeLabel={t('resizeProjectSidebar')}
       >
-        <ProjectSidebar bootstrap={bootstrap.data} isMacOS={isMacOS} frosted={frosted} />
+        <ProjectSidebar bootstrap={bootstrap.data} isMacOS={isMacOS} frosted={sidebarFrosted} />
       </ResizablePanel>
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-kw-surface">
+      <div data-frosted={contentFrosted || undefined} className="kw-chrome flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="flex min-h-0 flex-1">
           <ConversationWorkspace
             bootstrap={bootstrap.data}
             inspectorOpen={inspectorOpen}
+            frosted={contentFrosted}
             onInspectorToggle={() => {
               setInspectorOpen((open) => !open)
             }}
@@ -51,14 +58,14 @@ function App(): React.JSX.Element {
             defaultWidth={332}
             minWidth={280}
             maxWidth={520}
-            storageKey="kowork:right-sidebar-width"
+            layoutKey="rightSidebarWidth"
             resizeLabel={t('resizeInspectorPanel')}
             collapsed={!inspectorOpen}
           >
-            <InspectorPanel bootstrap={bootstrap.data} />
+            <InspectorPanel bootstrap={bootstrap.data} frosted={contentFrosted} />
           </ResizablePanel>
         </div>
-        <StatusBar bootstrap={bootstrap.data} />
+        <StatusBar bootstrap={bootstrap.data} frosted={contentFrosted} />
       </div>
     </div>
   )

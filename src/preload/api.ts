@@ -7,13 +7,16 @@ import {
   type RpcOutput,
   type RunEventDto
 } from '@kowork/contracts'
+import type { ClientSettingsBridgeApi } from '@kowork/client-settings'
+import { clientSettingsApi } from './client-settings'
 
 async function invoke<M extends RpcMethod>(method: M, payload: RpcInput<M>): Promise<RpcOutput<M>> {
   return await ipcRenderer.invoke('kowork:rpc', method, payload)
 }
 
-export const koWorkApi: KoWorkApi = {
+export const koWorkApi: KoWorkApi & { clientSettings: ClientSettingsBridgeApi } = {
   platform: resolveHostPlatform(process.platform, process.getSystemVersion()),
+  clientSettings: clientSettingsApi,
   bootstrap: () => invoke('app.bootstrap', {}),
   projects: {
     list: (includeDeleted = false) => invoke('projects.list', { includeDeleted }),

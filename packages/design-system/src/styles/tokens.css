@@ -4,6 +4,7 @@
   --kw-color-surface-subtle: #f7f7f6;
   --kw-color-surface-raised: #ffffff;
   --kw-color-surface-frosted: rgb(255 255 255 / 0.55);
+  --kw-color-chrome: var(--kw-color-surface);
   --kw-color-text-primary: #262626;
   --kw-color-text-secondary: #525252;
   --kw-color-text-muted: #737373;
@@ -16,10 +17,13 @@
   --kw-color-accent-hover: #1d4ed8;
   --kw-color-accent-subtle: #eff6ff;
   --kw-color-accent-foreground: #1d4ed8;
+  --kw-color-accent-contrast: #ffffff;
   --kw-color-selection-active: rgb(229 229 229 / 0.7);
   --kw-color-selection-hover: #f5f5f5;
   --kw-color-selection-active-strong: rgb(220 220 220 / 0.78);
   --kw-color-selection-hover-strong: #eeeeec;
+  --kw-color-selection-active-frosted: rgb(0 0 0 / 0.1);
+  --kw-color-selection-hover-frosted: rgb(0 0 0 / 0.04);
   --kw-color-danger: #dc2626;
   --kw-color-danger-hover: #fee2e2;
   --kw-color-danger-subtle: #fef2f2;
@@ -81,11 +85,13 @@
   --kw-motion-orbit-step: 120ms;
   --kw-motion-spinner: 1s;
   --kw-motion-status-pulse: 2s;
+  --kw-wallpaper-blur: 32px;
+  --kw-chrome-opacity: 78%;
 }
 
 [data-frosted] {
-  --kw-color-selection-active: rgb(0 0 0 / 0.1);
-  --kw-color-selection-hover: rgb(0 0 0 / 0.04);
+  --kw-color-selection-active: var(--kw-color-selection-active-frosted);
+  --kw-color-selection-hover: var(--kw-color-selection-hover-frosted);
 }
 
 @theme inline {
@@ -94,6 +100,7 @@
   --color-kw-surface-subtle: var(--kw-color-surface-subtle);
   --color-kw-surface-raised: var(--kw-color-surface-raised);
   --color-kw-surface-frosted: var(--kw-color-surface-frosted);
+  --color-kw-chrome: var(--kw-color-chrome);
   --color-kw-text-primary: var(--kw-color-text-primary);
   --color-kw-text-secondary: var(--kw-color-text-secondary);
   --color-kw-text-muted: var(--kw-color-text-muted);
@@ -106,6 +113,7 @@
   --color-kw-accent-hover: var(--kw-color-accent-hover);
   --color-kw-accent-subtle: var(--kw-color-accent-subtle);
   --color-kw-accent-foreground: var(--kw-color-accent-foreground);
+  --color-kw-accent-contrast: var(--kw-color-accent-contrast);
   --color-kw-selection-active: var(--kw-color-selection-active);
   --color-kw-selection-hover: var(--kw-color-selection-hover);
   --color-kw-danger: var(--kw-color-danger);

@@ -25,14 +25,19 @@ function violations(files: string[], pattern: RegExp): string[] {
 describe('design-system boundary', () => {
   const rendererFiles = sourceFiles(rendererRoot)
 
-  it('keeps raw color literals exclusively in design-system tokens.css', () => {
+  it('keeps raw color literals exclusively in design-system styles', () => {
     const rawColor = /#[\da-f]{3,8}\b|\brgba?\s*\(/i
     expect(violations(rendererFiles, rawColor)).toEqual([])
 
-    const nonTokenDesignFiles = sourceFiles(designSystemRoot).filter(
-      (file) => file !== join(designSystemRoot, 'styles/tokens.css')
+    const nonStyleDesignFiles = sourceFiles(designSystemRoot).filter(
+      (file) =>
+        !file.startsWith(join(designSystemRoot, 'styles')) &&
+        file !== join(designSystemRoot, 'theme/derive-accent.ts')
     )
-    expect(violations(nonTokenDesignFiles, rawColor)).toEqual([])
+    expect(violations(nonStyleDesignFiles, rawColor)).toEqual([])
+    expect(
+      violations([join(designSystemRoot, 'theme/derive-accent.ts')], /#[\da-f]{3,8}\b/i)
+    ).toEqual([])
   })
 
   it('prevents renderer components from using palette color utilities', () => {
@@ -104,15 +109,13 @@ describe('design-system boundary', () => {
     )
   })
 
-  it('uses the shared light tooltip surface and reveal motion', () => {
+  it('uses the raised tooltip surface and reveal motion', () => {
     const primitivesCss = readFileSync(join(designSystemRoot, 'styles/primitives.css'), 'utf8')
     const motionCss = readFileSync(join(designSystemRoot, 'styles/motion.css'), 'utf8')
     expect(primitivesCss).toMatch(
-      /\.kw-tooltip\s*\{[^}]*background:\s*var\(--kw-color-surface-subtle\);[^}]*color:\s*var\(--kw-color-text-secondary\);/s
+      /\.kw-tooltip\s*\{[^}]*background:\s*var\(--kw-color-surface-raised\);[^}]*color:\s*var\(--kw-color-text-secondary\);/s
     )
-    expect(motionCss).toMatch(
-      /\.kw-tooltip\s*\{[^}]*kw-reveal-fade-in[^}]*kw-reveal-scale-in/s
-    )
+    expect(motionCss).toMatch(/\.kw-tooltip\s*\{[^}]*kw-reveal-fade-in[^}]*kw-reveal-scale-in/s)
     expect(motionCss).toMatch(/\.kw-tooltip\[data-state='closed'\]\s*\{[^}]*kw-reveal-fade-out/s)
   })
 

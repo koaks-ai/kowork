@@ -1,6 +1,6 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Cpu, Settings, SlidersHorizontal, X } from 'lucide-react'
+import { Cpu, Palette, Settings, SlidersHorizontal, X } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
@@ -12,11 +12,13 @@ import type {
 import { IconButton, Reveal, SelectableItem, SelectableList, Surface } from '@kowork/design-system'
 import { GeneralSettingsPane } from './GeneralSettingsPane'
 import { ModelSettingsPane } from './ModelSettingsPane'
+import { AppearanceSettingsPane } from './appearance/AppearanceSettingsPane'
 
-type SettingsSection = 'general' | 'model'
+type SettingsSection = 'general' | 'appearance' | 'model'
 
 const SETTINGS_NAV = [
   { id: 'general', icon: SlidersHorizontal, labelKey: 'settingsGeneral' },
+  { id: 'appearance', icon: Palette, labelKey: 'settingsAppearance' },
   { id: 'model', icon: Cpu, labelKey: 'settingsModel' }
 ] as const
 
@@ -107,6 +109,10 @@ export function SettingsDialog({
                       onUpdate={(changes) => updateSettings.mutate(changes)}
                     />
                     </Reveal>
+                ) : section === 'appearance' ? (
+                  <Reveal className="h-full" contentKey="appearance">
+                    <AppearanceSettingsPane />
+                  </Reveal>
                 ) : (
                   <Reveal className="flex h-full min-h-0 flex-col" contentKey="model">
                     <ModelSettingsPane

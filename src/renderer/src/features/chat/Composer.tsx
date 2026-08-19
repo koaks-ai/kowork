@@ -120,12 +120,12 @@ export function Composer({
           <div
             aria-hidden="true"
             data-chat-composer-occlusion
-            className="absolute inset-x-0 -bottom-2.5 top-4 bg-kw-surface"
+            className="kw-raised absolute inset-x-0 -bottom-2.5 top-4"
           />
           <Surface asChild variant="card">
             <div
               data-chat-composer
-              className="pointer-events-auto relative rounded-xl border-kw-border-default/80 bg-kw-surface shadow-kw-composer focus-within:border-kw-border-default"
+              className="kw-raised pointer-events-auto relative rounded-xl border-kw-border-default/80 shadow-kw-composer focus-within:border-kw-border-default"
             >
               <textarea
                 ref={textarea}

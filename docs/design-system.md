@@ -8,19 +8,23 @@
 
 视觉契约只有一个来源：`packages/design-system/`。renderer 和未来的 UI 插件都从这里消费 token、样式和通用交互原语。
 
-| 位置 | 负责什么 | 不负责什么 |
-| --- | --- | --- |
-| `packages/design-system/src/styles/tokens.css` | 语义颜色、圆角、focus、阴影、动画时长/缓动、surface token | 业务组件样式、业务数据 |
-| `packages/design-system/src/styles/motion.css` | `Reveal`、`Disclosure`、`SwapText`、`OrbitSquares` 的 keyframes 及 reduced-motion | 业务组件自定义动画 |
-| `packages/design-system/src/styles/primitives.css` | selectable、surface、button、focus 等基础视觉行为 | 页面布局和业务状态 |
-| `packages/design-system/src/styles/content.css` | Markdown、代码高亮等内容展示的语义颜色 | Markdown 解析和数据获取 |
-| `packages/design-system/src/components/` | 可跨功能复用的 React 原语 | KoWork 业务流程、React Query、Electron API |
-| `packages/design-system/src/plugin-ui-kit.ts` | 版本化、冻结的插件 UI 公开组件集合 | Inspector 注册表、宿主专属能力 |
-| `src/renderer/src/assets/main.css` | 窗口尺寸、三栏布局、拖拽区、面板 resizing、业务间距、滚动条几何 | 新的颜色、圆角、动画契约 |
-| `src/renderer/src/features/` | 按业务域组织页面和业务组件 | 通用视觉原语、协议定义 |
-| `src/renderer/src/widgets/` | 跨功能域的复合业务组件 | 第二套基础组件实现 |
-| `src/renderer/src/shared/ui/` | 仍需要业务行为的展示组件，如 Markdown、重命名输入、可调整面板 | 与 design-system 重复的通用原语 |
-| `src/renderer/src/features/inspector/registry.ts` | Inspector 卡片注册、排序、订阅 | 卡片视觉基础和插件发现 |
+| 位置                                                 | 负责什么                                                                          | 不负责什么                                 |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------ |
+| `packages/design-system/src/styles/tokens.css`       | 默认浅色冻结基线、圆角、focus、阴影、动画时长/缓动                                | 业务组件样式、业务数据                     |
+| `packages/design-system/src/styles/palettes.css`     | 暗色语义 token                                                                    | 运行时计算、自定义强调色                   |
+| `packages/design-system/src/styles/accents.css`      | 浅/暗预置强调色和色板预览                                                         | 自定义强调色算法                           |
+| `packages/design-system/src/styles/theme-layers.css` | 壁纸、chrome、raised 和主题切换图层                                               | Electron 系统材质配置                      |
+| `packages/design-system/src/styles/motion.css`       | `Reveal`、`Disclosure`、`SwapText`、`OrbitSquares` 的 keyframes 及 reduced-motion | 业务组件自定义动画                         |
+| `packages/design-system/src/styles/primitives.css`   | selectable、surface、button、focus 等基础视觉行为                                 | 页面布局和业务状态                         |
+| `packages/design-system/src/styles/content.css`      | Markdown、代码高亮等内容展示的语义颜色                                            | Markdown 解析和数据获取                    |
+| `packages/design-system/src/components/`             | 可跨功能复用的 React 原语                                                         | KoWork 业务流程、React Query、Electron API |
+| `packages/design-system/src/plugin-ui-kit.ts`        | 版本化、冻结的插件 UI 公开组件集合                                                | Inspector 注册表、宿主专属能力             |
+| `packages/design-system/src/theme/`                  | 外观输入解析、自定义强调色推导、dataset/CSS 变量应用                              | React 状态、Electron IO                    |
+| `src/renderer/src/assets/main.css`                   | 窗口尺寸、三栏布局、拖拽区、面板 resizing、业务间距、滚动条几何                   | 新的颜色、圆角、动画契约                   |
+| `src/renderer/src/features/`                         | 按业务域组织页面和业务组件                                                        | 通用视觉原语、协议定义                     |
+| `src/renderer/src/widgets/`                          | 跨功能域的复合业务组件                                                            | 第二套基础组件实现                         |
+| `src/renderer/src/shared/ui/`                        | 仍需要业务行为的展示组件，如 Markdown、重命名输入、可调整面板                     | 与 design-system 重复的通用原语            |
+| `src/renderer/src/features/inspector/registry.ts`    | Inspector 卡片注册、排序、订阅                                                    | 卡片视觉基础和插件发现                     |
 
 ### 放置规则
 
@@ -34,23 +38,44 @@
 
 ### 颜色
 
-- 颜色字面量（hex、rgb、rgba）只允许出现在 `packages/design-system/src/styles/tokens.css`。
+- 主题颜色字面量（hex、rgb、rgba）只允许出现在 `packages/design-system/src/styles/**/*.css`。`src/theme/derive-accent.ts` 只对用户输入的 `#rrggbb` 做通道运算并生成 CSS 值，不维护预置主题色。
 - renderer 不直接使用 `neutral-*`、`blue-*`、`red-*` 等 Tailwind 调色板类作为视觉契约。
 - 优先使用语义类，例如 `bg-kw-surface`、`bg-kw-surface-subtle`、`text-kw-text-primary`、`text-kw-text-muted`、`border-kw-border-default`、`bg-kw-selection-hover`、`text-kw-danger`。
 - 业务状态使用 `kw-success`、`kw-warning`、`kw-info`、`kw-danger` 族；不要在业务组件中重新挑选一组颜色。
 - `data-frosted` 只覆盖语义 surface 和 selection token。不要重新维护 `--kowork-select-*` 或其他组件私有颜色变量。
 
+### 主题与图层
+
+默认 light + blue 的 `:root` 是阶段 1 的冻结基线。默认路径不得用 JavaScript 覆盖 surface、selection 或 accent 变量；其他预置强调色由 CSS 表维护，自定义强调色才由确定性算法生成 overlay 变量。
+
+`html` 使用以下主题 dataset：
+
+- `data-color-scheme="light|dark"` 是解析后的实际配色；用户选择 `system` 时仍只写解析后的 light/dark。
+- `data-accent="blue|teal|violet|rose|amber|emerald|custom"` 选择预置 CSS 表或自定义 overlay。
+- `data-wallpaper="on|off"` 控制壁纸和 chrome 透明叠加。
+- `data-system-backdrop`、`data-platform` 由宿主提供；组件不得据此自行计算颜色。
+- `data-frosted` 表示当前 chrome 需要透出下层。无壁纸时只用于有系统材质的侧栏；有壁纸时用于侧栏、主栏、Inspector 和状态栏。
+
+窗口视觉分为四层：
+
+1. OS 层：vibrancy、mica 或 canvas，由 Electron Main 管理。
+2. Wallpaper 层：全窗固定图片，只在 `background != null` 时存在；图片本身不透明，模糊使用 `--kw-wallpaper-blur`。
+3. Chrome 层：应用三栏与状态栏使用 `.kw-chrome`。有壁纸时 `surfaceOpacity` 只改变这一层的 alpha，不改变图片或 raised 元素。
+4. Raised 层：dialog、popover、context menu、tooltip 与 Composer 使用不透明 `--kw-color-surface-raised`，不继承壁纸透明度。
+
+业务组件不得根据主题分支写第二套类名或颜色。主题运行时只调用 `resolveAppearance()` 和 `applyAppearance()` 写 dataset、壁纸参数与自定义强调色变量；切换主题用 `Reveal` 遮罩，不 remount App，也不把 CSS 值放进 React Context。
+
 ### 圆角
 
 四级表面 scale 是唯一标准：
 
-| token | 值 | 典型用途 |
-| --- | --- | --- |
-| `rounded-sm` | 6px | badge、tag、tooltip、progress、segmented cell |
-| `rounded-md` | 8px | 按钮、输入、列表行、菜单项 |
-| `rounded-lg` | 12px | 卡片、面板、菜单容器、下拉 |
-| `rounded-xl` | 16px | 对话框、composer 外壳、消息气泡 |
-| `rounded-full` | 9999px | 仅圆形控件，如发送/取消按钮 |
+| token          | 值     | 典型用途                                      |
+| -------------- | ------ | --------------------------------------------- |
+| `rounded-sm`   | 6px    | badge、tag、tooltip、progress、segmented cell |
+| `rounded-md`   | 8px    | 按钮、输入、列表行、菜单项                    |
+| `rounded-lg`   | 12px   | 卡片、面板、菜单容器、下拉                    |
+| `rounded-xl`   | 16px   | 对话框、composer 外壳、消息气泡               |
+| `rounded-full` | 9999px | 仅圆形控件，如发送/取消按钮                   |
 
 不要使用 `rounded-[...]` 或引入新的半径值。`rounded-md` 从旧的 6px 变为 8px 是已接受的阶段 1 视觉变化。
 
@@ -62,12 +87,12 @@
 
 业务组件只选择原语，不定义动画细节：
 
-| 需求 | 使用 | 说明 |
-| --- | --- | --- |
-| 页面、pane、卡片、菜单、下拉、对话框、审批条、流式内容进出 | `Reveal` | 通过 `variant` 选择 `default`、`from-bottom`、`dialog`、`overlay`、`stream`；退出完成使用 `onExitComplete` |
-| 展开和收起 | `Disclosure.Root` + `Disclosure.Trigger` + `Disclosure.Content` | 高度由组件测量，chevron 用 `Disclosure.Chevron` |
-| 文本内容替换 | `SwapText` | 不要在业务组件里重新实现 blur swap |
-| 运行中状态指示 | `OrbitSquares` | 仅用于状态指示，不把它当作页面过渡 |
+| 需求                                                       | 使用                                                            | 说明                                                                                                       |
+| ---------------------------------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| 页面、pane、卡片、菜单、下拉、对话框、审批条、流式内容进出 | `Reveal`                                                        | 通过 `variant` 选择 `default`、`from-bottom`、`dialog`、`overlay`、`stream`；退出完成使用 `onExitComplete` |
+| 展开和收起                                                 | `Disclosure.Root` + `Disclosure.Trigger` + `Disclosure.Content` | 高度由组件测量，chevron 用 `Disclosure.Chevron`                                                            |
+| 文本内容替换                                               | `SwapText`                                                      | 不要在业务组件里重新实现 blur swap                                                                         |
+| 运行中状态指示                                             | `OrbitSquares`                                                  | 仅用于状态指示，不把它当作页面过渡                                                                         |
 
 禁止在业务文件中新增 `@keyframes`、`cubic-bezier`、自定义 motion duration，或用 timer 猜测退出动画时长。`Reveal` 的 `animationend` 生命周期是退出完成的唯一通知机制；`prefers-reduced-motion` 由设计系统集中处理。
 
@@ -84,7 +109,7 @@
 
 ## 五、插件 UI 约定
 
-插件只依赖 `@kowork/design-system` 的 `PluginUiKit` 和 CSS custom properties。插件不得：
+插件只依赖 `@kowork/design-system` 的 `PluginUiKit` 和 CSS custom properties，并自动继承宿主当前的 light/dark、accent、chrome/raised 语义。阶段 2 没有修改 `PluginUiKit` 的组件集合或 API 版本，`Slider` 只从普通入口导出。插件不得：
 
 - 依赖宿主 Tailwind class 名作为 API；
 - 直接写颜色、圆角、动画时长或缓动；

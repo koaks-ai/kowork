@@ -1,0 +1,13 @@
+{
+  "name": "@kowork/client-settings",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "KoWork client-local settings contract",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
+  }
+}

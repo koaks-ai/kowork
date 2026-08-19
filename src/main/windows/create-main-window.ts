@@ -2,6 +2,8 @@ import { join } from 'node:path'
 import { BrowserWindow, shell, type BrowserWindowConstructorOptions } from 'electron'
 import { is } from '@electron-toolkit/utils'
 import { resolveSystemBackdrop } from '@kowork/contracts'
+import type { ResolvedColorScheme } from '@kowork/client-settings'
+import { windowCanvasColor } from '../client-settings/native-theme'
 import icon from '../../../resources/icon.png?asset'
 
 function isAllowedExternalUrl(value: string): boolean {
@@ -13,7 +15,9 @@ function isAllowedExternalUrl(value: string): boolean {
   }
 }
 
-function windowMaterialOptions(): Pick<
+function windowMaterialOptions(
+  resolvedColorScheme: ResolvedColorScheme
+): Pick<
   BrowserWindowConstructorOptions,
   'backgroundColor' | 'backgroundMaterial' | 'vibrancy' | 'visualEffectState'
 > {
@@ -31,10 +35,10 @@ function windowMaterialOptions(): Pick<
       backgroundMaterial: 'mica'
     }
   }
-  return { backgroundColor: '#ffffff' }
+  return { backgroundColor: windowCanvasColor(resolvedColorScheme) }
 }
 
-export function createMainWindow(): BrowserWindow {
+export function createMainWindow(resolvedColorScheme: ResolvedColorScheme): BrowserWindow {
   const window = new BrowserWindow({
     width: 1440,
     height: 920,
@@ -44,7 +48,7 @@ export function createMainWindow(): BrowserWindow {
     autoHideMenuBar: true,
     title: 'KoWork',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
-    ...windowMaterialOptions(),
+    ...windowMaterialOptions(resolvedColorScheme),
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),

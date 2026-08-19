@@ -14,6 +14,7 @@ import {
   Reveal,
   SelectableItem,
   SelectableList,
+  Slider,
   Surface
 } from '@kowork/design-system'
 
@@ -228,5 +229,14 @@ describe('design-system primitives', () => {
     expect(view.getByRole('button', { name: 'options' }).className).toContain('kw-icon-button')
     expect(PluginUiKit.apiVersion).toBe(PLUGIN_UI_KIT_API_VERSION)
     expect(Object.isFrozen(PluginUiKit)).toBe(true)
+    expect(Object.hasOwn(PluginUiKit, 'Slider')).toBe(false)
+  })
+
+  it('reports numeric Slider values without entering PluginUiKit', () => {
+    const onValueChange = vi.fn()
+    const view = render(createElement(Slider, { min: 0, max: 64, value: 32, onValueChange }))
+    const slider = view.getByRole('slider')
+    fireEvent.change(slider, { target: { value: '48' } })
+    expect(onValueChange).toHaveBeenCalledWith(48)
   })
 })
