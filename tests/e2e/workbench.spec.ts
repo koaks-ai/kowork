@@ -256,11 +256,13 @@ test('runs through the real Electron, preload, main and Core process chain', asy
     await nonSelectedPermission.hover()
     await nonSelectedPermission.focus()
     await expect(nonSelectedPermission).toBeFocused()
-    expect(
-      await nonSelectedPermission.evaluate(
-        (element) => getComputedStyle(element, '::before').backgroundColor
+    await expect
+      .poll(() =>
+        nonSelectedPermission.evaluate(
+          (element) => getComputedStyle(element, '::before').backgroundColor
+        )
       )
-    ).not.toBe('rgba(0, 0, 0, 0)')
+      .not.toBe('rgba(0, 0, 0, 0)')
     const permissionSelectorWidth = (await permissionSelector.boundingBox())!.width
     for (const label of ['询问', '自动', 'Yolo']) {
       await permissionSelector.getByRole('button', { name: label, exact: true }).click()
@@ -333,7 +335,8 @@ test('runs through the real Electron, preload, main and Core process chain', asy
     await electronApp.evaluate(({ BrowserWindow }) =>
       BrowserWindow.getAllWindows()[0]?.setSize(1_000, 700)
     )
-    await expect(page.getByRole('tab', { name: '概览' })).toBeHidden()
+    await expect(page.getByRole('tab', { name: '概览' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '隐藏详情侧栏' })).toBeVisible()
     await expect(page.getByPlaceholder('给 KoWork 发消息…')).toBeVisible()
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)

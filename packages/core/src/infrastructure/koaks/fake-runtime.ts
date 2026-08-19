@@ -40,23 +40,25 @@ export class FakeAgentRuntime implements AgentRuntimePort {
       kind: 'summary'
     }
     await new Promise((resolve) => setTimeout(resolve, 500))
+    const toolCallId = `read-readme-${input.runId}`
+    const providerToolCallId = `provider-read-readme-${input.runId}`
     yield {
       type: 'model',
       step: 0,
       phase: 'normal',
       event: {
         type: 'tool_call_delta',
-        id: `read-readme-${input.runId}`,
+        id: providerToolCallId,
         index: 0,
         nameDelta: 'read_file',
         argumentsDelta: JSON.stringify({ path: 'README.md', startLine: 1, endLine: 80 }),
-        itemRef: 'tool-readme'
+        itemRef: toolCallId
       }
     }
     yield {
       type: 'tool_call_requested',
       call: {
-        id: `read-readme-${input.runId}`,
+        id: toolCallId,
         name: 'read_file',
         argumentsJson: JSON.stringify({ path: 'README.md', startLine: 1, endLine: 80 })
       }
@@ -65,7 +67,7 @@ export class FakeAgentRuntime implements AgentRuntimePort {
     await new Promise((resolve) => setTimeout(resolve, 40))
     yield {
       type: 'tool_result',
-      callId: `read-readme-${input.runId}`,
+      callId: toolCallId,
       output: 'README.md 已读取，共 3 行。',
       isError: false
     }
