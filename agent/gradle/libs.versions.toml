@@ -13,6 +13,9 @@ datetime = "0.6.2"
 kmpProcess = "0.3.0"
 # 阶段 3b 的持久化。native-driver 底层是 SQLiter，支持 linuxX64。
 sqldelight = "2.1.0"
+# 仅作为 composite substitution 的模块选择器；该版本刻意不对应远程制品，防止开发期静默
+# 回退到 Maven Central。未配置 koaksDir/KOAKS_DIR 时，spike 依赖解析会明确失败。
+koaks = "phase3-spike-local"
 
 [libraries]
 kotlin-gradlePlugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
@@ -31,10 +34,13 @@ ktor-server-cio = { module = "io.ktor:ktor-server-cio", version.ref = "ktor" }
 ktor-server-websockets = { module = "io.ktor:ktor-server-websockets", version.ref = "ktor" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
+ktor-client-websockets = { module = "io.ktor:ktor-client-websockets", version.ref = "ktor" }
 kmp-process = { module = "io.matthewnelson.kmp-process:process", version.ref = "kmpProcess" }
 sqldelight-runtime = { module = "app.cash.sqldelight:runtime", version.ref = "sqldelight" }
 sqldelight-nativeDriver = { module = "app.cash.sqldelight:native-driver", version.ref = "sqldelight" }
 sqldelight-jvmDriver = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqldelight" }
+koaks-core = { module = "org.koaks:koaks-core", version.ref = "koaks" }
+koaks-json = { module = "org.koaks:koaks-json", version.ref = "koaks" }
 
 [plugins]
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }

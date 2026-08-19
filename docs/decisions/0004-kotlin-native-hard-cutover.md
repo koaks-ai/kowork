@@ -73,6 +73,11 @@ Koaks 是 Kotlin Multiplatform 框架，当前给 KoWork 提供的是 **Kotlin/J
 阶段 0 已确认：`agent/protocol` 的五个 native 目标（含 `linuxX64` / `linuxArm64`）能在 macOS
 宿主上交叉编译通过。这说明开发机上能直接产出 Linux server 二进制，不需要 Linux 构建机。
 
+2026-08-19 的 macOS Arm Native 前置 spike 进一步验证：Ktor CIO WebSocket、kmp-process
+`stdoutFeed`/`destroySignal`、SQLDelight Native 内存 driver（链接系统 `sqlite3`）和 Koaks Agent
+可在同一个 Native executable 中共存；loopback 黑盒 self-test 已完成一次 `read_file` 纵切。
+这只验证 macOS Arm 路径，不改变 Linux 延后范围，也不等同于完整 Agent Server。
+
 ## 什么情况下应该推翻
 
 如果前置 spike 证明 Ktor CIO 的 WebSocket server 或 SQLDelight 在 `linuxArm64` 上不可用，

@@ -311,6 +311,13 @@ graph TB
 
 **期间应用状态**：Electron 继续跑旧 TS core，**完全不动**。所以阶段 3 期间应用一直可用。
 
+**前置 spike 实施结果（2026-08-19）**：`agent/spike` 已完成 macOS Arm Native 纵切回归门。
+release binary 的 `self-test` 在 loopback Ktor CIO WebSocket 上完成 `hello/welcome`、
+`runs.enqueue`、一次 Koaks scripted model 的 `read_file` 和 KAP 事件回传，并实际执行
+kmp-process `/usr/bin/printf` 探针、SQLDelight Native 内存表的写入读回和 `interop:json` 公共
+wire codec。该模块只实现 KAP 子集，长期保留用于回归；不引入正式 persistence schema、队列、
+审批、Provider、插件、远程 bind 或 Linux target。
+
 **已验证的技术前提**（不要重新调研）：
 
 - Ktor CIO `embeddedServer` 支持 Kotlin/Native 且支持 WebSocket。限制：只能用 CIO 引擎；**不支持无反向代理的 HTTPS**

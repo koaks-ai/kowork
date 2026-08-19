@@ -27,8 +27,33 @@ dependencyResolutionManagement {
     }
 }
 
+// Koaks 在开发期优先通过 composite build 接入，避免为了验证 Native 纵切先发布制品。
+// 属性优先于环境变量，未配置时保留 protocol 模块的独立可构建性；spike 模块会在依赖解析
+// 阶段给出清晰的缺失依赖提示。
+val koaksDirValue = providers.gradleProperty("koaksDir")
+    .orElse(providers.environmentVariable("KOAKS_DIR"))
+    .orNull
+if (koaksDirValue != null) {
+    val koaksDir = file(koaksDirValue)
+    require(koaksDir.isDirectory && koaksDir.resolve("settings.gradle.kts").isFile) {
+        "koaksDir/KOAKS_DIR 必须指向包含 settings.gradle.kts 的 Koaks Gradle 构建：$koaksDir"
+    }
+    includeBuild(koaksDir) {
+        dependencySubstitution {
+            substitute(module("org.koaks:koaks-core")).using(project(":core"))
+            substitute(module("org.koaks:koaks-json")).using(project(":interop:json"))
+            substitute(module("org.koaks:provider-chat-completions")).using(project(":model-provider:chat-completions"))
+            substitute(module("org.koaks:provider-openai")).using(project(":model-provider:openai"))
+            substitute(module("org.koaks:provider-anthropic")).using(project(":model-provider:anthropic"))
+            substitute(module("org.koaks:provider-ollama")).using(project(":model-provider:ollama"))
+            substitute(module("org.koaks:provider-qwen")).using(project(":model-provider:qwen"))
+        }
+    }
+}
+
 rootProject.name = "kowork-agent"
 
 // 阶段 0 只有 protocol。后续阶段按 docs/refactor 的模块划分依次加入：
 //   domain / persistence / workspace / tools / application / plugins / server / app
 include("protocol")
+include("spike")

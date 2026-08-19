@@ -43,7 +43,7 @@ Agent Server。本地模式由 Electron 启动同一个 Server 二进制作为 s
 - 阶段 0：KAP v1 协议基线——已完成。
 - 阶段 1：设计系统与交互原语统一——已完成。
 - 阶段 2：主题体系——已完成。
-- 阶段 3：Kotlin Agent Server——未开始；进入主体实现前必须先完成 Native 纵切 spike。
+- 阶段 3：Kotlin Agent Server——主体实现未开始；macOS Arm Native 前置纵切 spike 已完成。
 - 阶段 4：客户端换接 KAP 并删除旧 TS Core——未开始。
 - 阶段 5：插件系统——未开始。
 - 阶段 6：收尾、测试矩阵和多平台交付——未开始。
