@@ -15,7 +15,7 @@ todos:
     content: 阶段 3a（改 koaks 仓库）：增加 linuxX64/linuxArm64（评估 macosX64）目标，补 Linux 的 HTTP engine 与 FileSystem actual，把 NodeJson 的事件 wire 映射上提到 commonMain 并给 AgentEvent 等加 @Serializable
     status: pending
   - id: phase3-spike
-    content: 阶段 3 前置 spike：在单个 linux native 二进制里跑通 Ktor CIO WS server + kmp-process 子进程 + SQLDelight native + koaks agent 四者共存，完成「WS 连接 → 一次 read_file 工具调用 → 事件回传」纵切
+    content: 阶段 3 前置 spike：在单个 macosArm native 二进制里跑通 Ktor CIO WS server + kmp-process 子进程 + SQLDelight native + koaks agent 四者共存，完成「WS 连接 → 一次 read_file 工具调用 → 事件回传」纵切
     status: pending
   - id: phase3b-persistence
     content: 阶段 3b：agent/ Gradle 骨架与目标集，SQLDelight schema 落地 12 张表并预先加入 plugins / plugin_state 表，按聚合拆 repositories，可审阅迁移
