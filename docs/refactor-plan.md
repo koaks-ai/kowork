@@ -275,7 +275,7 @@ graph TB
 
 ### 阶段 2 — 主题体系
 
-**背景**：当前没有任何主题概念。`app_settings` 是 KV 表但 `appSettingsSchema` 不允许未知字段，多余 key 不会 round-trip，所以主题**不能**塞进现有设置。窗口已支持透明与 `vibrancy` / `mica`，`[data-frosted]` 会把选中 / 悬停 token 换成半透明黑——这是主题机制的雏形，要吸收进正式设计。
+**实施前背景**：阶段 2 开始前没有主题概念。`app_settings` 是 KV 表但 `appSettingsSchema` 不允许未知字段，多余 key 不会 round-trip，所以主题**不能**塞进现有设置。窗口当时已支持透明与 `vibrancy` / `mica`，`[data-frosted]` 会把选中 / 悬停 token 换成半透明黑——这是主题机制的雏形，需要吸收进正式设计。
 
 **为什么紧接阶段 1**：主题就是「给设计系统 token 换值」。阶段 1 把所有强调色、悬停色、圆角收敛成 token 之后，主题几乎是免费的——这正好回答了「设计统一能否用主题实现」：**是的，统一 token 是前提，主题是它的自然结果**。
 
