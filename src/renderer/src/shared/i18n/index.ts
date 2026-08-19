@@ -65,6 +65,7 @@ const zhCN = {
   appearanceDark: '暗色',
   appearanceSystem: '跟随系统',
   appearanceAccent: '强调色',
+  appearanceAccentDefault: '默认',
   appearanceAccentBlue: '蓝色',
   appearanceAccentTeal: '青色',
   appearanceAccentViolet: '紫色',

@@ -35,6 +35,10 @@ describe('appearance settings fields', () => {
         onChange: onAccentChange
       })
     )
+    expect(
+      (document.querySelector("[data-accent-option='default']") as HTMLElement | null)?.dataset
+        .selected
+    ).toBe('true')
     fireEvent.click(document.querySelector("[data-accent-option='violet']")!)
     expect(onAccentChange).toHaveBeenCalledWith({
       ...DEFAULT_CLIENT_SETTINGS.appearance,
@@ -53,5 +57,27 @@ describe('appearance settings fields', () => {
     expect(sliders).toHaveLength(2)
     expect(sliders.every((slider) => slider.hasAttribute('disabled'))).toBe(true)
     expect(view.getByText('appearanceWallpaperDisabled')).toBeTruthy()
+  })
+
+  it('exposes stable labeled controls for wallpaper blur and opacity', () => {
+    const appearance = {
+      ...DEFAULT_CLIENT_SETTINGS.appearance,
+      background: {
+        assetId: '31ce027a-f782-4da5-b914-49a20a8b84c2.png',
+        blurPx: 24,
+        surfaceOpacity: 0.65
+      }
+    }
+    const view = render(
+      createElement(WallpaperField, {
+        appearance,
+        onChange: vi.fn()
+      })
+    )
+    expect(view.getByRole('slider', { name: 'appearanceBlur' })).toHaveProperty('value', '24')
+    expect(view.getByRole('slider', { name: 'appearanceSurfaceOpacity' })).toHaveProperty(
+      'value',
+      '0.65'
+    )
   })
 })

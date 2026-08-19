@@ -12,14 +12,14 @@ afterEach(() => {
 })
 
 describe('theme resolution', () => {
-  it('keeps the default light blue theme free of overlay variables', () => {
+  it('keeps the default light gray theme free of overlay variables', () => {
     expect(
       resolveAppearance({
         appearance: DEFAULT_CLIENT_SETTINGS.appearance,
         resolvedColorScheme: 'light'
       })
     ).toEqual({
-      dataset: { colorScheme: 'light', accent: 'blue', wallpaper: 'off' },
+      dataset: { colorScheme: 'light', accent: 'default', wallpaper: 'off' },
       vars: {},
       wallpaper: null
     })

@@ -4,7 +4,7 @@ export const DEFAULT_CLIENT_SETTINGS = Object.freeze({
   version: 1,
   appearance: {
     colorScheme: 'light',
-    accent: { type: 'preset', id: 'blue' },
+    accent: { type: 'preset', id: 'default' },
     background: null
   },
   layout: {

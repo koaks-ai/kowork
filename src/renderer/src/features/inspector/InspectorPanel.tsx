@@ -48,7 +48,7 @@ export function InspectorPanel({ bootstrap, frosted = false }: { bootstrap: AppB
 
   return (
     <aside data-frosted={frosted || undefined} className="kw-chrome flex h-full w-full flex-col border-l border-kw-border-default">
-      <header className="app-drag flex h-12 shrink-0 items-center gap-1.5 border-b border-kw-border-default px-2.5">
+      <header data-inspector-titlebar className="app-drag kw-titlebar-blur flex h-12 shrink-0 items-center gap-1.5 border-b border-kw-border-default px-2.5">
         <SelectableList role="tablist" value={activeTab} orientation="horizontal" selectionStyle="sliding" className="flex min-w-0 flex-1 items-center gap-1.5">
           {tabs.map((tab) => {
             const Icon = tab === 'overview' ? BarChart3 : GitCompareArrows

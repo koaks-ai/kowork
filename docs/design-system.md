@@ -46,12 +46,12 @@
 
 ### 主题与图层
 
-默认 light + blue 的 `:root` 是阶段 1 的冻结基线。默认路径不得用 JavaScript 覆盖 surface、selection 或 accent 变量；其他预置强调色由 CSS 表维护，自定义强调色才由确定性算法生成 overlay 变量。
+默认 light + default 使用阶段 1 冻结的 surface/selection 基线，并将强调色设为灰色。`blue` 在 light/dark 下都使用蓝色选中态。默认路径不得用 JavaScript 覆盖 surface、selection 或 accent 变量；其他预置强调色由 CSS 表维护，自定义强调色才由确定性算法生成 overlay 变量。
 
 `html` 使用以下主题 dataset：
 
 - `data-color-scheme="light|dark"` 是解析后的实际配色；用户选择 `system` 时仍只写解析后的 light/dark。
-- `data-accent="blue|teal|violet|rose|amber|emerald|custom"` 选择预置 CSS 表或自定义 overlay。
+- `data-accent="default|blue|teal|violet|rose|amber|emerald|custom"` 选择预置 CSS 表或自定义 overlay。
 - `data-wallpaper="on|off"` 控制壁纸和 chrome 透明叠加。
 - `data-system-backdrop`、`data-platform` 由宿主提供；组件不得据此自行计算颜色。
 - `data-frosted` 表示当前 chrome 需要透出下层。无壁纸时只用于有系统材质的侧栏；有壁纸时用于侧栏、主栏、Inspector 和状态栏。
@@ -59,9 +59,11 @@
 窗口视觉分为四层：
 
 1. OS 层：vibrancy、mica 或 canvas，由 Electron Main 管理。
-2. Wallpaper 层：全窗固定图片，只在 `background != null` 时存在；图片本身不透明，模糊使用 `--kw-wallpaper-blur`。
-3. Chrome 层：应用三栏与状态栏使用 `.kw-chrome`。有壁纸时 `surfaceOpacity` 只改变这一层的 alpha，不改变图片或 raised 元素。
+2. Wallpaper 层：全窗固定图片，只在 `background != null` 时存在；图片本身不透明，模糊使用 `--kw-wallpaper-blur`。图片需按 blur 半径向四周 overscan，并显式解除全局 `img` 最大宽度限制，避免窗口右侧或边缘露出空隙。
+3. Chrome 层：应用三栏与状态栏使用 `.kw-chrome`。左侧栏额外带 `data-sidebar`，浅/暗模式分别使用更亮且更通透的侧栏 token；有壁纸时 `surfaceOpacity` 只改变这一层的 alpha，不改变图片或 raised 元素。
 4. Raised 层：dialog、popover、context menu、tooltip 与 Composer 使用不透明 `--kw-color-surface-raised`，不继承壁纸透明度。
+
+会话顶栏与 Inspector 顶栏统一使用 `.kw-titlebar-blur`，共享侧栏 chrome 背景与同一 `backdrop-filter`。包含顶栏的展开态容器不得长期保留 `transform`、`filter` 或相应 `will-change` 来创建新的 backdrop root；折叠动画只在折叠状态应用这些属性，否则会截断顶栏对 Wallpaper/OS 层的模糊采样。
 
 业务组件不得根据主题分支写第二套类名或颜色。主题运行时只调用 `resolveAppearance()` 和 `applyAppearance()` 写 dataset、壁纸参数与自定义强调色变量；切换主题用 `Reveal` 遮罩，不 remount App，也不把 CSS 值放进 React Context。
 

@@ -24,6 +24,11 @@ let snapshot: AppearanceStoreSnapshot = { state: null, mutationError: null }
 const listeners = new Set<() => void>()
 let initialized = false
 let mutationTail: Promise<void> = Promise.resolve()
+let nextMutationRevision = 0
+const pendingPatches = new Map<
+  ClientSettingsPatch['section'],
+  { revision: number; patch: ClientSettingsPatch }
+>()
 
 function emit(next: AppearanceStoreSnapshot): void {
   snapshot = next
@@ -32,6 +37,30 @@ function emit(next: AppearanceStoreSnapshot): void {
 
 function setState(state: ClientSettingsState): void {
   emit({ state, mutationError: null })
+}
+
+function applyPendingPatches(state: ClientSettingsState): ClientSettingsState {
+  if (state.status !== 'ready' || pendingPatches.size === 0) return state
+  let next = state.snapshot
+  for (const { patch } of pendingPatches.values()) {
+    if (patch.section === 'appearance') {
+      next = {
+        ...next,
+        appearance: patch.value,
+        resolvedColorScheme:
+          patch.value.colorScheme === 'system' ? next.resolvedColorScheme : patch.value.colorScheme
+      }
+    } else if (patch.section === 'layout') {
+      next = { ...next, layout: patch.value }
+    } else {
+      next = { ...next, locale: patch.value }
+    }
+  }
+  return { ...state, snapshot: next }
+}
+
+function setConfirmedState(state: ClientSettingsState): void {
+  setState(applyPendingPatches(state))
 }
 
 function setMutationError(error: unknown): void {
@@ -51,10 +80,10 @@ function initialize(): void {
   if (!snapshot.state) setState(clientSettings().bootstrap({}).state)
   void clientSettings()
     .get()
-    .then(setState, (error) => {
+    .then(setConfirmedState, (error) => {
       setMutationError(error)
     })
-  clientSettings().subscribe(setState)
+  clientSettings().subscribe(setConfirmedState)
 }
 
 export function seedAppearanceStore(state: ClientSettingsState): void {
@@ -78,21 +107,27 @@ export function getAppearanceStoreSnapshot(): AppearanceStoreSnapshot {
 }
 
 async function patchClientSettings(patch: ClientSettingsPatch): Promise<void> {
+  const revision = ++nextMutationRevision
+  pendingPatches.set(patch.section, { revision, patch })
   const current = snapshot.state
   if (current?.status === 'ready') {
-    setState({
-      status: 'ready',
-      snapshot: { ...current.snapshot, [patch.section]: patch.value }
-    })
+    setState(applyPendingPatches(current))
   }
   const operation = mutationTail.then(async () => {
     try {
       const updated = await clientSettings().patch(patch)
-      setState({ status: 'ready', snapshot: updated })
+      if (pendingPatches.get(patch.section)?.revision === revision) {
+        pendingPatches.delete(patch.section)
+      }
+      setConfirmedState({ status: 'ready', snapshot: updated })
     } catch (error) {
+      if (pendingPatches.get(patch.section)?.revision === revision) {
+        pendingPatches.delete(patch.section)
+      }
       setMutationError(error)
       try {
-        setState(await clientSettings().get())
+        const confirmed = applyPendingPatches(await clientSettings().get())
+        emit({ state: confirmed, mutationError: snapshot.mutationError })
       } catch (refreshError) {
         setMutationError(refreshError)
       }

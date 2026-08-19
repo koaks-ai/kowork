@@ -1,5 +1,5 @@
 import { applyAppearance, resolveAppearance, Reveal } from '@kowork/design-system'
-import { useLayoutEffect, useRef, useState, type PropsWithChildren } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState, type PropsWithChildren } from 'react'
 import { X } from 'lucide-react'
 import { AppearanceErrorScreen } from './AppearanceErrorScreen'
 import { dismissAppearanceMutationError, useAppearanceStore } from './appearance-store'
@@ -8,34 +8,31 @@ import { WallpaperLayer } from './WallpaperLayer'
 export function AppearanceRoot({ children }: PropsWithChildren): React.JSX.Element {
   const store = useAppearanceStore()
   const previousTheme = useRef<string | undefined>(undefined)
-  const [transitionVisible, setTransitionVisible] = useState(false)
-  const [transitionOpen, setTransitionOpen] = useState(false)
+  const nextTransitionId = useRef(0)
+  const [transitionId, setTransitionId] = useState<number | null>(null)
 
   const state = store.state
-  const resolved =
-    state?.status === 'ready'
-      ? resolveAppearance({
-          appearance: state.snapshot.appearance,
-          resolvedColorScheme: state.snapshot.resolvedColorScheme
-        })
-      : null
-  const themeKey =
-    state?.status === 'ready'
-      ? `${resolved?.dataset.colorScheme}:${JSON.stringify(state.snapshot.appearance.accent)}`
-      : undefined
+  // 过渡状态本身会触发额外渲染；稳定解析结果可避免 effect cleanup 取消退出帧并遗留遮罩。
+  const appearance = state?.status === 'ready' ? state.snapshot.appearance : undefined
+  const resolvedColorScheme =
+    state?.status === 'ready' ? state.snapshot.resolvedColorScheme : undefined
+  const resolved = useMemo(() => {
+    if (!appearance || !resolvedColorScheme) return null
+    return resolveAppearance({
+      appearance,
+      resolvedColorScheme
+    })
+  }, [appearance, resolvedColorScheme])
+  const themeKey = appearance
+    ? `${resolvedColorScheme}:${JSON.stringify(appearance.accent)}`
+    : undefined
 
   useLayoutEffect(() => {
     if (!resolved || !themeKey) return
     const changed = previousTheme.current !== undefined && previousTheme.current !== themeKey
-    if (changed) {
-      setTransitionVisible(true)
-      setTransitionOpen(true)
-    }
+    if (changed) setTransitionId(++nextTransitionId.current)
     applyAppearance(document.documentElement, resolved)
     previousTheme.current = themeKey
-    if (!changed) return
-    const frame = requestAnimationFrame(() => setTransitionOpen(false))
-    return () => cancelAnimationFrame(frame)
   }, [resolved, themeKey])
 
   if (!state) {
@@ -51,12 +48,15 @@ export function AppearanceRoot({ children }: PropsWithChildren): React.JSX.Eleme
     <div className="relative isolate h-full w-full">
       {resolved?.wallpaper ? <WallpaperLayer {...resolved.wallpaper} /> : null}
       {children}
-      {transitionVisible ? (
+      {transitionId !== null ? (
         <Reveal
-          state={transitionOpen ? 'open' : 'closed'}
+          contentKey={transitionId}
+          state="closed"
           variant="overlay"
           className="kw-theme-transition"
-          onExitComplete={() => setTransitionVisible(false)}
+          onExitComplete={() =>
+            setTransitionId((current) => (current === transitionId ? null : current))
+          }
         >
           <span />
         </Reveal>

@@ -28,18 +28,48 @@ describe('theme layers', () => {
     expect(rootColors.filter((name) => !darkColors.has(name))).toEqual([])
   })
 
-  it('keeps raised surfaces opaque and gives dark blue an accent selection', async () => {
-    const [accents, layers, primitives] = await Promise.all([
+  it('keeps raised surfaces opaque and gives blue an accent selection in both schemes', async () => {
+    const [accents, layers, primitives, tokens, palettes] = await Promise.all([
       readFile(`${stylesRoot}/accents.css`, 'utf8'),
       readFile(`${stylesRoot}/theme-layers.css`, 'utf8'),
-      readFile(`${stylesRoot}/primitives.css`, 'utf8')
+      readFile(`${stylesRoot}/primitives.css`, 'utf8'),
+      readFile(`${stylesRoot}/tokens.css`, 'utf8'),
+      readFile(`${stylesRoot}/palettes.css`, 'utf8')
     ])
+    expect(accents).toMatch(
+      /data-color-scheme='light'\]\[data-accent='blue'\][\s\S]*--kw-color-selection-active-strong: rgb\(37 99 235 \/ 0\.27\)/u
+    )
+    expect(accents).toMatch(
+      /data-color-scheme='light'\]\[data-accent='default'\][\s\S]*--kw-color-accent: #737373[\s\S]*--kw-color-selection-active: rgb\(229 229 229 \/ 0\.7\)/u
+    )
+    expect(accents).toMatch(
+      /data-color-scheme='dark'\]\[data-accent='default'\][\s\S]*--kw-color-accent: #a3a3a3[\s\S]*--kw-color-selection-active: rgb\(255 255 255 \/ 0\.13\)/u
+    )
     expect(accents).toMatch(
       /data-color-scheme='dark'\]\[data-accent='blue'\][\s\S]*--kw-color-selection-active-strong: rgb\(96 165 250 \/ 0\.32\)/u
     )
     expect(layers).toMatch(
       /\.kw-raised\s*\{\s*background:\s*var\(--kw-color-surface-raised\);\s*\}/u
     )
+    expect(layers).toMatch(
+      /\.kw-wallpaper-layer__image\s*\{[^}]*width:\s*calc\(100% \+ 160px\);[^}]*max-width:\s*none;/su
+    )
     expect(primitives).toContain('background: var(--kw-color-surface-raised)')
+    expect(tokens).toContain('--kw-color-sidebar-frosted: rgb(255 255 255 / 0.48);')
+    expect(palettes).toContain('--kw-color-sidebar-frosted: rgb(48 48 48 / 0.6);')
+    expect(layers).toContain('--kw-color-sidebar-chrome: var(--kw-color-sidebar-surface);')
+    expect(layers).toContain('--kw-color-sidebar-chrome: var(--kw-color-sidebar-frosted);')
+    expect(layers).toMatch(/--kw-color-sidebar-chrome: color-mix\([\s\S]*--kw-sidebar-opacity/u)
+  })
+
+  it('uses one chrome layer per workbench column and the same blur on both titlebars', async () => {
+    const [app, workspace, inspector] = await Promise.all([
+      readFile('src/renderer/src/App.tsx', 'utf8'),
+      readFile('src/renderer/src/widgets/ConversationWorkspace.tsx', 'utf8'),
+      readFile('src/renderer/src/features/inspector/InspectorPanel.tsx', 'utf8')
+    ])
+    expect(app).not.toMatch(/<div[^>]*className="[^"]*kw-chrome[^"]*flex min-h-0 min-w-0 flex-1/u)
+    expect(workspace).toMatch(/data-workspace-titlebar[\s\S]*kw-titlebar-blur/u)
+    expect(inspector).toMatch(/data-inspector-titlebar[\s\S]*kw-titlebar-blur/u)
   })
 })

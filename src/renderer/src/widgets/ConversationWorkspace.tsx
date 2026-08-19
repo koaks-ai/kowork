@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { PanelRightClose, PanelRightOpen, Pencil, Play } from 'lucide-react'
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   threadSchema,
@@ -179,7 +179,10 @@ export function ConversationWorkspace({
   const hasConversation = eventsQuery.data?.some((event) => event.type === 'run.started') ?? false
   return (
     <main data-frosted={frosted || undefined} className="kw-chrome relative flex min-w-0 flex-1 flex-col">
-      <header className="app-drag kw-dot-blur absolute inset-x-0 top-0 z-20 flex h-12 items-center justify-between border-b border-kw-border-default px-4">
+      <header
+        data-workspace-titlebar
+        className="app-drag kw-titlebar-blur absolute inset-x-0 top-0 z-20 flex h-12 items-center justify-between border-b border-kw-border-default px-4"
+      >
         <div className="flex min-w-0 items-center gap-2 text-sm">
           {editingTitle ? (
             <InlineRenameInput
@@ -232,6 +235,7 @@ export function ConversationWorkspace({
           ref={scrollContainer}
           data-chat-scroll
           className="flex h-full flex-col overflow-y-scroll"
+          style={{ '--kowork-composer-height': `${composerHeight}px` } as CSSProperties}
           onScroll={(event) => {
             const container = event.currentTarget
             const distanceFromBottom =

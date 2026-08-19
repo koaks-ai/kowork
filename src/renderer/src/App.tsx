@@ -10,7 +10,7 @@ import { useAppearanceStore } from './app/appearance/appearance-store'
 
 function App(): React.JSX.Element {
   const { t } = useTranslation()
-  const [inspectorOpen, setInspectorOpen] = useState(false)
+  const [inspectorOpen, setInspectorOpen] = useState(true)
   const appearance = useAppearanceStore()
   const bootstrap = useQuery({ queryKey: ['bootstrap'], queryFn: () => window.kowork.bootstrap() })
   const isMacOS = window.kowork.platform.os === 'darwin'
@@ -43,7 +43,7 @@ function App(): React.JSX.Element {
       >
         <ProjectSidebar bootstrap={bootstrap.data} isMacOS={isMacOS} frosted={sidebarFrosted} />
       </ResizablePanel>
-      <div data-frosted={contentFrosted || undefined} className="kw-chrome flex min-h-0 min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="flex min-h-0 flex-1">
           <ConversationWorkspace
             bootstrap={bootstrap.data}

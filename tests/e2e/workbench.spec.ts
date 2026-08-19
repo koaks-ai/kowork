@@ -212,11 +212,10 @@ test('runs through the real Electron, preload, main and Core process chain', asy
       )
     ).toBeLessThanOrEqual(1)
     const composerOverlayBox = await page.locator('[data-chat-composer-overlay]').boundingBox()
-    const composerOcclusionBox = await page.locator('[data-chat-composer-occlusion]').boundingBox()
     expect(composerOverlayBox).not.toBeNull()
-    expect(composerOcclusionBox).not.toBeNull()
     expect(Math.abs(composerOverlayBox!.y - composerBox!.y)).toBeLessThanOrEqual(1)
-    expect(Math.abs(composerOcclusionBox!.y - (composerBox!.y + 16))).toBeLessThanOrEqual(1)
+    await expect(page.locator('[data-chat-composer-occlusion]')).toHaveCount(0)
+    await expect(page.locator('[data-chat-scroll]')).not.toHaveCSS('-webkit-mask-image', 'none')
     await expect(page.locator('[data-chat-composer]')).toHaveCSS('border-radius', radiusXl.resolved)
     await expect(page.locator('[data-chat-composer]')).toHaveCSS(
       'transition-property',
@@ -239,10 +238,6 @@ test('runs through the real Electron, preload, main and Core process chain', asy
     expect(
       focusMotion.durationsMs.every((duration) => Math.abs(duration - focusMotion.tokenMs) < 1)
     ).toBe(true)
-    await expect(page.locator('[data-chat-composer-occlusion]')).toHaveCSS(
-      'background-color',
-      'rgb(255, 255, 255)'
-    )
     const modelSelectorBox = await page.locator('[data-model-selector]').boundingBox()
     const permissionSelectorBox = await page.locator('[data-permission-selector]').boundingBox()
     expect(modelSelectorBox).not.toBeNull()

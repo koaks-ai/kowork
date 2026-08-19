@@ -117,11 +117,6 @@ export function Composer({
       <div data-chat-composer-frame className="mx-auto w-full max-w-[860px] px-5 pb-2.5 sm:px-8">
         <ApprovalBanner threadId={thread.id} />
         <div className="relative">
-          <div
-            aria-hidden="true"
-            data-chat-composer-occlusion
-            className="kw-raised absolute inset-x-0 -bottom-2.5 top-4"
-          />
           <Surface asChild variant="card">
             <div
               data-chat-composer

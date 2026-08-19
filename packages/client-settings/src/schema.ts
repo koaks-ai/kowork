@@ -1,6 +1,14 @@
 import { z } from 'zod'
 
-export const accentIdSchema = z.enum(['blue', 'teal', 'violet', 'rose', 'amber', 'emerald'])
+export const accentIdSchema = z.enum([
+  'default',
+  'blue',
+  'teal',
+  'violet',
+  'rose',
+  'amber',
+  'emerald'
+])
 export type AccentId = z.infer<typeof accentIdSchema>
 
 export const accentSchema = z.discriminatedUnion('type', [

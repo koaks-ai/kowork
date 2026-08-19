@@ -3,6 +3,7 @@ import { SelectableItem, SelectableList } from '@kowork/design-system'
 import { useTranslation } from 'react-i18next'
 
 const ACCENTS = [
+  'default',
   'blue',
   'teal',
   'violet',

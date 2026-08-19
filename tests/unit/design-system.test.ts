@@ -236,6 +236,7 @@ describe('design-system primitives', () => {
     const onValueChange = vi.fn()
     const view = render(createElement(Slider, { min: 0, max: 64, value: 32, onValueChange }))
     const slider = view.getByRole('slider')
+    expect(slider.style.getPropertyValue('--kw-slider-position')).toBe('50%')
     fireEvent.change(slider, { target: { value: '48' } })
     expect(onValueChange).toHaveBeenCalledWith(48)
   })

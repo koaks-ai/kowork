@@ -13,7 +13,7 @@ export function WallpaperField({
   const { t } = useTranslation()
   const background = appearance.background
   return (
-    <div className="space-y-4">
+    <div className="w-[300px] space-y-5">
       <div className="flex items-center gap-2">
         <Button variant="secondary" onClick={() => void chooseBackground()}>
           {t('appearanceChooseBackground')}
@@ -23,11 +23,12 @@ export function WallpaperField({
         </Button>
       </div>
       <label className="block text-xs text-kw-text-secondary">
-        <span className="mb-2 flex justify-between">
+        <span className="mb-1.5 flex items-baseline justify-between gap-4">
           <span>{t('appearanceBlur')}</span>
-          <span>{background?.blurPx ?? 32}px</span>
+          <span className="tabular-nums text-kw-text-muted">{background?.blurPx ?? 32}px</span>
         </span>
         <Slider
+          aria-label={t('appearanceBlur')}
           min={0}
           max={64}
           step={1}
@@ -39,11 +40,14 @@ export function WallpaperField({
         />
       </label>
       <label className="block text-xs text-kw-text-secondary">
-        <span className="mb-2 flex justify-between">
+        <span className="mb-1.5 flex items-baseline justify-between gap-4">
           <span>{t('appearanceSurfaceOpacity')}</span>
-          <span>{Math.round((background?.surfaceOpacity ?? 0.78) * 100)}%</span>
+          <span className="tabular-nums text-kw-text-muted">
+            {Math.round((background?.surfaceOpacity ?? 0.78) * 100)}%
+          </span>
         </span>
         <Slider
+          aria-label={t('appearanceSurfaceOpacity')}
           min={0.45}
           max={0.95}
           step={0.01}

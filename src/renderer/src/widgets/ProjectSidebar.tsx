@@ -247,6 +247,7 @@ export function ProjectSidebar({
   return (
     <aside
       data-frosted={frosted || undefined}
+      data-sidebar
       className="kw-chrome group/sidebar flex h-full w-full flex-col border-r border-kw-border-default"
     >
       <div

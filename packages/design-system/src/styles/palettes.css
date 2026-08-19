@@ -9,6 +9,8 @@ html[data-color-scheme='dark'] {
   --kw-color-surface-subtle: #2d2d2d;
   --kw-color-surface-raised: #303030;
   --kw-color-surface-frosted: rgb(28 28 28 / 0.68);
+  --kw-color-sidebar-surface: #303030;
+  --kw-color-sidebar-frosted: rgb(48 48 48 / 0.6);
   --kw-color-text-primary: #f5f5f5;
   --kw-color-text-secondary: #d4d4d4;
   --kw-color-text-muted: #a3a3a3;

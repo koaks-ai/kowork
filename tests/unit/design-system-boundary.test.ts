@@ -77,6 +77,9 @@ describe('design-system boundary', () => {
     expect(primitivesCss).toMatch(
       /\.kw-panel-visibility__content\s*\{[^}]*transition:[^}]*transform var\(--kw-motion-selection-duration\)/s
     )
+    expect(primitivesCss).not.toMatch(
+      /\.kw-panel-visibility__content\s*\{[^}]*will-change\s*:\s*[^;}]*filter/s
+    )
     expect(primitivesCss).toMatch(
       /\.kw-panel-visibility\[data-collapsed='true'\]\s+\.kw-panel-visibility__content\s*\{[^}]*transform:\s*translateX\(-14px\)/s
     )

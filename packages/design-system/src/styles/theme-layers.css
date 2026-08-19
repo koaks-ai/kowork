@@ -5,6 +5,10 @@
   background: var(--kw-color-surface-raised);
 }
 
+html {
+  --kw-color-sidebar-chrome: var(--kw-color-sidebar-surface);
+}
+
 html[data-wallpaper='off'][data-system-backdrop='vibrancy'] .kw-chrome[data-frosted],
 html[data-wallpaper='off'][data-system-backdrop='mica'] .kw-chrome[data-frosted] {
   background: var(--kw-color-surface-frosted);
@@ -19,6 +23,29 @@ html[data-wallpaper='on'] .kw-chrome {
   background: var(--kw-color-chrome);
 }
 
+/* 侧栏与会话顶栏共享最终背景，保持不同主题和壁纸状态下的透明度一致。 */
+.kw-chrome[data-sidebar] {
+  background: var(--kw-color-sidebar-chrome);
+}
+
+html[data-wallpaper='off'][data-system-backdrop='vibrancy'],
+html[data-wallpaper='off'][data-system-backdrop='mica'] {
+  --kw-color-sidebar-chrome: var(--kw-color-sidebar-frosted);
+}
+
+html[data-wallpaper='off'][data-system-backdrop='vibrancy'] .kw-chrome[data-sidebar][data-frosted],
+html[data-wallpaper='off'][data-system-backdrop='mica'] .kw-chrome[data-sidebar][data-frosted] {
+  background: var(--kw-color-sidebar-chrome);
+}
+
+html[data-wallpaper='on'] {
+  --kw-color-sidebar-chrome: color-mix(
+    in srgb,
+    var(--kw-color-sidebar-surface) var(--kw-sidebar-opacity),
+    transparent
+  );
+}
+
 .kw-wallpaper-layer {
   pointer-events: none;
   position: fixed;
@@ -30,6 +57,7 @@ html[data-wallpaper='on'] .kw-chrome {
   position: absolute;
   inset: -80px;
   width: calc(100% + 160px);
+  max-width: none;
   height: calc(100% + 160px);
   object-fit: cover;
   filter: blur(var(--kw-wallpaper-blur));

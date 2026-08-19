@@ -4,6 +4,8 @@
   --kw-color-surface-subtle: #f7f7f6;
   --kw-color-surface-raised: #ffffff;
   --kw-color-surface-frosted: rgb(255 255 255 / 0.55);
+  --kw-color-sidebar-surface: var(--kw-color-surface);
+  --kw-color-sidebar-frosted: rgb(255 255 255 / 0.48);
   --kw-color-chrome: var(--kw-color-surface);
   --kw-color-text-primary: #262626;
   --kw-color-text-secondary: #525252;
@@ -87,6 +89,7 @@
   --kw-motion-status-pulse: 2s;
   --kw-wallpaper-blur: 32px;
   --kw-chrome-opacity: 78%;
+  --kw-sidebar-opacity: calc(var(--kw-chrome-opacity) - 8%);
 }
 
 [data-frosted] {

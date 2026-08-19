@@ -8,9 +8,9 @@ todos:
   - id: phase1-design-system [completed]
     content: 阶段 1：建立 packages/design-system，统一圆角为 4 级 token（映射现有 56 处），抽出 Reveal 与 Disclosure 两个唯一动画原语，统一选中/悬停为单一 SelectableList（基准=左侧栏会话），新增 Surface 原语，建立 Inspector 卡片注册表，导出版本化 PluginUiKit
     status: completed
-  - id: phase2-theme
+  - id: phase2-theme [in_progress]
     content: 阶段 2：主题体系。内置主题（默认灰需与阶段 1 基准逐像素一致）+ 自定义强调色 + 背景图片及模糊度/透明度，存客户端本地 client-settings.json，定义与 vibrancy/frosted 的叠加关系，实现 appearance 设置界面
-    status: pending
+    status: in_progress
   - id: phase3a-koaks-native
     content: 阶段 3a（改 koaks 仓库）：增加 linuxX64/linuxArm64（评估 macosX64）目标，补 Linux 的 HTTP engine 与 FileSystem actual，把 NodeJson 的事件 wire 映射上提到 commonMain 并给 AgentEvent 等加 @Serializable
     status: pending
@@ -291,6 +291,16 @@ graph TB
 - `features/settings/appearance/` 界面。
 
 **验收**：切换主题 / 强调色 / 背景图 / 模糊度 / 透明度全部即时生效且覆盖全应用（含 Inspector、对话框、菜单、timeline）；重启后保持；默认灰主题与阶段 1 结束时的观感逐像素一致。
+
+**实施进度（2026-08-19）**：阶段 2 主体已落地，但尚未完成全量验收，因此迁移状态保持“进行中”。
+
+- 新增 `@kowork/client-settings`、原子持久化、一次性 layout 迁移、独立 preload/IPC、壁纸文件校验与 `kowork-bg://` 协议，并同步 `nativeTheme` 与窗口背景。
+- design-system 已提供 light/dark palette、默认灰与六种彩色强调色、自定义强调色推导、chrome/raised 图层、`Slider` 和无 React 的 theme runtime；`PluginUiKit` v1 集合不变。
+- renderer 已接入 AppearanceRoot、设置外观页、全窗壁纸、三栏 chrome 和 raised Composer。主题切换不 remount App，连续快速修改壁纸参数采用乐观 patch 序列，避免旧广播覆盖最新值。
+- 后续视觉回归已统一左侧栏与会话/Inspector 顶栏的半透明模糊，去掉顶栏点阵；壁纸铺满全窗且不受全局 `img` 最大宽度限制；Composer 下方遮挡改为滚动区 mask，不再绘制半透明色块。
+- Inspector 默认展开，确保工作区首次进入即可看到状态信息和上下文卡片；用户仍可通过会话顶栏按钮收起或重新展开。
+
+当前验证结果：`pnpm test`（280 项）、`pnpm typecheck`、`pnpm build`、阶段相关 eslint、`git diff --check` 和 `tests/e2e/appearance.spec.ts`（3 项）通过。`workbench.spec.ts` 的状态信息断言已通过；完整主流程目前在后续 Timeline 断言处失败：工具调用 delta 与 finalized call 使用不同 ID，产生 7 个而非预期 6 个内容块。该独立问题需单独修复后重新执行全量 Electron e2e；阶段 2 在此之前不得标记为完成。
 
 ---
 
