@@ -56,4 +56,5 @@ rootProject.name = "kowork-agent"
 // 阶段 0 只有 protocol。后续阶段按 docs/refactor 的模块划分依次加入：
 //   domain / persistence / workspace / tools / application / plugins / server / app
 include("protocol")
+include("persistence")
 include("spike")

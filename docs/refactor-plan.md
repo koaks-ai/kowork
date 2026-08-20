@@ -18,8 +18,8 @@ todos:
     content: 阶段 3 前置 spike：在单个 macosArm native 二进制里跑通 Ktor CIO WS server + kmp-process 子进程 + SQLDelight native + koaks agent 四者共存，完成「WS 连接 → 一次 read_file 工具调用 → 事件回传」纵切
     status: completed
   - id: phase3b-persistence
-    content: 阶段 3b：agent/ Gradle 骨架与目标集，SQLDelight schema 落地 12 张表并预先加入 plugins / plugin_state 表，按聚合拆 repositories，可审阅迁移
-    status: pending
+    content: 阶段 3b：SQLDelight persistence，15 张表的全新 schema 基线、同会话多分支 lineage、branch 隔离队列/run/event、模型与展示双投影、按聚合拆 repositories
+    status: completed
   - id: phase3c-workspace
     content: 阶段 3c：workspace 层。okio 的 FileSystemPort、kmp-process 的 ProcessPort、只读 GitPort，完整移植路径 canonicalize + symlink 真实路径校验 + 敏感环境变量剔除
     status: pending
@@ -349,10 +349,28 @@ wire codec。该模块只实现 KAP 子集，长期保留用于回归；不引�
 
 #### 3b — `agent/` Gradle 骨架 + persistence
 
-- 建立 `agent/` 独立 Gradle 构建、build-logic、目标集，依赖 koaks
-- SQLDelight schema 落地 12 张表，**并从一开始就加 `plugins` 与 `plugin_state` 两张表**（阶段 5 的预留；早加便宜、晚加要写迁移）
-- 按聚合拆 repositories，禁止重现 god object
-- 迁移文件可审阅（对应现有 `packages/core/drizzle/` 的规范）
+已完成：
+
+- 新增 `agent/persistence`，仅启用 JVM 测试目标与当前已验证的 macOS Arm64 Native 目标；没有提前新增
+  Linux target，也不依赖 `agent/spike` 或 `interop:node`。
+- 使用全新的 SQLDelight schema 基线，不读取、转换或兼容旧 TypeScript SQLite 数据。最终 schema 有
+  15 张表：原持久化聚合、`conversation_branches`、`plugins` 和 `plugin_state`；`.sq` 是运行时 schema
+  唯一真源，保留首版 `.sqm` 与 schema 数据库快照并启用 migration verification。
+- `threads` 只作为会话容器；`conversation_branches` 与 `conversation_turns.parent_turn_id` 支持同会话
+  多分支 lineage。queue pause、请求、run、event、approval、path grant 与 compression checkpoint 都按
+  branch 隔离。active branch 不保存在 server。
+- 分叉只能锚定源 branch lineage 上已持久化的 turn，不复制 queue/run/event。预留 `side_chat` kind，
+  采用软归档并默认隐藏，历史仍可恢复。
+- 提供模型/展示双投影：模型上下文使用 `user summary + 后续 turns`；展示历史保留全部 turns，并插入
+  独立 `SummaryNotification`。父摘要可在 fork 点前继承，子摘要不反向影响父分支。
+- repositories 按 Project、Thread、Branch、Queue、Run、Event、Approval、PathGrant、Conversation、
+  Provider、Settings、Plugin 聚合拆分；Koaks turn/items/checkpoint 复用 `KoaksWireJson`，持久化 JSON
+  读写失败均显式报错。
+- JVM 与 macOS Arm64 测试覆盖 schema/外键/WAL、lineage 与非法 fork、branch FIFO/run/event 隔离、
+  重启恢复、summary 双投影、side chat、Koaks wire round-trip、plugin state 与 malformed JSON。
+
+实施结果（2026-08-20）：phase 3b completed。本阶段未修改 KAP；thread/branch API、多客户端显式选择
+branch、压缩触发策略和真正的 run 调度仍属于后续 3e/3f。
 
 #### 3c — workspace 层（fs / shell / git）
 
@@ -451,7 +469,8 @@ wire codec。该模块只实现 KAP 子集，长期保留用于回归；不引�
 ## 六、风险登记
 
 - **Kotlin/Native 无原生 HTTPS**。远程部署强制依赖反向代理。若不可接受，替代方案是在应用层做加密握手，成本显著更高。建议先按反向代理走。
-- **SQLDelight Native 在 Linux 的链接与 glibc 兼容性**。需在较旧的 Linux 发行版上构建发布产物。这是阶段 3b 的第一个 spike。
+- **SQLDelight Native 在 Linux 的链接与 glibc 兼容性**。需在较旧的 Linux 发行版上构建发布产物；
+  phase 3b 按当前范围只验证 macOS Arm64，Linux target 仍延后。
 - **Linux 的 ktor client engine 选型**（CIO vs curl）。阶段 3a 必须实测，不要凭文档假定。
 - **阶段 3 工时体量**。工具 + 持久化 + 审批 + 服务端全量重写是本计划最大的不确定性。建议在 3b 之前先做一个纵切 spike：macOS Arm native 二进制里跑通「WS 连接 → 一次 `read_file` 工具调用 → 事件回传」，验证 Ktor server + kmp-process + SQLDelight + koaks 四者能在同一个 native 二进制里共存。这个 spike 的价值远高于其成本；Linux 运行验证留到后续范围。
 - **阶段 4 期间应用不可用**。建议在切换前打 tag 并保留可运行的旧版分支。

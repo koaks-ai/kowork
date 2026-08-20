@@ -1,0 +1,209 @@
+-- 可审阅的第一版迁移基线。
+-- phase 3b 没有旧 Kotlin Agent Server 数据库，因此该文件只描述从空库建立最终 schema，
+-- 不读取或转换 Electron/TypeScript Core 的开发期 SQLite 数据。
+
+CREATE TABLE projects (
+    id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    root_path TEXT NOT NULL UNIQUE,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    deleted_at INTEGER
+);
+
+CREATE TABLE providers (
+    id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    protocol TEXT NOT NULL,
+    base_url TEXT NOT NULL,
+    credential_ciphertext TEXT,
+    default_context_window_tokens INTEGER NOT NULL,
+    enabled INTEGER NOT NULL DEFAULT 1 CHECK(enabled IN (0, 1)),
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    deleted_at INTEGER
+);
+
+CREATE TABLE model_profiles (
+    id TEXT NOT NULL PRIMARY KEY,
+    provider_id TEXT NOT NULL REFERENCES providers(id),
+    name TEXT NOT NULL,
+    model TEXT NOT NULL,
+    context_window_tokens INTEGER NOT NULL,
+    source TEXT NOT NULL,
+    enabled INTEGER NOT NULL DEFAULT 1 CHECK(enabled IN (0, 1)),
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    UNIQUE(provider_id, model)
+);
+
+CREATE TABLE threads (
+    id TEXT NOT NULL PRIMARY KEY,
+    project_id TEXT NOT NULL REFERENCES projects(id),
+    title TEXT NOT NULL,
+    model_profile_id TEXT NOT NULL REFERENCES model_profiles(id),
+    permission_mode TEXT NOT NULL,
+    context_window_tokens INTEGER,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    deleted_at INTEGER
+);
+
+CREATE TABLE conversation_branches (
+    id TEXT NOT NULL PRIMARY KEY,
+    thread_id TEXT NOT NULL REFERENCES threads(id),
+    parent_branch_id TEXT REFERENCES conversation_branches(id),
+    -- 与 conversation_turns.branch_id 构成循环关系，SQLDelight 不支持前向 FK；
+    -- fork/head 的 thread、lineage 与存在性由 BranchRepository/ConversationRepository 原子校验。
+    fork_turn_id TEXT,
+    head_turn_id TEXT,
+    kind TEXT NOT NULL DEFAULT 'main' CHECK(kind IN ('main', 'fork', 'side_chat')),
+    queue_paused INTEGER NOT NULL DEFAULT 0 CHECK(queue_paused IN (0, 1)),
+    archived_at INTEGER,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    CHECK(
+        (kind = 'main' AND parent_branch_id IS NULL AND fork_turn_id IS NULL) OR
+        (kind IN ('fork', 'side_chat') AND parent_branch_id IS NOT NULL AND fork_turn_id IS NOT NULL)
+    )
+);
+
+CREATE TABLE turn_requests (
+    id TEXT NOT NULL PRIMARY KEY,
+    thread_id TEXT NOT NULL REFERENCES threads(id),
+    branch_id TEXT NOT NULL REFERENCES conversation_branches(id),
+    input TEXT NOT NULL,
+    status TEXT NOT NULL CHECK(status IN ('queued', 'running', 'completed', 'failed', 'cancelled', 'interrupted')),
+    model_profile_id TEXT NOT NULL REFERENCES model_profiles(id),
+    context_window_tokens INTEGER NOT NULL,
+    position INTEGER NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    UNIQUE(branch_id, position)
+);
+
+CREATE TABLE runs (
+    id TEXT NOT NULL PRIMARY KEY,
+    request_id TEXT NOT NULL REFERENCES turn_requests(id),
+    thread_id TEXT NOT NULL REFERENCES threads(id),
+    branch_id TEXT NOT NULL REFERENCES conversation_branches(id),
+    status TEXT NOT NULL CHECK(status IN ('starting', 'running', 'waiting', 'completed', 'failed', 'cancelled', 'interrupted')),
+    model_profile_id TEXT NOT NULL REFERENCES model_profiles(id),
+    started_at INTEGER NOT NULL,
+    finished_at INTEGER,
+    prompt_tokens INTEGER NOT NULL DEFAULT 0,
+    completion_tokens INTEGER NOT NULL DEFAULT 0,
+    total_tokens INTEGER NOT NULL DEFAULT 0,
+    error TEXT
+);
+
+CREATE TABLE run_events (
+    sequence INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    id TEXT NOT NULL UNIQUE,
+    project_id TEXT REFERENCES projects(id),
+    thread_id TEXT REFERENCES threads(id),
+    branch_id TEXT REFERENCES conversation_branches(id),
+    run_id TEXT REFERENCES runs(id),
+    type TEXT NOT NULL,
+    payload_json TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+);
+
+CREATE TABLE approvals (
+    id TEXT NOT NULL PRIMARY KEY,
+    project_id TEXT NOT NULL REFERENCES projects(id),
+    thread_id TEXT NOT NULL REFERENCES threads(id),
+    branch_id TEXT NOT NULL REFERENCES conversation_branches(id),
+    run_id TEXT NOT NULL REFERENCES runs(id),
+    kind TEXT NOT NULL,
+    title TEXT NOT NULL,
+    detail TEXT NOT NULL,
+    status TEXT NOT NULL,
+    requested_path TEXT,
+    requested_access TEXT,
+    created_at INTEGER NOT NULL,
+    resolved_at INTEGER
+);
+
+CREATE TABLE path_grants (
+    id TEXT NOT NULL PRIMARY KEY,
+    run_id TEXT NOT NULL REFERENCES runs(id),
+    branch_id TEXT NOT NULL REFERENCES conversation_branches(id),
+    root_path TEXT NOT NULL,
+    access_mode TEXT NOT NULL DEFAULT 'read',
+    is_directory INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL
+);
+
+CREATE TABLE conversation_turns (
+    id TEXT NOT NULL PRIMARY KEY,
+    thread_id TEXT NOT NULL REFERENCES threads(id),
+    branch_id TEXT NOT NULL REFERENCES conversation_branches(id),
+    parent_turn_id TEXT REFERENCES conversation_turns(id),
+    ordinal INTEGER NOT NULL,
+    status_json TEXT NOT NULL,
+    items_json TEXT NOT NULL,
+    checkpoint_json TEXT,
+    usage_json TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    UNIQUE(branch_id, ordinal)
+);
+
+CREATE TABLE compression_checkpoints (
+    id TEXT NOT NULL PRIMARY KEY,
+    thread_id TEXT NOT NULL REFERENCES threads(id),
+    branch_id TEXT NOT NULL REFERENCES conversation_branches(id),
+    model_profile_id TEXT NOT NULL REFERENCES model_profiles(id),
+    summary TEXT NOT NULL,
+    covered_through_turn_id TEXT NOT NULL REFERENCES conversation_turns(id),
+    estimated_tokens INTEGER NOT NULL,
+    created_at INTEGER NOT NULL
+);
+
+CREATE TABLE app_settings (
+    key TEXT NOT NULL PRIMARY KEY,
+    value_json TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE plugins (
+    id TEXT NOT NULL PRIMARY KEY,
+    manifest_json TEXT NOT NULL,
+    status TEXT NOT NULL,
+    install_path TEXT NOT NULL,
+    load_error TEXT,
+    agent_loaded INTEGER NOT NULL DEFAULT 0,
+    installed_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE plugin_state (
+    plugin_id TEXT NOT NULL REFERENCES plugins(id),
+    key TEXT NOT NULL,
+    value_json TEXT NOT NULL,
+    updated_at INTEGER NOT NULL,
+    PRIMARY KEY(plugin_id, key)
+);
+
+CREATE INDEX projects_active_idx ON projects(deleted_at, updated_at);
+CREATE INDEX providers_active_idx ON providers(deleted_at, enabled);
+CREATE INDEX model_profiles_provider_idx ON model_profiles(provider_id, enabled);
+CREATE INDEX threads_project_idx ON threads(project_id, deleted_at, updated_at);
+CREATE INDEX branches_thread_idx ON conversation_branches(thread_id, archived_at, updated_at);
+CREATE INDEX branches_parent_idx ON conversation_branches(parent_branch_id, created_at);
+CREATE UNIQUE INDEX branches_main_unique_idx ON conversation_branches(thread_id) WHERE kind = 'main';
+CREATE INDEX turn_requests_branch_idx ON turn_requests(branch_id, status, position);
+CREATE INDEX runs_branch_idx ON runs(branch_id, started_at);
+CREATE INDEX runs_active_idx ON runs(status, started_at);
+CREATE INDEX run_events_thread_idx ON run_events(thread_id, sequence);
+CREATE INDEX run_events_branch_idx ON run_events(branch_id, sequence);
+CREATE INDEX approvals_pending_idx ON approvals(status, created_at);
+CREATE INDEX approvals_branch_idx ON approvals(branch_id, created_at);
+CREATE INDEX path_grants_run_idx ON path_grants(run_id);
+CREATE INDEX path_grants_branch_idx ON path_grants(branch_id, created_at);
+CREATE INDEX conversation_turns_branch_idx ON conversation_turns(branch_id, ordinal);
+CREATE INDEX conversation_turns_parent_idx ON conversation_turns(parent_turn_id);
+CREATE INDEX compression_branch_idx ON compression_checkpoints(branch_id, created_at);
+CREATE INDEX compression_anchor_idx ON compression_checkpoints(covered_through_turn_id);
+CREATE INDEX plugin_state_plugin_idx ON plugin_state(plugin_id, updated_at);

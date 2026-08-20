@@ -69,7 +69,7 @@ Main 阻止非当前页面导航，只把经协议校验的 HTTP/HTTPS 链接交
 ```text
 agent/                        Agent Server —— 独立的 Gradle 构建
   build-logic/                  KMP 约定插件（目标集、编译选项、fixture codegen）
-  gradle/libs.versions.toml      版本单一真源，与 koaks 对齐
+  gradle/libs.versions.toml      Agent 依赖版本单一真源；与 koaks 的跨版本兼容性由测试保证
   protocol/                     ★ KAP 真源（@Serializable），零业务依赖
   domain/                       实体与领域规则，无 IO
   persistence/                  SQLDelight schema 与按聚合划分的 repositories
@@ -117,10 +117,11 @@ tests/                          unit / integration / e2e
 
 ## 5. 运行与恢复
 
-- 不同会话可并发；同一会话是持久化的 FIFO 队列。
+- 不同会话分支可并发；同一分支是持久化的 FIFO 队列。会话容器不保存共享的 active branch，
+  每个客户端本地保存当前查看分支，并在后续 KAP branch API 中显式携带 `branchId`。
 - **入队时冻结**模型与上下文窗口配置。**权限模式不冻结** —— 每次工具调用开始时读取会话当前值，
   因此用户在排队期间改模式会影响后续调用。
-- 失败、取消、中断或压缩失败会暂停当前会话队列，需用户显式恢复。
+- 失败、取消、中断或压缩失败会暂停当前分支队列，需用户显式恢复；不会阻塞同会话的其他分支。
 - server 始终**先持久化事件再广播**。客户端打开会话时先拉历史，再订阅增量；关闭窗口只解除订阅，
   不取消后台运行。
 - server 重启后，活动 run 标记为 `interrupted`，**不会**自动重放可能有副作用的工具调用。
@@ -133,9 +134,23 @@ server 侧 SQLite（SQLDelight），启用 WAL、外键与事务迁移。覆盖�
 事件、审批、run 级路径授权、Koaks 的完整 turns/items/checkpoints、压缩检查点、供应商、
 模型 Profile、服务端设置，以及 `plugins` / `plugin_state`。
 
-记忆用 Koaks 的 custom `ThreadMemory` 持久化完整历史与 provider checkpoint。预计上下文达到
-Profile 限制的 **90%** 时，先用当前会话模型生成持久化 system summary 再继续原请求。压缩最多保留
-最近 8 个完整 turn，按预算动态减到至少 1 个。原始历史与运行日志不自动删除。
+`threads` 是会话容器，`conversation_branches` 保存同一会话内的分支元数据。turn 通过
+`parent_turn_id` 组成 lineage，branch 只记录 parent branch、已持久化的 fork turn 和自身 head；
+新分支不复制 queue、run 或 event。主分支的 parent/fork 为空，普通分支与预留的 `side_chat`
+从源分支 lineage 上的已提交 turn 创建。side chat 关闭时软归档，默认不出现在分支列表，但历史仍可
+恢复和审计。
+
+记忆持久化 Koaks 的完整 turns/items/provider checkpoint，并生成两个不同投影：
+
+- **模型上下文**：从 head 沿 `parent_turn_id` 回溯，选择 lineage 上最新有效的 compression
+  checkpoint；若存在摘要，首条模型消息是 `user("Conversation summary:\n<summary>")`，之后只追加
+  摘要覆盖点之后的完整 turns。子分支可继承 fork 点之前的父分支摘要，子分支新摘要不反向影响父分支。
+- **展示历史**：保留 root 到 head 的全部原始 turns，并在 checkpoint 锚点后插入独立的
+  `SummaryNotification`；通知不是用户真实输入，也不会送进模型。
+
+阶段 3e 仍负责触发压缩的应用策略：预计上下文达到 Profile 限制的 **90%** 时生成摘要，最多保留
+最近 8 个完整 turn，按预算动态减到至少 1 个。phase 3b 只提供上述持久化与投影原语，不实现触发器。
+原始历史与运行日志不自动删除。
 
 **状态归属**见 [决策 0002](decisions/0002-server-owns-state.md)。判据是"换一台电脑接同一个
 server 时这个状态该不该跟着走"：Agent 状态归 server，主题/布局/连接配置等设备级偏好留在客户端的
@@ -196,7 +211,8 @@ UI 插件的信任模型（同 realm 执行，权限是告知性而非强制沙�
 | 2 | 主题体系 | 已完成 |
 | 3a | Koaks 公共事件 wire codec；Linux 目标与平台 actual | 部分完成：codec 已完成，Linux 范围延后 |
 | 3 spike | 单个 macOS Arm native 二进制里验证 Ktor WS + 子进程 + SQLDelight + koaks 共存 | 已完成（仅 KAP 子集回归门） |
-| 3b–3f | Agent Server 实现（持久化 → 工作区 → 工具 → 应用层 → 服务端） | 未开始 |
+| 3b | SQLDelight persistence：多分支 lineage、branch 隔离队列/run/event、模型/展示双投影 | 已完成（macOS Arm + JVM） |
+| 3c–3f | Agent Server 实现（工作区 → 工具 → 应用层 → 服务端） | 未开始 |
 | 4 | 硬切换：agent-client、sidecar 监管、删除旧实现 | 未开始 |
 | 5 | 插件系统 | 未开始 |
 | 6 | 收尾：拆分过大文件、测试矩阵、多平台构建签名 | 未开始 |
@@ -212,8 +228,15 @@ targets、Linux HTTP engine、FileSystem/PlatformType actual 以及 macOS Intel 
 阶段 3 之前的 macOS Arm spike 已完成。`agent/spike` 在一个 release Native binary 中通过
 `self-test` 验证了 Ktor CIO WebSocket、kmp-process、SQLDelight Native 内存 driver 与 Koaks
 Agent 共存，并跑通「WS → runs.enqueue → 一次 read_file → KAP 事件回传」。该模块是长期回归门，
-只实现明确标注的 KAP 子集，不代表阶段 3b–3f 已开始或完成；Linux 目标的交叉编译与运行验证仍留在
+只实现明确标注的 KAP 子集，不代表阶段 3b–3f 的生产实现；Linux 目标的交叉编译与运行验证仍留在
 后续范围。
+
+阶段 3b 已完成。`agent/persistence` 使用新的 SQLDelight schema 基线（15 张表），不读取或转换旧
+TypeScript SQLite 数据；`.sq`、首版 `.sqm` 和 schema 数据库快照参与 migration verification。
+repository 按聚合拆分，所有 branch 相关队列、run、event、approval、path grant 和 compression
+checkpoint 都显式隔离。JVM 与 macOS Arm64 测试覆盖 schema、外键/WAL、分叉 lineage、side chat
+软归档、恢复、事件游标、Koaks wire round-trip、JSON fail-fast 与 summary 双投影。本阶段未修改 KAP；
+分支切换和多客户端 branch API 留在后续阶段。
 
 阶段 3f 结束时必须完成**对等性检查清单**：逐项确认新 server 覆盖旧 Core 的每个 RPC、每个事件、
 每条权限规则。清单未过不得进入阶段 4。

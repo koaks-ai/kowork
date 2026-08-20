@@ -1,7 +1,7 @@
 [versions]
-# 与 koaks 对齐。两侧版本必须一致，否则阶段 3 引入 koaks 依赖时会出现
-# Kotlin metadata / serialization 运行时不兼容。
-kotlin = "2.1.21"
+# Agent 与 Koaks 各自管理 Kotlin 工具链；Agent 使用较新的编译器消费 Koaks 的稳定 metadata，
+# 跨构建兼容性由 JVM 与 Native 测试覆盖，不再要求两个 composite build 锁定同一版本。
+kotlin = "2.3.10"
 serialization = "1.8.1"
 coroutines = "1.10.2"
 ktor = "3.2.3"
@@ -12,7 +12,7 @@ datetime = "0.6.2"
 # 的流式输出与进程组终止需求。
 kmpProcess = "0.3.0"
 # 阶段 3b 的持久化。native-driver 底层是 SQLiter，支持 linuxX64。
-sqldelight = "2.1.0"
+sqldelight = "2.3.2"
 # 仅作为 composite substitution 的模块选择器；该版本刻意不对应远程制品，防止开发期静默
 # 回退到 Maven Central。未配置 koaksDir/KOAKS_DIR 时，spike 依赖解析会明确失败。
 koaks = "phase3-spike-local"
@@ -39,9 +39,11 @@ kmp-process = { module = "io.matthewnelson.kmp-process:process", version.ref = "
 sqldelight-runtime = { module = "app.cash.sqldelight:runtime", version.ref = "sqldelight" }
 sqldelight-nativeDriver = { module = "app.cash.sqldelight:native-driver", version.ref = "sqldelight" }
 sqldelight-jvmDriver = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqldelight" }
+sqldelight-gradlePlugin = { module = "app.cash.sqldelight:gradle-plugin", version.ref = "sqldelight" }
 koaks-core = { module = "org.koaks:koaks-core", version.ref = "koaks" }
 koaks-json = { module = "org.koaks:koaks-json", version.ref = "koaks" }
 
 [plugins]
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }

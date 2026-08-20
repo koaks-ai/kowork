@@ -7,4 +7,5 @@ dependencies {
     // 版本统一来自共享的版本目录。
     implementation(libs.kotlin.gradlePlugin)
     implementation(libs.kotlin.serializationPlugin)
+    implementation(libs.sqldelight.gradlePlugin)
 }
