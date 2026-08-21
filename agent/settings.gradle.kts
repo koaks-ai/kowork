@@ -58,3 +58,4 @@ rootProject.name = "kowork-agent"
 include("protocol")
 include("persistence")
 include("spike")
+include("workspace")

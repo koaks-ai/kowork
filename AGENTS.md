@@ -43,7 +43,7 @@ Agent Server。本地模式由 Electron 启动同一个 Server 二进制作为 s
 - 阶段 0：KAP v1 协议基线——已完成。
 - 阶段 1：设计系统与交互原语统一——已完成。
 - 阶段 2：主题体系——已完成。
-- 阶段 3：Kotlin Agent Server——主体实现未开始；macOS Arm Native 前置纵切 spike 已完成。
+- 阶段 3：Kotlin Agent Server——3a 公共 codec 部分完成、spike、3b persistence 与 3c workspace 已完成；3d–3f 未开始。
 - 阶段 4：客户端换接 KAP 并删除旧 TS Core——未开始。
 - 阶段 5：插件系统——未开始。
 - 阶段 6：收尾、测试矩阵和多平台交付——未开始。
@@ -150,7 +150,7 @@ Agent Server。本地模式由 Electron 启动同一个 Server 二进制作为 s
 - Renderer 保持受限环境：`contextIsolation: true`、`sandbox: true`、`nodeIntegration: false`；不得暴露通用 `ipcRenderer`、Node.js API、文件系统能力或明文凭据。
 - 当前架构中的项目访问和执行必须经过 Core；完成切换后必须经过 Agent Server。不要从 Renderer 或 Electron Main 新增绕过执行边界的捷径。
 - 目标架构中的路径均为 Server 侧路径。客户端不得使用本机路径规则解释它，也不得用 Electron 原生目录选择器代替远程 `fs.browse`。
-- 工具、Shell、路径授权和审批属于安全边界。新增工具或改变工具行为时，必须覆盖真实路径解析、 symlink、项目内外授权、锁、超时、取消和输出上限等相关语义。
+- 工具、Shell、路径授权和审批属于安全边界。workspace 路径范围使用绝对化与规范化后的词法路径校验，不解析 symlink 真实目标；新增工具或改变工具行为时，必须覆盖项目内外授权、锁、超时、取消和输出上限等相关语义。
 - Agent 状态与设备偏好的归属按 ADR 0002 判断。API Key 不得进入 Renderer，也不得写入日志、测试 fixture 或未加密的持久化字段。
 - 数据库结构变更必须同步更新当前实现采用的 schema、数据访问代码和相关测试。当前开发阶段不保留历史数据兼容性，可以重写尚未发布的迁移或直接重建开发数据库；不要为旧数据增加临时兼容分支。
   进入 Kotlin 持久化阶段后，按当期 SQLDelight schema 生成一套可审阅的最终迁移基线。

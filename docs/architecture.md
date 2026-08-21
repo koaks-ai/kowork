@@ -74,7 +74,7 @@ agent/                        Agent Server —— 独立的 Gradle 构建
   domain/                       实体与领域规则，无 IO
   persistence/                  SQLDelight schema 与按聚合划分的 repositories
   workspace/                    FileSystemPort / ProcessPort / GitPort
-  tools/                        9 个工具的实现与 ToolRegistry
+  tools/                        6 个目标工具的实现与 ToolRegistry
   application/                  run 协调、队列、审批、记忆、供应商
   plugins/                      插件宿主的 server 侧对接
   server/                       Ktor CIO WS 服务端、鉴权、订阅广播
@@ -164,21 +164,21 @@ server 时这个状态该不该跟着走"：Agent 状态归 server，主题/布�
 | Auto | 自动 | 自动 | 每次审批 | 每个 run 审批 |
 | Yolo | 自动 | 自动 | 自动，含项目外 `cwd` | 每个 run 审批 |
 
-路径先 canonicalize，再校验 symlink 解析后的**真实**路径仍在项目内。项目外授权区分
-`read` / `write`：`write` 隐含 `read`，`read` 不能用于写。单文件授权只覆盖该文件，目录授权覆盖
-子路径。授权**仅在当前 run 内有效**。
+workspace 路径先绝对化并规范化，以词法包含关系校验项目根与授权根；不解析 symlink 的真实目标。
+项目外授权区分 `read` / `write`：`write` 隐含 `read`，`read` 不能用于写。单文件授权只覆盖该文件，
+目录授权覆盖子路径。授权**仅在当前 run 内有效**。
 
 Shell 以 server 进程的系统用户权限运行，**不是 OS 级沙箱** —— `cwd` 只设置工作目录，不限制命令
-能访问的范围。命令通过非登录 shell 的 `-c` 执行；启动 server 与 shell 子进程前会剔除名称匹配
-密钥/令牌/secret/密码模式的环境变量。模型凭据不通过环境变量传递。
+能访问的范围。`bash` 每次调用都独立启动非登录 `/bin/bash -c`，不保留 cwd、环境变量或 alias 状态；
+启动子进程前会剔除名称匹配密钥/令牌/secret/密码模式的环境变量。模型凭据不通过环境变量传递。
 
 `ToolRegistry` 是工具 schema、授权与执行的唯一入口。每个工具必须声明文件/Shell 能力、副作用、
 项目读写锁、deadline 与输出上限；**未声明的访问默认拒绝**，未知工具或无法关联到应用 run 的调用
 也拒绝。项目读工具持共享锁，Edit/Write/Shell 持独占锁。最终结果上限 64,000 字符并明确标注截断，
 单次调用流式输出持久化上限 256,000 字符。Shell 超时或取消时先终止进程组，短暂等待后强制终止。
 
-工具范围：`list_files`、`glob_files`、`read_file`、`search_files`、`edit_file`、`write_file`、
-`run_command`、`git_status`、`git_diff`。
+目标工具范围：`bash`、`read_file`、`write_file`、`edit_file`、`git_status`、`git_diff`。
+`FileSystemPort` 只提供直接文本读写；`edit_file` 由工具层组合读取和原子写入。
 
 ## 8. 设计系统与插件
 
@@ -212,7 +212,8 @@ UI 插件的信任模型（同 realm 执行，权限是告知性而非强制沙�
 | 3a | Koaks 公共事件 wire codec；Linux 目标与平台 actual | 部分完成：codec 已完成，Linux 范围延后 |
 | 3 spike | 单个 macOS Arm native 二进制里验证 Ktor WS + 子进程 + SQLDelight + koaks 共存 | 已完成（仅 KAP 子集回归门） |
 | 3b | SQLDelight persistence：多分支 lineage、branch 隔离队列/run/event、模型/展示双投影 | 已完成（macOS Arm + JVM） |
-| 3c–3f | Agent Server 实现（工作区 → 工具 → 应用层 → 服务端） | 未开始 |
+| 3c | workspace：直接文本读写、进程组执行、只读 Git | 已完成（macOS Arm64 + JVM） |
+| 3d–3f | 工具 → 应用层 → 服务端 | 未开始 |
 | 4 | 硬切换：agent-client、sidecar 监管、删除旧实现 | 未开始 |
 | 5 | 插件系统 | 未开始 |
 | 6 | 收尾：拆分过大文件、测试矩阵、多平台构建签名 | 未开始 |
@@ -237,6 +238,12 @@ repository 按聚合拆分，所有 branch 相关队列、run、event、approval
 checkpoint 都显式隔离。JVM 与 macOS Arm64 测试覆盖 schema、外键/WAL、分叉 lineage、side chat
 软归档、恢复、事件游标、Koaks wire round-trip、JSON fail-fast 与 summary 双投影。本阶段未修改 KAP；
 分支切换和多客户端 branch API 留在后续阶段。
+
+阶段 3c 已完成。`agent/workspace` 注册为 JVM 与 macOS Arm64 模块：`WorkspaceScope` 使用词法路径
+校验；`FileSystemPort` 只提供带 UTF-8、NUL、2 MiB 限制的直接文本读写和原子写入；`ProcessPort` 通过
+内置 POSIX 启动器建立进程组，并以独立 Bash 调用、敏感环境变量过滤、输出上限、超时与取消终止支撑
+进程执行；`GitPort` 只经 `ProcessPort` 执行只读的 status、diff 与 summary。本阶段没有引入 `rg`、
+`find`、`grep` 等外部搜索制品，未修改 KAP、TypeScript Core 或 Koaks。
 
 阶段 3f 结束时必须完成**对等性检查清单**：逐项确认新 server 覆盖旧 Core 的每个 RPC、每个事件、
 每条权限规则。清单未过不得进入阶段 4。

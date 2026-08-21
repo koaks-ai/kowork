@@ -21,10 +21,10 @@ todos:
     content: 阶段 3b：SQLDelight persistence，15 张表的全新 schema 基线、同会话多分支 lineage、branch 隔离队列/run/event、模型与展示双投影、按聚合拆 repositories
     status: completed
   - id: phase3c-workspace
-    content: 阶段 3c：workspace 层。okio 的 FileSystemPort、kmp-process 的 ProcessPort、只读 GitPort，完整移植路径 canonicalize + symlink 真实路径校验 + 敏感环境变量剔除
-    status: pending
+    content: 阶段 3c：workspace 层。okio 的直接文本 FileSystemPort、kmp-process 的 ProcessPort、只读 GitPort、词法路径校验、敏感环境变量剔除与内置进程组启动器
+    status: completed
   - id: phase3d-tools
-    content: 阶段 3d：9 个工具的 Kotlin 实现与 ToolRegistry，保持 schema/能力/锁/deadline/输出上限与未声明访问默认拒绝的语义等价
+    content: 阶段 3d：bash、read_file、write_file、edit_file、git_status、git_diff 的 Kotlin 实现与 ToolRegistry，保持 schema/能力/锁/deadline/输出上限与未声明访问默认拒绝的语义等价
     status: pending
   - id: phase3e-application
     content: 阶段 3e：application 层。run 协调与队列、三档审批与 run 级路径授权、ThreadMemory 持久化与 90% 压缩策略、供应商与服务端凭据加密、ProviderPort，agent 缓存 key 预留 pluginVersion
@@ -56,7 +56,7 @@ isProject: false
 这四个决策决定了整份计划的形状，后续会话不得擅自更改。
 
 - **决策 1：一套 Kotlin 实现，local 与 remote 完全同构。**
-  9 个工具（`list_files` / `glob_files` / `read_file` / `search_files` / `edit_file` / `write_file` / `run_command` / `git_status` / `git_diff`）、持久化、审批、权限策略全部用 Kotlin 重写，产出自包含的 Kotlin/Native 可执行文件。本地模式由 Electron 以 sidecar 方式拉起**同一个二进制**，远程模式在服务器上部署**同一个二进制**。
+  `bash`、`read_file`、`write_file`、`edit_file`、`git_status`、`git_diff`、持久化、审批、权限策略全部用 Kotlin 重写，产出自包含的 Kotlin/Native 可执行文件。本地模式由 Electron 以 sidecar 方式拉起**同一个二进制**，远程模式在服务器上部署**同一个二进制**。
   *原因：* 用户要求「工具调用完全在服务器上进行」。工具代码必须和工作目录同侧。若保留 TS 与 Kotlin 两套工具实现，权限策略、路径规范化、审批语义会长期漂移，这是最大的技术债来源。同构还意味着本地模式天然是远程模式的测试床。
 - **决策 2：Server 拥有全部 Agent 状态；客户端只保留设备级偏好。**
   项目、会话、队列、run、事件、审批、供应商、API Key 全部归 server。客户端只存主题、背景图、面板宽度、语言、连接配置。API Key 加密存在 server 侧，由 server 调用 LLM。
@@ -127,10 +127,10 @@ graph TB
 - `agent/settings.gradle.kts` — 独立 Gradle 构建根，声明下列模块并 include koaks
 - `agent/build-logic/` — convention plugin：KMP targets、toolchain、serialization。目标集：`linuxX64` `linuxArm64` `macosArm64` `macosX64` `mingwX64` + `jvm`（jvm 仅用于跑测试与本地调试，不分发）
 - `agent/protocol/` — **KAP 线协议的唯一真源**。`@Serializable` 的请求 / 响应 / 事件 / 错误类型，方法名常量，协议版本。commonMain only，零 IO 依赖
-- `agent/domain/` — 纯领域：权限模式语义、路径策略（canonicalize + symlink 真实路径校验 + 项目内外判定）、压缩策略、ID、领域错误。零 IO，全部可单测
+- `agent/domain/` — 纯领域：权限模式语义、压缩策略、ID、领域错误。零 IO，全部可单测
 - `agent/persistence/` — SQLDelight `.sq` 定义、迁移、repositories。按聚合分文件（projects / threads / queue / runs / events / approvals / grants / turns / compression / providers / models / settings / **plugins**），禁止再出现单个 god object
-- `agent/workspace/` — 平台 IO 落地：`FileSystemPort`（okio）、`ProcessPort`（kmp-process）、`GitPort`（走 ProcessPort）。glob / 递归搜索 / 编码探测在此
-- `agent/tools/` — 9 个内置工具的 Kotlin 实现 + `ToolRegistry`。每个工具一个文件，声明 schema、能力、锁模式、deadline、输出上限
+- `agent/workspace/` — 平台 IO 落地：使用词法路径范围的直接文本 `FileSystemPort`（okio）、带内置进程组启动器的 `ProcessPort`（kmp-process）、只读 `GitPort`（走 ProcessPort）。不提供目录遍历、glob 或内容搜索
+- `agent/tools/` — `bash`、`read_file`、`write_file`、`edit_file`、`git_status`、`git_diff` 的 Kotlin 实现 + `ToolRegistry`。每个工具一个文件，声明 schema、能力、锁模式、deadline、输出上限
 - `agent/application/` — run 协调（每会话 FIFO、取消、中断恢复）、审批服务、供应商服务、标题生成、记忆压缩、Koaks agent 装配与缓存
 - `agent/plugins/` — Agent 插件桥：`PluginBridgeHook`（实现 koaks `Hook` 的稳定转发器）、`PluginToolSource`（实现 koaks `LazyToolSource`）、插件宿主进程监管与反向 RPC
 - `agent/server/` — Ktor CIO `embeddedServer`、WS 端点、鉴权、连接与订阅管理、事件 fan-out、游标补发
@@ -321,7 +321,7 @@ wire codec。该模块只实现 KAP 子集，长期保留用于回归；不引�
 **已验证的技术前提**（不要重新调研）：
 
 - Ktor CIO `embeddedServer` 支持 Kotlin/Native 且支持 WebSocket。限制：只能用 CIO 引擎；**不支持无反向代理的 HTTPS**
-- `kmp-process`（`io.matthewnelson.kmp.process`）支持 Native linux / macOS / mingw 的 `posix_spawn`、`stdoutFeed` / `stderrFeed` 流式输出、`destroySignal`。满足 `run_command` 的流式与进程组终止需求
+- `kmp-process`（`io.matthewnelson.kmp.process`）支持 Native linux / macOS / mingw 的 `posix_spawn`、`stdoutFeed` / `stderrFeed` 流式输出、`destroySignal`。满足 `bash` 的流式与进程组终止需求
 - SQLDelight `native-driver`（底层 SQLiter）支持 `linuxX64`。注意需正确链接系统 sqlite3，且为 glibc 兼容性建议在较旧的 Linux 上构建发布产物
 - koaks 现有 KMP 目标已含 `jvm` / `js` / `macosArm64` / `mingwX64` / `iosArm64` / `iosSimulatorArm64`，**Native 不是从零开始**；缺的是 Linux
 - koaks 的 `okio` 依赖已是 Native 兼容，可用于文件 IO
@@ -374,14 +374,19 @@ branch、压缩触发策略和真正的 run 调度仍属于后续 3e/3f。
 
 #### 3c — workspace 层（fs / shell / git）
 
-- `FileSystemPort` 基于 okio：读写、目录列举、递归遍历、glob、内容搜索、编码探测、原子写
-- `ProcessPort` 基于 kmp-process：流式 stdout / stderr、超时、取消、先终止进程组再强杀
-- `GitPort` 走 ProcessPort 调 `git -C <root>`，只做只读的 status / diff / summary
-- 严格移植现有安全语义：路径先 canonicalize、检查 symlink 解析后的真实路径、启动子进程前剔除名称匹配密钥 / 令牌 / secret / password 模式的环境变量
+- `WorkspaceScope` 对项目根和授权根使用绝对化、规范化后的词法包含关系校验。读取路径必须存在；写入路径允许保留缺失尾段；不解析 symlink 的真实目标。
+- `FileSystemPort` 基于 okio，只提供 `read_file` / `write_file` 所需的直接文本读写。读取拒绝目录、缺失文件、NUL、无效 UTF-8 和超过 2 MiB 的文件；写入使用同目录临时文件与 `atomicMove`，并保留已有 POSIX 权限。`edit_file` 由工具层组合读取和原子写入。
+- `ProcessPort` 基于 kmp-process，提供通用进程与独立 Bash 请求。Bash 固定为非登录 `/bin/bash -c`，每次调用不保留 shell 状态；启动前剔除名称匹配密钥、令牌、secret、password、private key、credentials 的环境变量。最终输出上限为 64,000 字符，流式输出上限为 256,000 字符。
+- workspace 内置 POSIX 启动器先创建独立进程组再执行命令。超时或取消先对整个组发送 TERM，等待 2 秒后发送 KILL；macOS Arm64 直接向负 PGID 发信号，JVM 通过系统 `kill` 向负 PGID 发信号。启动器或组终止失败明确报错。
+- `GitPort` 只经 `ProcessPort` 调用 `git -C <root>`，只实现 status、diff、summary；支持非仓库、无 HEAD、重命名/复制、512,000 字符输出上限和取消，不提供写 Git 操作。
+
+实施结果（2026-08-22）：已新增并注册 `agent/workspace`，只验证 JVM 与 macOS Arm64。必要测试覆盖词法路径、直接文本读写、原子写入与权限保留、独立 Bash、敏感环境变量、超时/取消进程组终止，以及 Git status/diff/summary、初始仓库、重命名和截断。未引入 `rg`、`find`、`grep` 或其他外部搜索制品；未修改 KAP、协议镜像、conformance、TypeScript Core、Koaks、spike 或后续阶段。
+
+验收记录（2026-08-22）：`:workspace:jvmTest`、`:workspace:macosArm64Test` 与 `:workspace:check` 通过。
 
 #### 3d — tools 层
 
-- 9 个工具逐个移植，保持 `defineTool` 的等价形状：Kotlin 序列化 schema、`hasSideEffects`、`fileAccess`、`shellAccess`、`lockMode`、`timeoutMs`、`maxOutputChars`
+- `bash`、`read_file`、`write_file`、`edit_file`、`git_status`、`git_diff` 逐个实现，保持 `defineTool` 的等价形状：Kotlin 序列化 schema、`hasSideEffects`、`fileAccess`、`shellAccess`、`lockMode`、`timeoutMs`、`maxOutputChars`
 - 保持现有约束：最终结果上限 64,000 字符并明确返回截断信息；shell 流式事件每次调用最多持久化 256,000 字符；项目读工具共享锁，edit / write / shell 独占锁
 - `prepare()` 必须声明访问意图，未声明的访问默认拒绝——这条策略要完整移植
 
@@ -402,7 +407,7 @@ branch、压缩触发策略和真正的 run 调度仍属于后续 3e/3f。
 - `fs.browse`（服务端目录浏览）与 `files.upload` 在此实现
 - CLI：`--port` `--bind` `--data-dir` `--print-key` `--rotate-key`
 
-**阶段 3 整体验收**：一份对等性检查清单逐条打勾（33 条 RPC + 21 种事件 + 三档权限矩阵 + 9 个工具行为）；Kotlin 侧集成测试覆盖 SQLite、run、审批、恢复；能用 `websocat` 之类工具手工跑完一次完整会话。
+**阶段 3 整体验收**：一份对等性检查清单逐条打勾（33 条 RPC + 21 种事件 + 三档权限矩阵 + 6 个工具行为）；Kotlin 侧集成测试覆盖 SQLite、run、审批、恢复；能用 `websocat` 之类工具手工跑完一次完整会话。
 
 ---
 
